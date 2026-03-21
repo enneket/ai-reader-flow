@@ -1,5 +1,5 @@
 import {useState, useEffect} from 'react'
-import {useParams, Link} from 'react-router-dom'
+import {useParams, Link, useNavigate} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
 import {FileText, Sparkles, Save, ExternalLink, LayoutGrid, Settings} from 'lucide-react'
 import {GetArticles, GetFeeds, GenerateSummary, CreateNote, FilterAllArticles} from '../../wailsjs/go/main/App'
@@ -7,6 +7,7 @@ import {models} from '../../wailsjs/go/models'
 
 export function ArticleList() {
   const {t} = useTranslation()
+  const navigate = useNavigate()
   const [articles, setArticles] = useState<models.Article[]>([])
   const [feeds, setFeeds] = useState<models.Feed[]>([])
   const [selectedFeedId, setSelectedFeedId] = useState<number>(0)
@@ -17,10 +18,12 @@ export function ArticleList() {
   const [generatingSummary, setGeneratingSummary] = useState<number | null>(null)
   const params = useParams()
 
+  // Load from URL params on mount
   useEffect(() => {
-    const fid = params.feedId ? parseInt(params.feedId) : 0
-    setSelectedFeedId(fid)
-  }, [params.feedId])
+    if (params.feedId) {
+      setSelectedFeedId(parseInt(params.feedId))
+    }
+  }, [])
 
   useEffect(() => {
     loadFeeds()
@@ -29,13 +32,6 @@ export function ArticleList() {
   useEffect(() => {
     loadArticles()
   }, [selectedFeedId, filterMode])
-
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(''), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [error])
 
   const loadFeeds = async () => {
     try {
@@ -64,7 +60,6 @@ export function ArticleList() {
     try {
       await GenerateSummary(articleId)
       await loadArticles()
-      // Refresh selected article from updated list
       const updated = articles.find(a => a.id === articleId)
       if (updated) {
         setSelectedArticle(updated)
@@ -100,6 +95,20 @@ export function ArticleList() {
     }
   }
 
+  const handleFeedClick = (feedId: number) => {
+    setSelectedFeedId(feedId)
+    setSelectedArticle(null)
+    if (feedId > 0) {
+      navigate(`/articles/${feedId}`)
+    } else {
+      navigate('/articles')
+    }
+  }
+
+  const handleArticleClick = (article: models.Article) => {
+    setSelectedArticle(article)
+  }
+
   const getFeedTitle = (feedId: number) => {
     const feed = feeds.find(f => f.id === feedId)
     return feed ? feed.title : 'Unknown Feed'
@@ -117,8 +126,8 @@ export function ArticleList() {
   }
 
   return (
-    <div className="articles-layout">
-      {/* Top Navigation Bar */}
+    <div className="articles-page">
+      {/* Top Navigation */}
       <header className="articles-top-nav">
         <nav className="articles-nav">
           <Link to="/" className="articles-nav-item">
@@ -140,122 +149,85 @@ export function ArticleList() {
         </nav>
       </header>
 
-      {/* 3-column content area */}
-      <div className="articles-content">
-        {/* Feed List Sidebar */}
-        <aside className="articles-sidebar">
-        <div className="articles-sidebar-header">
-          {t('articles.feeds')}
-        </div>
-        <div className="articles-feed-list">
-          <button
-            className={`feed-item ${selectedFeedId === 0 ? 'active' : ''}`}
-            onClick={() => {
-              setSelectedFeedId(0)
-              setSelectedArticle(null)
-            }}
-          >
-            <span className="feed-item-icon">📰</span>
-            <span className="feed-item-name">{t('articles.allFeeds')}</span>
-          </button>
-          {feeds.map((feed) => (
+      {/* 3 Column Content */}
+      <div className="articles-3col">
+        {/* Column 1: Feed List */}
+        <div className="articles-col-feed">
+          <div className="articles-col-header">{t('articles.feeds')}</div>
+          <div className="feed-list">
             <button
-              key={feed.id}
-              className={`feed-item ${selectedFeedId === feed.id ? 'active' : ''}`}
-              onClick={() => {
-                setSelectedFeedId(feed.id)
-                setSelectedArticle(null)
-              }}
+              className={`feed-btn ${selectedFeedId === 0 ? 'active' : ''}`}
+              onClick={() => handleFeedClick(0)}
             >
-              <span className="feed-item-icon">📋</span>
-              <span className="feed-item-name">{feed.title || 'Untitled'}</span>
+              {t('articles.allFeeds')}
             </button>
-          ))}
+            {feeds.map((feed) => (
+              <button
+                key={feed.id}
+                className={`feed-btn ${selectedFeedId === feed.id ? 'active' : ''}`}
+                onClick={() => handleFeedClick(feed.id)}
+              >
+                {feed.title || 'Untitled'}
+              </button>
+            ))}
+          </div>
         </div>
-      </aside>
 
-      {/* Article List */}
-      <div className="articles-list-panel">
-        <header className="articles-list-header">
-          <h1 className="page-title">{t('articles.title')}</h1>
-          <div className="filter-controls">
+        {/* Column 2: Article List */}
+        <div className="articles-col-list">
+          <div className="articles-col-header">
+            <span>{t('articles.title')}</span>
             <select
               value={filterMode}
               onChange={(e) => setFilterMode(e.target.value)}
-              className="form-input form-select"
+              className="form-select-sm"
             >
               <option value="all">{t('articles.all')}</option>
               <option value="filtered">{t('articles.filtered')}</option>
               <option value="saved">{t('articles.saved')}</option>
             </select>
-
-            <button
-              onClick={handleFilterAll}
-              disabled={loading}
-              className="btn btn-primary btn-sm"
-            >
-              <Sparkles size={14} />
-              {t('articles.filterWithAI')}
-            </button>
           </div>
-        </header>
-
-        <div className="articles-list">
-          {loading && articles.length === 0 ? (
-            <div className="loading">
-              <div className="spinner" />
-              <span style={{marginLeft: '8px'}}>{t('common.loading')}</span>
-            </div>
-          ) : articles.length === 0 ? (
-            <div className="empty-state">
-              <FileText />
-              <p>{t('articles.empty')}</p>
-            </div>
-          ) : (
-            articles.map((article) => (
-              <div
-                key={article.id}
-                className={`article-item ${selectedArticle?.id === article.id ? 'selected' : ''}`}
-                onClick={() => setSelectedArticle(article)}
-              >
-                <div className="article-meta">
-                  <span>{getFeedTitle(article.feed_id)}</span>
-                  <span>{formatDate(article.published)}</span>
-                </div>
-                <h3 className="article-title">{article.title}</h3>
-                {article.author && (
-                  <p className="article-author">By {article.author}</p>
-                )}
-                {article.summary && (
-                  <p className="article-summary">
-                    {article.summary.substring(0, 100)}
-                    {article.summary.length > 100 ? '...' : ''}
-                  </p>
-                )}
-                <div className="article-badges">
-                  {article.is_filtered && (
-                    <span className="badge badge-filtered">{t('articles.filtered')}</span>
+          <div className="article-list">
+            {loading && articles.length === 0 ? (
+              <div className="loading">{t('common.loading')}</div>
+            ) : articles.length === 0 ? (
+              <div className="empty-state">{t('articles.empty')}</div>
+            ) : (
+              articles.map((article) => (
+                <div
+                  key={article.id}
+                  className={`article-card ${selectedArticle?.id === article.id ? 'selected' : ''}`}
+                  onClick={() => handleArticleClick(article)}
+                >
+                  <div className="article-card-meta">
+                    <span>{getFeedTitle(article.feed_id)}</span>
+                    <span>{formatDate(article.published)}</span>
+                  </div>
+                  <div className="article-card-title">{article.title}</div>
+                  {article.summary && (
+                    <div className="article-card-summary">
+                      {article.summary.substring(0, 80)}...
+                    </div>
                   )}
-                  {article.is_saved && (
-                    <span className="badge badge-saved">{t('articles.saved')}</span>
-                  )}
+                  <div className="article-card-badges">
+                    {article.is_filtered && <span className="badge badge-filtered">{t('articles.filtered')}</span>}
+                    {article.is_saved && <span className="badge badge-saved">{t('articles.saved')}</span>}
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Article Content Preview */}
-      <div className="articles-content-panel">
-        {selectedArticle ? (
-          <div className="article-content">
-            <div className="article-content-header">
-              <h2>{selectedArticle.title}</h2>
+        {/* Column 3: Article Content */}
+        <div className="articles-col-content">
+          {selectedArticle ? (
+            <div className="article-content">
+              <h2 className="article-content-title">{selectedArticle.title}</h2>
               <div className="article-content-meta">
                 <span>{getFeedTitle(selectedArticle.feed_id)}</span>
                 <span>{formatDate(selectedArticle.published)}</span>
-                {selectedArticle.author && <span>By {selectedArticle.author}</span>}
+                {selectedArticle.author && <span>{selectedArticle.author}</span>}
               </div>
               <a
                 href={selectedArticle.link}
@@ -266,46 +238,44 @@ export function ArticleList() {
                 <ExternalLink size={14} />
                 {t('articles.viewOriginal')}
               </a>
-            </div>
 
-            <div className="article-content-body">
-              <h4>{t('articles.summary')}</h4>
-              <p>{selectedArticle.summary || t('articles.noSummary')}</p>
+              <div className="article-content-section">
+                <h4>{t('articles.summary')}</h4>
+                <p>{selectedArticle.summary || t('articles.noSummary')}</p>
+              </div>
 
-              <h4>{t('articles.content')}</h4>
-              <div
-                className="article-full-content"
-                dangerouslySetInnerHTML={{__html: selectedArticle.content || selectedArticle.summary || ''}}
-              />
-            </div>
+              <div className="article-content-section">
+                <h4>{t('articles.content')}</h4>
+                <div dangerouslySetInnerHTML={{__html: selectedArticle.content || ''}} />
+              </div>
 
-            <div className="article-content-actions">
-              <button
-                onClick={() => handleGenerateSummary(selectedArticle.id)}
-                disabled={generatingSummary === selectedArticle.id}
-                className="btn btn-secondary"
-              >
-                <Sparkles size={16} />
-                {generatingSummary === selectedArticle.id ? t('common.loading') : t('articles.aiSummary')}
-              </button>
-              {!selectedArticle.is_saved && (
+              <div className="article-content-actions">
                 <button
-                  onClick={() => handleCreateNote(selectedArticle.id)}
-                  className="btn btn-primary"
+                  onClick={() => handleGenerateSummary(selectedArticle.id)}
+                  disabled={generatingSummary === selectedArticle.id}
+                  className="btn btn-secondary"
                 >
-                  <Save size={16} />
-                  {t('articles.saveAsNote')}
+                  <Sparkles size={16} />
+                  {generatingSummary === selectedArticle.id ? t('common.loading') : t('articles.aiSummary')}
                 </button>
-              )}
+                {!selectedArticle.is_saved && (
+                  <button
+                    onClick={() => handleCreateNote(selectedArticle.id)}
+                    className="btn btn-primary"
+                  >
+                    <Save size={16} />
+                    {t('articles.saveAsNote')}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <FileText />
-            <p>{t('articles.selectToView')}</p>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="empty-state">
+              <FileText size={48} />
+              <p>{t('articles.selectToView')}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
