@@ -1,4 +1,5 @@
 import {Link, useLocation} from 'react-router-dom'
+import {useTranslation} from 'react-i18next'
 import {Rss, FileText, Settings, LayoutGrid} from 'lucide-react'
 
 interface LayoutProps {
@@ -7,6 +8,7 @@ interface LayoutProps {
 
 export function Layout({children}: LayoutProps) {
   const location = useLocation()
+  const {t} = useTranslation()
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
@@ -19,7 +21,7 @@ export function Layout({children}: LayoutProps) {
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <Rss size={24} />
-            <span>AI RSS</span>
+            <span>{t('nav.aiRss')}</span>
           </div>
         </div>
 
@@ -29,28 +31,28 @@ export function Layout({children}: LayoutProps) {
             className={`nav-item ${isActive('/') && location.pathname === '/' ? 'active' : ''}`}
           >
             <LayoutGrid />
-            <span>Feeds</span>
+            <span>{t('nav.feeds')}</span>
           </Link>
           <Link
             to="/articles"
             className={`nav-item ${isActive('/articles') ? 'active' : ''}`}
           >
             <FileText />
-            <span>Articles</span>
+            <span>{t('nav.articles')}</span>
           </Link>
           <Link
             to="/notes"
             className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
           >
             <FileText />
-            <span>Notes</span>
+            <span>{t('nav.notes')}</span>
           </Link>
           <Link
             to="/settings"
             className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
           >
             <Settings />
-            <span>Settings</span>
+            <span>{t('nav.settings')}</span>
           </Link>
         </nav>
 
