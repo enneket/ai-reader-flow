@@ -33,6 +33,13 @@ export function Settings() {
     loadFilterRules()
   }, [])
 
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(''), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+
   const loadAIConfig = async () => {
     try {
       const config = await GetAIConfig()

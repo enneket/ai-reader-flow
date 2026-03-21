@@ -27,6 +27,13 @@ export function ArticleList() {
     loadArticles()
   }, [selectedFeedId, filterMode])
 
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(''), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+
   const loadFeeds = async () => {
     try {
       const data = await GetFeeds()

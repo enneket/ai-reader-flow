@@ -24,6 +24,13 @@ export function FeedList() {
     loadFeeds()
   }, [])
 
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(''), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+
   const handleAddFeed = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newFeedUrl.trim()) return

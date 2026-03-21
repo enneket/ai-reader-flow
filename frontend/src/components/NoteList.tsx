@@ -14,6 +14,13 @@ export function NoteList() {
     loadNotes()
   }, [])
 
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(''), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+
   const loadNotes = async () => {
     setLoading(true)
     setError('')
