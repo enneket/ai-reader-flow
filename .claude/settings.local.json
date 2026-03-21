@@ -20,7 +20,10 @@
       "Bash(export PATH=/tmp/pkg-extract/usr/bin:$PATH find /usr /tmp /home -name libwebkit*)",
       "Bash(git commit:*)",
       "Bash(npm install:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git remote:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)"
     ]
   }
 }
