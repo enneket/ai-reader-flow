@@ -1,9 +1,13 @@
 import {useState, useEffect} from 'react'
 import {Save, Plus, Trash2} from 'lucide-react'
+import {useTranslation} from 'react-i18next'
+import {changeLanguage} from '../i18n'
+import i18n from '../i18n'
 import {GetAIConfig, SaveAIConfig, GetFilterRules, AddFilterRule, DeleteFilterRule} from '../../wailsjs/go/main/App'
 import {models} from '../../wailsjs/go/models'
 
 export function Settings() {
+  const {t} = useTranslation()
   const [aiConfig, setAIConfig] = useState<models.AIProviderConfig>({
     provider: 'openai',
     api_key: '',
@@ -108,7 +112,7 @@ export function Settings() {
   return (
     <>
       <header className="page-header">
-        <h1 className="page-title">Settings</h1>
+        <h1 className="page-title">{t('settings.title')}</h1>
       </header>
 
       <div className="page-content">
@@ -126,10 +130,24 @@ export function Settings() {
         )}
 
         <section className="settings-section">
-          <h3>AI Provider Configuration</h3>
+          <h3>{t('settings.language')}</h3>
+          <div className="form-group">
+            <select
+              value={i18n.language}
+              onChange={(e) => changeLanguage(e.target.value as 'en' | 'zh')}
+              className="form-select"
+            >
+              <option value="en">{t('settings.english')}</option>
+              <option value="zh">{t('settings.chinese')}</option>
+            </select>
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <h3>{t('settings.aiConfig')}</h3>
           <form onSubmit={handleSaveAIConfig} className="ai-config-form">
             <div className="form-group">
-              <label className="form-label">Provider</label>
+              <label className="form-label">{t('settings.provider')}</label>
               <select
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
@@ -142,7 +160,7 @@ export function Settings() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">API Key</label>
+              <label className="form-label">{t('settings.apiKey')}</label>
               <input
                 type="password"
                 value={apiKey}
@@ -153,7 +171,7 @@ export function Settings() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Base URL</label>
+              <label className="form-label">{t('settings.baseURL')}</label>
               <input
                 type="url"
                 value={baseURL}
@@ -164,7 +182,7 @@ export function Settings() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Model</label>
+              <label className="form-label">{t('settings.model')}</label>
               <input
                 type="text"
                 value={model}
@@ -175,7 +193,7 @@ export function Settings() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Max Tokens</label>
+              <label className="form-label">{t('settings.maxTokens')}</label>
               <input
                 type="number"
                 value={maxTokens}
@@ -188,13 +206,13 @@ export function Settings() {
 
             <button type="submit" disabled={loading} className="btn btn-primary">
               <Save size={16} />
-              {loading ? 'Saving...' : 'Save AI Config'}
+              {loading ? t('common.loading') : t('settings.saveAIConfig')}
             </button>
           </form>
         </section>
 
         <section className="settings-section">
-          <h3>Filter Rules</h3>
+          <h3>{t('settings.filterRules')}</h3>
           <form onSubmit={handleAddFilterRule}>
             <div className="form-row">
               <select
@@ -224,14 +242,14 @@ export function Settings() {
               </select>
               <button type="submit" disabled={loading} className="btn btn-secondary">
                 <Plus size={16} />
-                Add Rule
+                {t('settings.addRule')}
               </button>
             </div>
           </form>
 
           {filterRules.length === 0 ? (
             <p style={{color: 'var(--text-secondary)', marginTop: 'var(--space-4)'}}>
-              No filter rules defined.
+              {t('settings.noFilterRules')}
             </p>
           ) : (
             <ul className="filter-rules">

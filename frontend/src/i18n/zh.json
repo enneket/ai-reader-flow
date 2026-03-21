@@ -48,6 +48,7 @@
     "value": "值",
     "action": "动作",
     "addRule": "添加规则",
+    "noFilterRules": "暂无筛选规则。",
     "language": "语言",
     "english": "English",
     "chinese": "中文"

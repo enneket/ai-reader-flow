@@ -48,6 +48,7 @@
     "value": "Value",
     "action": "Action",
     "addRule": "Add Rule",
+    "noFilterRules": "No filter rules defined.",
     "language": "Language",
     "english": "English",
     "chinese": "中文"
