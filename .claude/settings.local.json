@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wails --version)",
+      "Bash(go version:*)",
+      "Bash(go install:*)",
+      "Bash(apt-cache show:*)",
+      "Read(//tmp/**)",
+      "Bash(apt-get download:*)"
+    ]
+  }
+}

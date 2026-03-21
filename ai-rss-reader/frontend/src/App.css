@@ -1,0 +1,467 @@
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.app-header {
+    background: #1a1a2e;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #333;
+}
+
+.app-header h1 {
+    margin: 0 0 1rem 0;
+    font-size: 1.5rem;
+    color: #eee;
+}
+
+.app-header nav {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.app-header nav a {
+    color: #888;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.app-header nav a:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+}
+
+.app-header nav a.active {
+    color: #fff;
+    background: #4a9eff;
+}
+
+.app-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+}
+
+/* Feed List */
+.feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.feed-header h2 {
+    margin: 0;
+}
+
+.add-feed-form {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.add-feed-form input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #333;
+    border-radius: 4px;
+    background: #252525;
+    color: #fff;
+}
+
+.add-feed-form button {
+    padding: 0.75rem 1.5rem;
+    background: #4a9eff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.add-feed-form button:hover {
+    background: #3a8eef;
+}
+
+.feed-list ul, .article-list ul, .note-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.feed-item, .article-item {
+    background: #1e1e2e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.feed-info h3 {
+    margin: 0 0 0.5rem 0;
+}
+
+.feed-url {
+    color: #4a9eff;
+    font-size: 0.85rem;
+}
+
+.feed-desc {
+    color: #888;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.feed-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn-view, .btn-refresh, .btn-filter, .btn-summary, .btn-save, .btn-delete, .btn-view-note {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.btn-view, .btn-refresh, .btn-filter, .btn-summary, .btn-save, .btn-view-note {
+    background: #4a9eff;
+    color: white;
+}
+
+.btn-delete {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-delete:hover, .btn-delete-small:hover {
+    opacity: 0.8;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Article List */
+.article-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.article-filters {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.article-filters select {
+    padding: 0.5rem;
+    background: #252525;
+    color: #fff;
+    border: 1px solid #333;
+    border-radius: 4px;
+}
+
+.article-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+}
+
+.article-item h3 {
+    margin: 0 0 0.5rem 0;
+}
+
+.article-item h3 a {
+    color: #4a9eff;
+    text-decoration: none;
+}
+
+.article-item h3 a:hover {
+    text-decoration: underline;
+}
+
+.article-author {
+    color: #888;
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+}
+
+.article-summary {
+    color: #ccc;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 0.5rem 0;
+}
+
+.article-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+}
+
+.filtered-badge {
+    background: #f0ad4e;
+    color: #000;
+}
+
+.saved-badge {
+    background: #28a745;
+    color: #fff;
+}
+
+/* Notes */
+.note-container {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 1rem;
+    min-height: 400px;
+}
+
+.note-sidebar {
+    background: #1e1e2e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1rem;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.note-item {
+    padding: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.note-item:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.note-item.selected {
+    background: #4a9eff;
+}
+
+.note-item h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 60px;
+}
+
+.note-date {
+    font-size: 0.8rem;
+    color: #888;
+    margin: 0;
+}
+
+.note-item.selected .note-date {
+    color: rgba(255,255,255,0.8);
+}
+
+.btn-delete-small {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.note-content {
+    background: #1e1e2e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.markdown-content {
+    line-height: 1.6;
+}
+
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+    margin-top: 1.5rem;
+}
+
+.markdown-content blockquote {
+    border-left: 3px solid #4a9eff;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: #888;
+    font-style: italic;
+}
+
+.markdown-content a {
+    color: #4a9eff;
+}
+
+/* Settings */
+.settings-section {
+    background: #1e1e2e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.settings-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #333;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #888;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    background: #252525;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #fff;
+    box-sizing: border-box;
+}
+
+.ai-config-form {
+    max-width: 500px;
+}
+
+.form-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.form-row input, .form-row select {
+    padding: 0.5rem;
+    background: #252525;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #fff;
+}
+
+.form-row input[type="text"] {
+    flex: 1;
+    min-width: 150px;
+}
+
+.filter-rules {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0 0;
+}
+
+.filter-rule-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #252525;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.rule-value {
+    flex: 1;
+}
+
+.exclude-badge {
+    background: #dc3545;
+    color: white;
+}
+
+.include-badge {
+    background: #28a745;
+    color: white;
+}
+
+.type-badge {
+    background: #555;
+    color: white;
+}
+
+/* Common */
+.error {
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid #dc3545;
+    color: #f8d7da;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.success {
+    background: rgba(40, 167, 69, 0.2);
+    border: 1px solid #28a745;
+    color: #d4edda;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.empty-state {
+    color: #888;
+    text-align: center;
+    padding: 2rem;
+}
+
+.loading {
+    text-align: center;
+    color: #4a9eff;
+    padding: 2rem;
+}
+
+@media (max-width: 768px) {
+    .note-container {
+        grid-template-columns: 1fr;
+    }
+
+    .note-sidebar {
+        max-height: 200px;
+    }
+
+    .article-filters {
+        flex-wrap: wrap;
+    }
+
+    .add-feed-form {
+        flex-direction: column;
+    }
+}
