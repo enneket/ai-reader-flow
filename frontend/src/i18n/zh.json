@@ -1,0 +1,64 @@
+{
+  "nav": {
+    "aiRss": "AI RSS",
+    "feeds": "订阅源",
+    "articles": "文章",
+    "notes": "笔记",
+    "settings": "设置"
+  },
+  "feeds": {
+    "title": "RSS 订阅源",
+    "refreshAll": "刷新全部",
+    "addFeed": "添加订阅源",
+    "placeholder": "输入 RSS 订阅源地址",
+    "viewArticles": "查看文章",
+    "delete": "删除",
+    "empty": "暂无订阅源。添加第一个 RSS 订阅源开始使用。"
+  },
+  "articles": {
+    "title": "文章",
+    "allFeeds": "全部订阅源",
+    "all": "全部",
+    "filtered": "已过滤",
+    "saved": "已收藏",
+    "filterWithAI": "AI 筛选",
+    "aiSummary": "AI 摘要",
+    "saveAsNote": "保存为笔记",
+    "empty": "暂无文章。请先添加订阅源。"
+  },
+  "notes": {
+    "title": "笔记",
+    "note": "笔记",
+    "notes": "笔记",
+    "empty": "暂无笔记。收藏文章来创建笔记。",
+    "selectToView": "选择一个笔记查看内容",
+    "untitled": "无标题笔记"
+  },
+  "settings": {
+    "title": "设置",
+    "aiConfig": "AI 服务商配置",
+    "provider": "服务商",
+    "apiKey": "API 密钥",
+    "baseURL": "接口地址",
+    "model": "模型",
+    "maxTokens": "最大 Token 数",
+    "saveAIConfig": "保存 AI 配置",
+    "filterRules": "筛选规则",
+    "type": "类型",
+    "value": "值",
+    "action": "动作",
+    "addRule": "添加规则",
+    "language": "语言",
+    "english": "English",
+    "chinese": "中文"
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除"
+  }
+}
