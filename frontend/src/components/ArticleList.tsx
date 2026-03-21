@@ -1,10 +1,12 @@
 import {useState, useEffect} from 'react'
 import {useParams} from 'react-router-dom'
+import {useTranslation} from 'react-i18next'
 import {FileText, Sparkles, Save} from 'lucide-react'
 import {GetArticles, GetFeeds, GenerateSummary, CreateNote, FilterAllArticles} from '../../wailsjs/go/main/App'
 import {models} from '../../wailsjs/go/models'
 
 export function ArticleList() {
+  const {t} = useTranslation()
   const [articles, setArticles] = useState<models.Article[]>([])
   const [feeds, setFeeds] = useState<models.Feed[]>([])
   const [selectedFeedId, setSelectedFeedId] = useState<number>(0)
@@ -111,7 +113,7 @@ export function ArticleList() {
   return (
     <>
       <header className="page-header">
-        <h1 className="page-title">Articles</h1>
+        <h1 className="page-title">{t('articles.title')}</h1>
       </header>
 
       <div className="page-content">
@@ -128,7 +130,7 @@ export function ArticleList() {
             onChange={(e) => setSelectedFeedId(parseInt(e.target.value))}
             className="form-input form-select"
           >
-            <option value={0}>All Feeds</option>
+            <option value={0}>{t('articles.allFeeds')}</option>
             {feeds.map((feed) => (
               <option key={feed.id} value={feed.id}>{feed.title}</option>
             ))}
@@ -139,9 +141,9 @@ export function ArticleList() {
             onChange={(e) => setFilterMode(e.target.value)}
             className="form-input form-select"
           >
-            <option value="all">All Articles</option>
-            <option value="filtered">Filtered (AI)</option>
-            <option value="saved">Saved</option>
+            <option value="all">{t('articles.all')}</option>
+            <option value="filtered">{t('articles.filtered')}</option>
+            <option value="saved">{t('articles.saved')}</option>
           </select>
 
           <button
@@ -150,7 +152,7 @@ export function ArticleList() {
             className="btn btn-primary"
           >
             <Sparkles size={16} />
-            Filter with AI
+            {t('articles.filterWithAI')}
           </button>
         </div>
 
@@ -162,11 +164,7 @@ export function ArticleList() {
         ) : articles.length === 0 ? (
           <div className="empty-state">
             <FileText />
-            <p>
-              {filterMode === 'all'
-                ? 'No articles yet. Add some RSS feeds first.'
-                : `No ${filterMode} articles.`}
-            </p>
+            <p>{t('articles.empty')}</p>
           </div>
         ) : (
           <div className="list">
@@ -210,7 +208,7 @@ export function ArticleList() {
                     className="btn btn-secondary btn-sm"
                   >
                     <Sparkles size={14} />
-                    {generatingSummary === article.id ? 'Generating...' : 'AI Summary'}
+                    {t('articles.aiSummary')}
                   </button>
                   {!article.is_saved && (
                     <button
@@ -218,7 +216,7 @@ export function ArticleList() {
                       className="btn btn-secondary btn-sm"
                     >
                       <Save size={14} />
-                      Save as Note
+                      {t('articles.saveAsNote')}
                     </button>
                   )}
                 </div>
