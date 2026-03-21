@@ -722,8 +722,9 @@ a:hover {
    ============================================ */
 .articles-layout {
   display: flex;
-  height: 100%;
-  margin: calc(-1 * var(--space-6));
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }
 
 .articles-sidebar {

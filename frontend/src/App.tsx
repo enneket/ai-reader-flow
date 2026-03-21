@@ -7,15 +7,22 @@ import {Settings} from './components/Settings'
 
 function App() {
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<FeedList />} />
-        <Route path="/articles" element={<ArticleList />} />
-        <Route path="/articles/:feedId" element={<ArticleList />} />
-        <Route path="/notes" element={<NoteList />} />
-        <Route path="/settings" element={<Settings />} />
-      </Routes>
-    </Layout>
+    <Routes>
+      {/* Articles page uses its own full-width layout */}
+      <Route path="/articles" element={<ArticleList />} />
+      <Route path="/articles/:feedId" element={<ArticleList />} />
+
+      {/* Other pages use the standard Layout with sidebar */}
+      <Route path="/*" element={
+        <Layout>
+          <Routes>
+            <Route path="/" element={<FeedList />} />
+            <Route path="/notes" element={<NoteList />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </Layout>
+      } />
+    </Routes>
   )
 }
 
