@@ -1,7 +1,7 @@
 import {useState, useEffect} from 'react'
-import {useParams} from 'react-router-dom'
+import {useParams, Link} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
-import {FileText, Sparkles, Save, ExternalLink} from 'lucide-react'
+import {FileText, Sparkles, Save, ExternalLink, LayoutGrid, Settings} from 'lucide-react'
 import {GetArticles, GetFeeds, GenerateSummary, CreateNote, FilterAllArticles} from '../../wailsjs/go/main/App'
 import {models} from '../../wailsjs/go/models'
 
@@ -118,8 +118,32 @@ export function ArticleList() {
 
   return (
     <div className="articles-layout">
-      {/* Feed List Sidebar */}
-      <aside className="articles-sidebar">
+      {/* Top Navigation Bar */}
+      <header className="articles-top-nav">
+        <nav className="articles-nav">
+          <Link to="/" className="articles-nav-item">
+            <LayoutGrid size={16} />
+            <span>{t('nav.feeds')}</span>
+          </Link>
+          <Link to="/articles" className="articles-nav-item active">
+            <FileText size={16} />
+            <span>{t('nav.articles')}</span>
+          </Link>
+          <Link to="/notes" className="articles-nav-item">
+            <FileText size={16} />
+            <span>{t('nav.notes')}</span>
+          </Link>
+          <Link to="/settings" className="articles-nav-item">
+            <Settings size={16} />
+            <span>{t('nav.settings')}</span>
+          </Link>
+        </nav>
+      </header>
+
+      {/* 3-column content area */}
+      <div className="articles-content">
+        {/* Feed List Sidebar */}
+        <aside className="articles-sidebar">
         <div className="articles-sidebar-header">
           {t('articles.feeds')}
         </div>
@@ -281,6 +305,7 @@ export function ArticleList() {
             <p>{t('articles.selectToView')}</p>
           </div>
         )}
+      </div>
       </div>
     </div>
   )
