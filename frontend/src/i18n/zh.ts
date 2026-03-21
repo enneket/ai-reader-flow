@@ -17,6 +17,7 @@ export const zh = {
   },
   articles: {
     title: "文章",
+    feeds: "订阅源",
     allFeeds: "全部订阅源",
     all: "全部",
     filtered: "已过滤",
@@ -25,6 +26,11 @@ export const zh = {
     aiSummary: "AI 摘要",
     saveAsNote: "保存为笔记",
     empty: "暂无文章。请先添加订阅源。",
+    viewOriginal: "查看原文",
+    summary: "摘要",
+    content: "正文",
+    noSummary: "暂无摘要。点击'AI 摘要'生成。",
+    selectToView: "选择一篇文章查看内容",
   },
   notes: {
     title: "笔记",

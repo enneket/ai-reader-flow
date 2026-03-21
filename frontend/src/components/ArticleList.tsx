@@ -1,7 +1,7 @@
 import {useState, useEffect} from 'react'
 import {useParams} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
-import {FileText, Sparkles, Save} from 'lucide-react'
+import {FileText, Sparkles, Save, ExternalLink} from 'lucide-react'
 import {GetArticles, GetFeeds, GenerateSummary, CreateNote, FilterAllArticles} from '../../wailsjs/go/main/App'
 import {models} from '../../wailsjs/go/models'
 
@@ -10,6 +10,7 @@ export function ArticleList() {
   const [articles, setArticles] = useState<models.Article[]>([])
   const [feeds, setFeeds] = useState<models.Feed[]>([])
   const [selectedFeedId, setSelectedFeedId] = useState<number>(0)
+  const [selectedArticle, setSelectedArticle] = useState<models.Article | null>(null)
   const [filterMode, setFilterMode] = useState('all')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -63,6 +64,11 @@ export function ArticleList() {
     try {
       await GenerateSummary(articleId)
       await loadArticles()
+      // Refresh selected article from updated list
+      const updated = articles.find(a => a.id === articleId)
+      if (updated) {
+        setSelectedArticle(updated)
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to generate summary')
     } finally {
@@ -111,120 +117,171 @@ export function ArticleList() {
   }
 
   return (
-    <>
-      <header className="page-header">
-        <h1 className="page-title">{t('articles.title')}</h1>
-      </header>
-
-      <div className="page-content">
-        {error && (
-          <div className="alert alert-error">
-            <span>{error}</span>
-            <button className="alert-close" onClick={() => setError('')}>×</button>
-          </div>
-        )}
-
-        <div className="filter-bar">
-          <select
-            value={selectedFeedId}
-            onChange={(e) => setSelectedFeedId(parseInt(e.target.value))}
-            className="form-input form-select"
-          >
-            <option value={0}>{t('articles.allFeeds')}</option>
-            {feeds.map((feed) => (
-              <option key={feed.id} value={feed.id}>{feed.title}</option>
-            ))}
-          </select>
-
-          <select
-            value={filterMode}
-            onChange={(e) => setFilterMode(e.target.value)}
-            className="form-input form-select"
-          >
-            <option value="all">{t('articles.all')}</option>
-            <option value="filtered">{t('articles.filtered')}</option>
-            <option value="saved">{t('articles.saved')}</option>
-          </select>
-
-          <button
-            onClick={handleFilterAll}
-            disabled={loading}
-            className="btn btn-primary"
-          >
-            <Sparkles size={16} />
-            {t('articles.filterWithAI')}
-          </button>
+    <div className="articles-layout">
+      {/* Feed List Sidebar */}
+      <aside className="articles-sidebar">
+        <div className="articles-sidebar-header">
+          {t('articles.feeds')}
         </div>
+        <div className="articles-feed-list">
+          <button
+            className={`feed-item ${selectedFeedId === 0 ? 'active' : ''}`}
+            onClick={() => {
+              setSelectedFeedId(0)
+              setSelectedArticle(null)
+            }}
+          >
+            <span className="feed-item-icon">📰</span>
+            <span className="feed-item-name">{t('articles.allFeeds')}</span>
+          </button>
+          {feeds.map((feed) => (
+            <button
+              key={feed.id}
+              className={`feed-item ${selectedFeedId === feed.id ? 'active' : ''}`}
+              onClick={() => {
+                setSelectedFeedId(feed.id)
+                setSelectedArticle(null)
+              }}
+            >
+              <span className="feed-item-icon">📋</span>
+              <span className="feed-item-name">{feed.title || 'Untitled'}</span>
+            </button>
+          ))}
+        </div>
+      </aside>
 
-        {loading && articles.length === 0 ? (
-          <div className="loading">
-            <div className="spinner" />
-            <span style={{marginLeft: '8px'}}>Loading...</span>
+      {/* Article List */}
+      <div className="articles-list-panel">
+        <header className="articles-list-header">
+          <h1 className="page-title">{t('articles.title')}</h1>
+          <div className="filter-controls">
+            <select
+              value={filterMode}
+              onChange={(e) => setFilterMode(e.target.value)}
+              className="form-input form-select"
+            >
+              <option value="all">{t('articles.all')}</option>
+              <option value="filtered">{t('articles.filtered')}</option>
+              <option value="saved">{t('articles.saved')}</option>
+            </select>
+
+            <button
+              onClick={handleFilterAll}
+              disabled={loading}
+              className="btn btn-primary btn-sm"
+            >
+              <Sparkles size={14} />
+              {t('articles.filterWithAI')}
+            </button>
           </div>
-        ) : articles.length === 0 ? (
-          <div className="empty-state">
-            <FileText />
-            <p>{t('articles.empty')}</p>
-          </div>
-        ) : (
-          <div className="list">
-            {articles.map((article) => (
-              <div key={article.id} className="card">
+        </header>
+
+        <div className="articles-list">
+          {loading && articles.length === 0 ? (
+            <div className="loading">
+              <div className="spinner" />
+              <span style={{marginLeft: '8px'}}>{t('common.loading')}</span>
+            </div>
+          ) : articles.length === 0 ? (
+            <div className="empty-state">
+              <FileText />
+              <p>{t('articles.empty')}</p>
+            </div>
+          ) : (
+            articles.map((article) => (
+              <div
+                key={article.id}
+                className={`article-item ${selectedArticle?.id === article.id ? 'selected' : ''}`}
+                onClick={() => setSelectedArticle(article)}
+              >
                 <div className="article-meta">
                   <span>{getFeedTitle(article.feed_id)}</span>
                   <span>{formatDate(article.published)}</span>
                 </div>
-
-                <h3 className="article-title">
-                  <a href={article.link} target="_blank" rel="noopener noreferrer">
-                    {article.title}
-                  </a>
-                </h3>
-
+                <h3 className="article-title">{article.title}</h3>
                 {article.author && (
                   <p className="article-author">By {article.author}</p>
                 )}
-
                 {article.summary && (
                   <p className="article-summary">
-                    {article.summary.substring(0, 200)}
-                    {article.summary.length > 200 ? '...' : ''}
+                    {article.summary.substring(0, 100)}
+                    {article.summary.length > 100 ? '...' : ''}
                   </p>
                 )}
-
                 <div className="article-badges">
                   {article.is_filtered && (
-                    <span className="badge badge-filtered">Filtered</span>
+                    <span className="badge badge-filtered">{t('articles.filtered')}</span>
                   )}
                   {article.is_saved && (
-                    <span className="badge badge-saved">Saved</span>
-                  )}
-                </div>
-
-                <div className="article-actions">
-                  <button
-                    onClick={() => handleGenerateSummary(article.id)}
-                    disabled={generatingSummary === article.id}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    <Sparkles size={14} />
-                    {t('articles.aiSummary')}
-                  </button>
-                  {!article.is_saved && (
-                    <button
-                      onClick={() => handleCreateNote(article.id)}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      <Save size={14} />
-                      {t('articles.saveAsNote')}
-                    </button>
+                    <span className="badge badge-saved">{t('articles.saved')}</span>
                   )}
                 </div>
               </div>
-            ))}
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Article Content Preview */}
+      <div className="articles-content-panel">
+        {selectedArticle ? (
+          <div className="article-content">
+            <div className="article-content-header">
+              <h2>{selectedArticle.title}</h2>
+              <div className="article-content-meta">
+                <span>{getFeedTitle(selectedArticle.feed_id)}</span>
+                <span>{formatDate(selectedArticle.published)}</span>
+                {selectedArticle.author && <span>By {selectedArticle.author}</span>}
+              </div>
+              <a
+                href={selectedArticle.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary btn-sm"
+              >
+                <ExternalLink size={14} />
+                {t('articles.viewOriginal')}
+              </a>
+            </div>
+
+            <div className="article-content-body">
+              <h4>{t('articles.summary')}</h4>
+              <p>{selectedArticle.summary || t('articles.noSummary')}</p>
+
+              <h4>{t('articles.content')}</h4>
+              <div
+                className="article-full-content"
+                dangerouslySetInnerHTML={{__html: selectedArticle.content || selectedArticle.summary || ''}}
+              />
+            </div>
+
+            <div className="article-content-actions">
+              <button
+                onClick={() => handleGenerateSummary(selectedArticle.id)}
+                disabled={generatingSummary === selectedArticle.id}
+                className="btn btn-secondary"
+              >
+                <Sparkles size={16} />
+                {generatingSummary === selectedArticle.id ? t('common.loading') : t('articles.aiSummary')}
+              </button>
+              {!selectedArticle.is_saved && (
+                <button
+                  onClick={() => handleCreateNote(selectedArticle.id)}
+                  className="btn btn-primary"
+                >
+                  <Save size={16} />
+                  {t('articles.saveAsNote')}
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="empty-state">
+            <FileText />
+            <p>{t('articles.selectToView')}</p>
           </div>
         )}
       </div>
-    </>
+    </div>
   )
 }

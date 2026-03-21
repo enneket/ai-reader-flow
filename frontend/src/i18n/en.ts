@@ -17,6 +17,7 @@ export const en = {
   },
   articles: {
     title: "Articles",
+    feeds: "Feeds",
     allFeeds: "All Feeds",
     all: "All",
     filtered: "Filtered",
@@ -25,6 +26,11 @@ export const en = {
     aiSummary: "AI Summary",
     saveAsNote: "Save as Note",
     empty: "No articles yet. Add a feed first.",
+    viewOriginal: "View Original",
+    summary: "Summary",
+    content: "Content",
+    noSummary: "No summary available. Click 'AI Summary' to generate one.",
+    selectToView: "Select an article to view its content",
   },
   notes: {
     title: "Notes",
