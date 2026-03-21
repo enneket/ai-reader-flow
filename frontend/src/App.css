@@ -541,6 +541,15 @@ a:hover {
   gap: var(--space-4);
 }
 
+.feed-card.clickable {
+  cursor: pointer;
+}
+
+.feed-card.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
 .feed-info h3 {
   margin-bottom: var(--space-1);
 }

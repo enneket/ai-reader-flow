@@ -1,12 +1,13 @@
 import {useState, useEffect} from 'react'
-import {Link} from 'react-router-dom'
+import {useNavigate} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
-import {Plus, RefreshCw, Trash2, ExternalLink, Rss} from 'lucide-react'
+import {Plus, RefreshCw, Trash2, Rss} from 'lucide-react'
 import {GetFeeds, AddFeed, DeleteFeed, RefreshAllFeeds} from '../../wailsjs/go/main/App'
 import {models} from '../../wailsjs/go/models'
 
 export function FeedList() {
   const {t} = useTranslation()
+  const navigate = useNavigate()
   const [feeds, setFeeds] = useState<models.Feed[]>([])
   const [newFeedUrl, setNewFeedUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -119,7 +120,11 @@ export function FeedList() {
         ) : (
           <div className="list">
             {feeds.map((feed) => (
-              <div key={feed.id} className="card feed-card">
+              <div
+                key={feed.id}
+                className="card feed-card clickable"
+                onClick={() => navigate(`/articles/${feed.id}`)}
+              >
                 <div className="feed-info">
                   <h3>{feed.title || 'Untitled Feed'}</h3>
                   <p className="feed-url">{feed.url}</p>
@@ -128,10 +133,6 @@ export function FeedList() {
                   )}
                 </div>
                 <div className="feed-actions">
-                  <Link to={`/articles/${feed.id}`} className="btn btn-secondary btn-sm">
-                    <ExternalLink size={14} />
-                    {t('feeds.viewArticles')}
-                  </Link>
                   <button
                     onClick={(e) => handleDeleteFeed(feed.id, e)}
                     className="btn btn-danger btn-sm btn-icon"
