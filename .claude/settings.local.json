@@ -25,7 +25,10 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(make build-win:*)",
-      "Bash(node -e \"const zh = require\\(''./src/i18n/zh.json''\\); console.log\\(''nav.settings:'', zh.nav.settings\\); console.log\\(''settings.language:'', zh.settings.language\\)\")"
+      "Bash(node -e \"const zh = require\\(''./src/i18n/zh.json''\\); console.log\\(''nav.settings:'', zh.nav.settings\\); console.log\\(''settings.language:'', zh.settings.language\\)\")",
+      "Bash(timeout 5s ./build/bin/ai-rss-reader)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(pkill -f \"wails\")"
     ]
   }
 }

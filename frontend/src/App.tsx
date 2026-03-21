@@ -12,16 +12,14 @@ function App() {
       <Route path="/articles" element={<ArticleList />} />
       <Route path="/articles/:feedId" element={<ArticleList />} />
 
-      {/* Other pages use the standard Layout with sidebar */}
-      <Route path="/*" element={
-        <Layout>
-          <Routes>
-            <Route path="/" element={<FeedList />} />
-            <Route path="/notes" element={<NoteList />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-        </Layout>
-      } />
+      {/* Home page with Layout */}
+      <Route path="/" element={<Layout><FeedList /></Layout>} />
+
+      {/* Notes page with Layout */}
+      <Route path="/notes" element={<Layout><NoteList /></Layout>} />
+
+      {/* Settings page with Layout */}
+      <Route path="/settings" element={<Layout><Settings /></Layout>} />
     </Routes>
   )
 }
