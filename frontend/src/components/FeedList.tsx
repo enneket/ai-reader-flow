@@ -1,116 +1,141 @@
 import {useState, useEffect} from 'react'
 import {Link} from 'react-router-dom'
+import {Plus, RefreshCw, Trash2, ExternalLink, Rss} from 'lucide-react'
 import {GetFeeds, AddFeed, DeleteFeed, RefreshAllFeeds} from '../../wailsjs/go/main/App'
 import {models} from '../../wailsjs/go/models'
 
 export function FeedList() {
-    const [feeds, setFeeds] = useState<models.Feed[]>([])
-    const [newFeedUrl, setNewFeedUrl] = useState('')
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
+  const [feeds, setFeeds] = useState<models.Feed[]>([])
+  const [newFeedUrl, setNewFeedUrl] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
 
-    const loadFeeds = async () => {
-        try {
-            const data = await GetFeeds()
-            setFeeds(data || [])
-        } catch (err: any) {
-            setError(err.message || 'Failed to load feeds')
-        }
+  const loadFeeds = async () => {
+    try {
+      const data = await GetFeeds()
+      setFeeds(data || [])
+    } catch (err: any) {
+      setError(err.message || 'Failed to load feeds')
     }
+  }
 
-    useEffect(() => {
-        loadFeeds()
-    }, [])
+  useEffect(() => {
+    loadFeeds()
+  }, [])
 
-    const handleAddFeed = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!newFeedUrl.trim()) return
+  const handleAddFeed = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newFeedUrl.trim()) return
 
-        setLoading(true)
-        setError('')
-        try {
-            await AddFeed(newFeedUrl)
-            setNewFeedUrl('')
-            await loadFeeds()
-        } catch (err: any) {
-            setError(err.message || 'Failed to add feed')
-        } finally {
-            setLoading(false)
-        }
+    setLoading(true)
+    setError('')
+    try {
+      await AddFeed(newFeedUrl)
+      setNewFeedUrl('')
+      await loadFeeds()
+    } catch (err: any) {
+      setError(err.message || 'Failed to add feed')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    const handleDeleteFeed = async (id: number) => {
-        try {
-            await DeleteFeed(id)
-            await loadFeeds()
-        } catch (err: any) {
-            setError(err.message || 'Failed to delete feed')
-        }
+  const handleDeleteFeed = async (id: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      await DeleteFeed(id)
+      await loadFeeds()
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete feed')
     }
+  }
 
-    const handleRefreshAll = async () => {
-        setLoading(true)
-        setError('')
-        try {
-            await RefreshAllFeeds()
-            await loadFeeds()
-        } catch (err: any) {
-            setError(err.message || 'Failed to refresh feeds')
-        } finally {
-            setLoading(false)
-        }
+  const handleRefreshAll = async () => {
+    setRefreshing(true)
+    setError('')
+    try {
+      await RefreshAllFeeds()
+      await loadFeeds()
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh feeds')
+    } finally {
+      setRefreshing(false)
     }
+  }
 
-    return (
-        <div className="feed-list">
-            <div className="feed-header">
-                <h2>RSS Feeds</h2>
-                <button onClick={handleRefreshAll} disabled={loading} className="btn-refresh">
-                    {loading ? 'Refreshing...' : 'Refresh All'}
-                </button>
-            </div>
+  return (
+    <>
+      <header className="page-header">
+        <h1 className="page-title">RSS Feeds</h1>
+        <button
+          onClick={handleRefreshAll}
+          disabled={refreshing}
+          className="btn btn-primary"
+        >
+          <RefreshCw size={16} className={refreshing ? 'spinning' : ''} />
+          {refreshing ? 'Refreshing...' : 'Refresh All'}
+        </button>
+      </header>
 
-            {error && <div className="error">{error}</div>}
+      <div className="page-content">
+        {error && (
+          <div className="alert alert-error">
+            <span>{error}</span>
+            <button className="alert-close" onClick={() => setError('')}>×</button>
+          </div>
+        )}
 
-            <form onSubmit={handleAddFeed} className="add-feed-form">
-                <input
-                    type="url"
-                    value={newFeedUrl}
-                    onChange={(e) => setNewFeedUrl(e.target.value)}
-                    placeholder="Enter RSS feed URL (e.g., https://news.ycombinator.com/rss)"
-                    required
-                />
-                <button type="submit" disabled={loading}>Add Feed</button>
-            </form>
+        <form onSubmit={handleAddFeed} className="feed-form">
+          <input
+            type="url"
+            value={newFeedUrl}
+            onChange={(e) => setNewFeedUrl(e.target.value)}
+            placeholder="Enter RSS feed URL (e.g., https://news.ycombinator.com/rss)"
+            className="form-input"
+            required
+          />
+          <button type="submit" disabled={loading} className="btn btn-primary">
+            <Plus size={16} />
+            Add Feed
+          </button>
+        </form>
 
-            {feeds.length === 0 ? (
-                <p className="empty-state">No feeds yet. Add your first RSS feed above.</p>
-            ) : (
-                <ul className="feeds">
-                    {feeds.map((feed) => (
-                        <li key={feed.id} className="feed-item">
-                            <div className="feed-info">
-                                <h3>{feed.title}</h3>
-                                <p className="feed-url">{feed.url}</p>
-                                {feed.description && (
-                                    <p className="feed-desc">{feed.description}</p>
-                                )}
-                            </div>
-                            <div className="feed-actions">
-                                <Link to={`/articles/${feed.id}`} className="btn-view">
-                                    View Articles
-                                </Link>
-                                <button
-                                    onClick={() => handleDeleteFeed(feed.id)}
-                                    className="btn-delete"
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    )
+        {feeds.length === 0 ? (
+          <div className="empty-state">
+            <Rss />
+            <p>No feeds yet. Add your first RSS feed above.</p>
+          </div>
+        ) : (
+          <div className="list">
+            {feeds.map((feed) => (
+              <div key={feed.id} className="card feed-card">
+                <div className="feed-info">
+                  <h3>{feed.title || 'Untitled Feed'}</h3>
+                  <p className="feed-url">{feed.url}</p>
+                  {feed.description && (
+                    <p className="feed-desc">{feed.description}</p>
+                  )}
+                </div>
+                <div className="feed-actions">
+                  <Link to={`/articles/${feed.id}`} className="btn btn-secondary btn-sm">
+                    <ExternalLink size={14} />
+                    View Articles
+                  </Link>
+                  <button
+                    onClick={(e) => handleDeleteFeed(feed.id, e)}
+                    className="btn btn-danger btn-sm btn-icon"
+                    aria-label="Delete feed"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
 }
