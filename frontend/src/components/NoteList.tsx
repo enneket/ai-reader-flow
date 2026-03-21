@@ -1,9 +1,11 @@
 import {useState, useEffect} from 'react'
+import {useTranslation} from 'react-i18next'
 import {FileText, Trash2} from 'lucide-react'
 import {GetNotes, ReadNote, DeleteNote} from '../../wailsjs/go/main/App'
 import {models} from '../../wailsjs/go/models'
 
 export function NoteList() {
+  const {t} = useTranslation()
   const [notes, setNotes] = useState<models.Note[]>([])
   const [selectedNote, setSelectedNote] = useState<models.Note | null>(null)
   const [noteContent, setNoteContent] = useState('')
@@ -101,7 +103,7 @@ export function NoteList() {
   return (
     <>
       <header className="page-header">
-        <h1 className="page-title">Notes</h1>
+        <h1 className="page-title">{t('notes.title')}</h1>
       </header>
 
       <div className="page-content" style={{padding: 0, height: 'calc(100vh - 73px)'}}>
@@ -115,13 +117,13 @@ export function NoteList() {
         <div className="notes-layout">
           <aside className="notes-sidebar">
             <div className="notes-sidebar-header">
-              {notes.length} {notes.length === 1 ? 'Note' : 'Notes'}
+              {notes.length} {notes.length === 1 ? t('notes.note') : t('notes.notes')}
             </div>
             <div className="notes-list">
               {notes.length === 0 ? (
                 <div className="empty-state" style={{padding: 'var(--space-8)'}}>
                   <FileText />
-                  <p>No notes yet. Save articles to create notes.</p>
+                  <p>{t('notes.empty')}</p>
                 </div>
               ) : (
                 notes.map((note) => (
@@ -130,7 +132,7 @@ export function NoteList() {
                     className={`note-item ${selectedNote?.id === note.id ? 'selected' : ''}`}
                     onClick={() => handleSelectNote(note)}
                   >
-                    <h4>{note.title || 'Untitled Note'}</h4>
+                    <h4>{note.title || t('notes.untitled')}</h4>
                     <p className="note-date">{formatDate(note.created_at)}</p>
                     <button
                       onClick={(e) => handleDeleteNote(note.id, e)}
@@ -151,7 +153,7 @@ export function NoteList() {
             ) : (
               <div className="empty-state">
                 <FileText />
-                <p>Select a note to view its content</p>
+                <p>{t('notes.selectToView')}</p>
               </div>
             )}
           </div>
