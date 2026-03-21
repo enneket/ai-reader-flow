@@ -11,7 +11,16 @@
       "Bash(go test:*)",
       "Bash(git add:*)",
       "Bash(git config:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "Bash(wails build:*)",
+      "Bash(file /home/dabao/code/ai-flow/build/bin/*.exe)",
+      "Bash(export PATH=/tmp/pkg-extract/usr/bin:$PATH)",
+      "Bash(pkg-config --version)",
+      "Bash(export PATH=/tmp/pkg-extract/usr/bin:$PATH ldconfig -p)",
+      "Bash(export PATH=/tmp/pkg-extract/usr/bin:$PATH find /usr /tmp /home -name libwebkit*)",
+      "Bash(git commit:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)"
     ]
   }
 }
