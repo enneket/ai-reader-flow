@@ -6,7 +6,12 @@
       "Bash(go install:*)",
       "Bash(apt-cache show:*)",
       "Read(//tmp/**)",
-      "Bash(apt-get download:*)"
+      "Bash(apt-get download:*)",
+      "Bash(sudo apt-get:*)",
+      "Bash(go test:*)",
+      "Bash(git add:*)",
+      "Bash(git config:*)",
+      "Bash(go build:*)"
     ]
   }
 }
