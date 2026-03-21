@@ -3,6 +3,7 @@ import {Save, Plus, Trash2} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
 import {changeLanguage} from '../i18n'
 import i18n from '../i18n'
+import {CustomSelect} from './CustomSelect'
 import {GetAIConfig, SaveAIConfig, GetFilterRules, AddFilterRule, DeleteFilterRule} from '../../wailsjs/go/main/App'
 import {models} from '../../wailsjs/go/models'
 
@@ -132,14 +133,15 @@ export function Settings() {
         <section className="settings-section">
           <h3>{t('settings.language')}</h3>
           <div className="form-group">
-            <select
+            <CustomSelect
               value={i18n.language}
-              onChange={(e) => changeLanguage(e.target.value as 'en' | 'zh')}
-              className="form-select"
-            >
-              <option value="en">{t('settings.english')}</option>
-              <option value="zh">{t('settings.chinese')}</option>
-            </select>
+              onChange={(val) => changeLanguage(val as 'en' | 'zh')}
+              options={[
+                {value: 'en', label: t('settings.english')},
+                {value: 'zh', label: t('settings.chinese')},
+              ]}
+              className="language-select"
+            />
           </div>
         </section>
 
