@@ -23,7 +23,8 @@
       "Bash(npm run:*)",
       "Bash(git remote:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(make build-win:*)"
     ]
   }
 }
