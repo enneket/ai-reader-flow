@@ -2,13 +2,12 @@ import {useState, useEffect} from 'react'
 import {useNavigate} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
 import {Plus, RefreshCw, Trash2, Rss} from 'lucide-react'
-import {GetFeeds, AddFeed, DeleteFeed, RefreshAllFeeds} from '../../wailsjs/go/main/App'
-import {models} from '../../wailsjs/go/models'
+import {api, Feed} from '../api'
 
 export function FeedList() {
   const {t} = useTranslation()
   const navigate = useNavigate()
-  const [feeds, setFeeds] = useState<models.Feed[]>([])
+  const [feeds, setFeeds] = useState<Feed[]>([])
   const [newFeedUrl, setNewFeedUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -16,7 +15,7 @@ export function FeedList() {
 
   const loadFeeds = async () => {
     try {
-      const data = await GetFeeds()
+      const data = await api.getFeeds()
       setFeeds(data || [])
     } catch (err: any) {
       setError(err.message || 'Failed to load feeds')
@@ -41,7 +40,7 @@ export function FeedList() {
     setLoading(true)
     setError('')
     try {
-      await AddFeed(newFeedUrl)
+      await api.addFeed(newFeedUrl)
       setNewFeedUrl('')
       await loadFeeds()
     } catch (err: any) {
@@ -55,7 +54,7 @@ export function FeedList() {
     e.preventDefault()
     e.stopPropagation()
     try {
-      await DeleteFeed(id)
+      await api.deleteFeed(id)
       await loadFeeds()
     } catch (err: any) {
       setError(err.message || 'Failed to delete feed')
@@ -66,7 +65,7 @@ export function FeedList() {
     setRefreshing(true)
     setError('')
     try {
-      await RefreshAllFeeds()
+      await api.refreshAllFeeds()
       await loadFeeds()
     } catch (err: any) {
       setError(err.message || 'Failed to refresh feeds')

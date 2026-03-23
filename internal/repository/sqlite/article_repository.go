@@ -178,7 +178,7 @@ func (r *ArticleRepository) LinkExists(link string) (bool, error) {
 }
 
 func (r *ArticleRepository) scanArticles(rows *sql.Rows) ([]models.Article, error) {
-	var articles []models.Article
+	var articles = []models.Article{}
 	for rows.Next() {
 		var a models.Article
 		var published, createdAt sql.NullString

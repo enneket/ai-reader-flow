@@ -4,19 +4,18 @@ import {useTranslation} from 'react-i18next'
 import {changeLanguage} from '../i18n'
 import i18n from '../i18n'
 import {CustomSelect} from './CustomSelect'
-import {GetAIConfig, SaveAIConfig, GetFilterRules, AddFilterRule, DeleteFilterRule} from '../../wailsjs/go/main/App'
-import {models} from '../../wailsjs/go/models'
+import {api, AIProviderConfig, FilterRule} from '../api'
 
 export function Settings() {
   const {t} = useTranslation()
-  const [aiConfig, setAIConfig] = useState<models.AIProviderConfig>({
+  const [aiConfig, setAIConfig] = useState<AIProviderConfig>({
     provider: 'openai',
     api_key: '',
     base_url: 'https://api.openai.com/v1',
     model: 'gpt-3.5-turbo',
     max_tokens: 500
   })
-  const [filterRules, setFilterRules] = useState<models.FilterRule[]>([])
+  const [filterRules, setFilterRules] = useState<FilterRule[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -47,7 +46,7 @@ export function Settings() {
 
   const loadAIConfig = async () => {
     try {
-      const config = await GetAIConfig()
+      const config = await api.getAIConfig()
       setAIConfig(config)
       setProvider(config.provider)
       setApiKey(config.api_key)
@@ -61,7 +60,7 @@ export function Settings() {
 
   const loadFilterRules = async () => {
     try {
-      const rules = await GetFilterRules()
+      const rules = await api.getFilterRules()
       setFilterRules(rules || [])
     } catch (err: any) {
       setError(err.message || 'Failed to load filter rules')
@@ -74,7 +73,13 @@ export function Settings() {
     setError('')
     setSuccess('')
     try {
-      await SaveAIConfig(provider, apiKey, baseURL, model, maxTokens)
+      await api.saveAIConfig({
+        provider,
+        api_key: apiKey,
+        base_url: baseURL,
+        model,
+        max_tokens: maxTokens,
+      })
       setSuccess('AI configuration saved successfully!')
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
@@ -91,7 +96,7 @@ export function Settings() {
     setLoading(true)
     setError('')
     try {
-      await AddFilterRule(ruleType, ruleValue, ruleAction)
+      await api.addFilterRule(ruleType, ruleValue, ruleAction)
       setRuleValue('')
       await loadFilterRules()
     } catch (err: any) {
@@ -103,7 +108,7 @@ export function Settings() {
 
   const handleDeleteFilterRule = async (id: number) => {
     try {
-      await DeleteFilterRule(id)
+      await api.deleteFilterRule(id)
       await loadFilterRules()
     } catch (err: any) {
       setError(err.message || 'Failed to delete filter rule')

@@ -1,4 +1,4 @@
-.PHONY: all dev build build-win clean test
+.PHONY: all dev dev:go dev:frontend build build-docker up down logs test clean
 
 APP_NAME := ai-rss-reader
 FRONTEND_DIR := frontend
@@ -6,18 +6,30 @@ BUILD_DIR := build
 
 all: build
 
-dev:
-	wails dev
+dev: dev:go dev:frontend
 
-build:
-	cd $(FRONTEND_DIR) && npm install
-	cd $(FRONTEND_DIR) && npm run build
-	wails build
+dev:go:
+	go run ./cmd/server
 
-build-win:
-	cd $(FRONTEND_DIR) && npm install
-	cd $(FRONTEND_DIR) && npm run build
-	wails build -platform windows/amd64 -nsis
+dev:frontend:
+	cd $(FRONTEND_DIR) && npm run dev
+
+build: build-docker
+
+build-docker:
+	docker-compose build
+
+up:
+	docker-compose up -d
+
+down:
+	docker-compose down
+
+logs:
+	docker-compose logs -f
+
+test-api:
+	curl http://localhost:8080/api/feeds
 
 clean:
 	rm -rf $(FRONTEND_DIR)/dist

@@ -30,7 +30,7 @@ func (r *FilterRuleRepository) GetAll() ([]models.FilterRule, error) {
 	}
 	defer rows.Close()
 
-	var rules []models.FilterRule
+	var rules = []models.FilterRule{}
 	for rows.Next() {
 		var rule models.FilterRule
 		err := rows.Scan(&rule.ID, &rule.Type, &rule.Value, &rule.Action, &rule.Enabled, &rule.CreatedAt)
@@ -49,7 +49,7 @@ func (r *FilterRuleRepository) GetEnabled() ([]models.FilterRule, error) {
 	}
 	defer rows.Close()
 
-	var rules []models.FilterRule
+	var rules = []models.FilterRule{}
 	for rows.Next() {
 		var rule models.FilterRule
 		err := rows.Scan(&rule.ID, &rule.Type, &rule.Value, &rule.Action, &rule.Enabled, &rule.CreatedAt)

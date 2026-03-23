@@ -33,11 +33,11 @@ func (r *FeedRepository) GetAll() ([]models.Feed, error) {
 	}
 	defer rows.Close()
 
-	var feeds []models.Feed
+	var feeds = []models.Feed{}
 	for rows.Next() {
 		var f models.Feed
 		var lastFetched, createdAt sql.NullString
-		err := rows.Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &createdAt)
+		err := rows.Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt)
 		if err != nil {
 			continue
 		}
@@ -96,7 +96,7 @@ func (r *FeedRepository) GetDeadFeeds() ([]models.Feed, error) {
 	}
 	defer rows.Close()
 
-	var feeds []models.Feed
+	var feeds = []models.Feed{}
 	for rows.Next() {
 		var f models.Feed
 		var lastFetched, createdAt sql.NullString

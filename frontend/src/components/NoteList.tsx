@@ -1,13 +1,12 @@
 import {useState, useEffect} from 'react'
 import {useTranslation} from 'react-i18next'
 import {FileText, Trash2} from 'lucide-react'
-import {GetNotes, ReadNote, DeleteNote} from '../../wailsjs/go/main/App'
-import {models} from '../../wailsjs/go/models'
+import {api, Note} from '../api'
 
 export function NoteList() {
   const {t} = useTranslation()
-  const [notes, setNotes] = useState<models.Note[]>([])
-  const [selectedNote, setSelectedNote] = useState<models.Note | null>(null)
+  const [notes, setNotes] = useState<Note[]>([])
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const [noteContent, setNoteContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -27,7 +26,7 @@ export function NoteList() {
     setLoading(true)
     setError('')
     try {
-      const data = await GetNotes()
+      const data = await api.getNotes()
       setNotes(data || [])
     } catch (err: any) {
       setError(err.message || 'Failed to load notes')
@@ -36,11 +35,11 @@ export function NoteList() {
     }
   }
 
-  const handleSelectNote = async (note: models.Note) => {
+  const handleSelectNote = async (note: Note) => {
     setSelectedNote(note)
     try {
-      const content = await ReadNote(note.id)
-      setNoteContent(content || '')
+      const result = await api.readNote(note.id)
+      setNoteContent(result?.content || '')
     } catch (err: any) {
       setError(err.message || 'Failed to read note')
       setNoteContent('')
@@ -50,7 +49,7 @@ export function NoteList() {
   const handleDeleteNote = async (noteId: number, e: React.MouseEvent) => {
     e.stopPropagation()
     try {
-      await DeleteNote(noteId)
+      await api.deleteNote(noteId)
       if (selectedNote?.id === noteId) {
         setSelectedNote(null)
         setNoteContent('')

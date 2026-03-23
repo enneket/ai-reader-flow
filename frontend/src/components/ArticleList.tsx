@@ -1,42 +1,54 @@
 import {useState, useEffect} from 'react'
-import {useParams, Link, useNavigate} from 'react-router-dom'
-import {useTranslation} from 'react-i18next'
-import {FileText, Sparkles, Save, ExternalLink, LayoutGrid, Settings, Check, X, Clock} from 'lucide-react'
-import {GetArticles, GetFeeds, GenerateSummary, CreateNote, FilterAllArticles, AcceptArticle, RejectArticle, SnoozeArticle, GetDeadFeeds} from '../../wailsjs/go/main/App'
-import {models} from '../../wailsjs/go/models'
+import {useNavigate} from 'react-router-dom'
+import {Rss, FileText, ChevronLeft, ChevronRight, Settings} from 'lucide-react'
+import {api, Article, Feed} from '../api'
+import {Masthead} from './Masthead'
+import {ArticleCard} from './ArticleCard'
+import {ArticleReader} from './ArticleReader'
+
+const SIDEBAR_COLLAPSED_KEY = 'sidebar_collapsed'
 
 export function ArticleList() {
-  const {t} = useTranslation()
   const navigate = useNavigate()
-  const [articles, setArticles] = useState<models.Article[]>([])
-  const [feeds, setFeeds] = useState<models.Feed[]>([])
+  const [articles, setArticles] = useState<Article[]>([])
+  const [feeds, setFeeds] = useState<Feed[]>([])
   const [selectedFeedId, setSelectedFeedId] = useState<number>(0)
-  const [selectedArticle, setSelectedArticle] = useState<models.Article | null>(null)
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
   const [filterMode, setFilterMode] = useState('all')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [generatingSummary, setGeneratingSummary] = useState<number | null>(null)
-  const [deadFeeds, setDeadFeeds] = useState<models.Feed[]>([])
-  const params = useParams()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isSummarizing, setIsSummarizing] = useState<number | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+  })
+  const [mobileReaderVisible, setMobileReaderVisible] = useState(false)
 
-  // Load from URL params on mount
-  useEffect(() => {
-    if (params.feedId) {
-      setSelectedFeedId(parseInt(params.feedId))
-    }
-  }, [])
-
+  // Load initial data
   useEffect(() => {
     loadFeeds()
-    loadDeadFeeds()
+    loadArticles()
   }, [])
 
-  const loadDeadFeeds = async () => {
+  const loadFeeds = async () => {
     try {
-      const data = await GetDeadFeeds()
-      setDeadFeeds(data || [])
+      const data = await api.getFeeds()
+      setFeeds(data || [])
     } catch (err) {
-      console.error('Failed to load dead feeds:', err)
+      console.error('Failed to load feeds:', err)
+    }
+  }
+
+  const loadArticles = async () => {
+    setLoading(true)
+    try {
+      const data = await api.getArticles(selectedFeedId, filterMode)
+      // Sort by quality_score descending (highest quality first)
+      const sorted = (data || []).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))
+      setArticles(sorted)
+    } catch (err) {
+      console.error('Failed to load articles:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -44,330 +56,243 @@ export function ArticleList() {
     loadArticles()
   }, [selectedFeedId, filterMode])
 
-  const loadFeeds = async () => {
-    try {
-      const data = await GetFeeds()
-      setFeeds(data || [])
-    } catch (err: any) {
-      console.error('Failed to load feeds:', err)
-    }
-  }
+  // Poll for new summaries after refresh
+  useEffect(() => {
+    if (!isRefreshing) return
+    let polls = 0
+    const interval = setInterval(() => {
+      loadArticles()
+      polls++
+      if (polls >= 10) clearInterval(interval) // 5 min max
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [isRefreshing])
 
-  const loadArticles = async () => {
-    setLoading(true)
-    setError('')
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
     try {
-      const data = await GetArticles(selectedFeedId, filterMode)
-      setArticles(data || [])
-    } catch (err: any) {
-      setError(err.message || 'Failed to load articles')
+      await api.refreshAllFeeds()
+      await loadArticles()
+    } catch (err) {
+      console.error('Failed to refresh feeds:', err)
     } finally {
-      setLoading(false)
+      setIsRefreshing(false)
     }
   }
 
-  const handleGenerateSummary = async (articleId: number) => {
-    setGeneratingSummary(articleId)
-    try {
-      await GenerateSummary(articleId)
-      await loadArticles()
-      const updated = articles.find(a => a.id === articleId)
-      if (updated) {
-        setSelectedArticle(updated)
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate summary')
-    } finally {
-      setGeneratingSummary(null)
-    }
-  }
-
-  const handleCreateNote = async (articleId: number) => {
-    const article = articles.find(a => a.id === articleId)
-    if (!article) return
-
-    try {
-      await CreateNote(articleId, article.summary || article.content)
-      await loadArticles()
-    } catch (err: any) {
-      setError(err.message || 'Failed to create note')
-    }
-  }
-
-  const handleAccept = async (id: number) => {
-    try {
-      await AcceptArticle(id)
-      await loadArticles()
-      const updated = articles.find(a => a.id === id)
-      if (updated) {
-        setSelectedArticle(models.Article.createFrom({...updated, status: 'accepted'}))
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to accept article')
-    }
-  }
-
-  const handleReject = async (id: number) => {
-    try {
-      await RejectArticle(id)
-      await loadArticles()
-      const updated = articles.find(a => a.id === id)
-      if (updated) {
-        setSelectedArticle(models.Article.createFrom({...updated, status: 'rejected'}))
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to reject article')
-    }
-  }
-
-  const handleSnooze = async (id: number) => {
-    try {
-      await SnoozeArticle(id)
-      await loadArticles()
-      const updated = articles.find(a => a.id === id)
-      if (updated) {
-        setSelectedArticle(models.Article.createFrom({...updated, status: 'snoozed'}))
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to snooze article')
-    }
-  }
-
-  const handleFilterAll = async () => {
-    setLoading(true)
-    try {
-      await FilterAllArticles()
-      await loadArticles()
-    } catch (err: any) {
-      setError(err.message || 'Failed to filter articles')
-    } finally {
-      setLoading(false)
-    }
+  const handleSettings = () => {
+    navigate('/settings')
   }
 
   const handleFeedClick = (feedId: number) => {
     setSelectedFeedId(feedId)
     setSelectedArticle(null)
-    if (feedId > 0) {
-      navigate(`/articles/${feedId}`)
-    } else {
-      navigate('/articles')
+    setMobileReaderVisible(false)
+  }
+
+  const handleArticleClick = (article: Article) => {
+    setSelectedArticle(article)
+    setMobileReaderVisible(true)
+  }
+
+  const handleAccept = async (id: number) => {
+    try {
+      await api.acceptArticle(id)
+      await loadArticles()
+      if (selectedArticle?.id === id) {
+        setSelectedArticle({...selectedArticle, status: 'accepted'})
+      }
+    } catch (err) {
+      console.error('Failed to accept article:', err)
     }
   }
 
-  const handleArticleClick = (article: models.Article) => {
-    setSelectedArticle(article)
+  const handleReject = async (id: number) => {
+    try {
+      await api.rejectArticle(id)
+      await loadArticles()
+      if (selectedArticle?.id === id) {
+        setSelectedArticle({...selectedArticle, status: 'rejected'})
+      }
+    } catch (err) {
+      console.error('Failed to reject article:', err)
+    }
   }
 
-  const getFeedTitle = (feedId: number) => {
+  const handleSnooze = async (id: number) => {
+    try {
+      await api.snoozeArticle(id)
+      await loadArticles()
+      if (selectedArticle?.id === id) {
+        setSelectedArticle({...selectedArticle, status: 'snoozed'})
+      }
+    } catch (err) {
+      console.error('Failed to snooze article:', err)
+    }
+  }
+
+  const handleSave = async (id: number) => {
+    const article = articles.find(a => a.id === id)
+    if (!article) return
+    try {
+      await api.createNote(id, article.summary || article.content)
+      await loadArticles()
+    } catch (err) {
+      console.error('Failed to save note:', err)
+    }
+  }
+
+  const handleGenerateSummary = async (id: number) => {
+    setIsSummarizing(id)
+    try {
+      await api.generateSummary(id)
+      await loadArticles()
+      if (selectedArticle?.id === id) {
+        const updated = articles.find(a => a.id === id)
+        if (updated) setSelectedArticle(updated)
+      }
+    } catch (err) {
+      console.error('Failed to generate summary:', err)
+    } finally {
+      setIsSummarizing(null)
+    }
+  }
+
+  const handleOpenExternal = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleBack = () => {
+    setMobileReaderVisible(false)
+    setSelectedArticle(null)
+  }
+
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed
+    setSidebarCollapsed(next)
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next))
+  }
+
+  const getFeedName = (feedId: number): string => {
     const feed = feeds.find(f => f.id === feedId)
     return feed ? feed.title : 'Unknown Feed'
   }
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return ''
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+  const sortedFeeds = [...feeds].sort((a, b) => (a.title || '').localeCompare(b.title || ''))
 
   return (
-    <div className="articles-page">
-      {/* Top Navigation */}
-      <header className="articles-top-nav">
-        <nav className="articles-nav">
-          <Link to="/" className="articles-nav-item">
-            <LayoutGrid size={16} />
-            <span>{t('nav.feeds')}</span>
-          </Link>
-          <Link to="/articles" className="articles-nav-item active">
-            <FileText size={16} />
-            <span>{t('nav.articles')}</span>
-          </Link>
-          <Link to="/notes" className="articles-nav-item">
-            <FileText size={16} />
-            <span>{t('nav.notes')}</span>
-          </Link>
-          <Link to="/settings" className="articles-nav-item">
-            <Settings size={16} />
-            <span>{t('nav.settings')}</span>
-          </Link>
-        </nav>
-      </header>
+    <div className="app">
+      <Masthead
+        isRefreshing={isRefreshing}
+        onRefresh={handleRefresh}
+        onSettings={handleSettings}
+      />
 
-      {/* Dead Feeds Banner */}
-      {deadFeeds.length > 0 && (
-        <div className="dead-feeds-banner">
-          <span>{t('feeds.deadWarning', { count: deadFeeds.length })}</span>
-        </div>
-      )}
+      <div className="app-body">
+        {/* Column 1: Feed Sidebar */}
+        <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+          <div className="sidebar-header">
+            <span className="sidebar-title">Feeds</span>
+          </div>
 
-      {/* 3 Column Content */}
-      <div className="articles-3col">
-        {/* Column 1: Feed List */}
-        <div className="articles-col-feed">
-          <div className="articles-col-header">{t('articles.feeds')}</div>
-          <div className="feed-list">
-            <button
-              className={`feed-btn ${selectedFeedId === 0 ? 'active' : ''}`}
+          <nav className="sidebar-nav">
+            <div
+              className={`sidebar-item ${selectedFeedId === 0 ? 'active' : ''}`}
               onClick={() => handleFeedClick(0)}
             >
-              {t('articles.allFeeds')}
-            </button>
-            {feeds.map((feed) => (
-              <button
+              <Rss size={16} className="sidebar-item-icon" />
+              <span className="sidebar-feed-name">All Articles</span>
+            </div>
+
+            {sortedFeeds.map(feed => (
+              <div
                 key={feed.id}
-                className={`feed-btn ${selectedFeedId === feed.id ? 'active' : ''}`}
+                className={`sidebar-item ${selectedFeedId === feed.id ? 'active' : ''}`}
                 onClick={() => handleFeedClick(feed.id)}
               >
-                {feed.title || 'Untitled'}
-              </button>
+                <Rss size={16} className="sidebar-item-icon" />
+                <span className="sidebar-feed-name">{feed.title || 'Untitled'}</span>
+              </div>
             ))}
+          </nav>
+
+          <div className="sidebar-footer">
+            <button className="sidebar-collapse-btn" onClick={toggleSidebar}>
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
+            {!sidebarCollapsed && (
+              <div className="sidebar-footer-version">AI RSS Reader</div>
+            )}
           </div>
-        </div>
+        </aside>
 
         {/* Column 2: Article List */}
-        <div className="articles-col-list">
-          <div className="articles-col-header">
-            <span>{t('articles.title')}</span>
+        <div className="article-list-col">
+          <div className="article-list-header">
+            <span className="article-list-title">Today's Briefing</span>
             <select
+              className="article-list-filter"
               value={filterMode}
-              onChange={(e) => setFilterMode(e.target.value)}
-              className="form-select-sm"
+              onChange={e => setFilterMode(e.target.value)}
             >
-              <option value="all">{t('articles.all')}</option>
-              <option value="unread">{t('articles.status.unread')}</option>
-              <option value="accepted">{t('articles.status.accepted')}</option>
-              <option value="rejected">{t('articles.status.rejected')}</option>
-              <option value="snoozed">{t('articles.status.snoozed')}</option>
-              <option value="filtered">{t('articles.filtered')}</option>
-              <option value="saved">{t('articles.saved')}</option>
+              <option value="all">All</option>
+              <option value="unread">Unread</option>
+              <option value="accepted">Accepted</option>
+              <option value="rejected">Rejected</option>
+              <option value="snoozed">Snoozed</option>
+              <option value="saved">Saved</option>
+              <option value="filtered">Filtered</option>
             </select>
           </div>
+
           <div className="article-list">
             {loading && articles.length === 0 ? (
-              <div className="loading">{t('common.loading')}</div>
+              <div className="loading">Loading…</div>
             ) : articles.length === 0 ? (
-              <div className="empty-state">{t('articles.empty')}</div>
+              <div className="empty-state">
+                <FileText />
+                <p>Your briefing is clear</p>
+              </div>
             ) : (
-              articles.map((article) => (
-                <div
+              articles.map((article, index) => (
+                <ArticleCard
                   key={article.id}
-                  className={`article-card ${selectedArticle?.id === article.id ? 'selected' : ''}`}
+                  article={article}
+                  feedName={getFeedName(article.feed_id)}
+                  isSelected={selectedArticle?.id === article.id}
+                  isLead={index === 0}
+                  isSummarizing={isSummarizing === article.id}
                   onClick={() => handleArticleClick(article)}
-                >
-                  <div className="article-card-meta">
-                    <span>{getFeedTitle(article.feed_id)}</span>
-                    <span>{formatDate(article.published)}</span>
-                  </div>
-                  <div className="article-card-title">{article.title}</div>
-                  {article.summary && (
-                    <div className="article-card-summary">
-                      {article.summary.substring(0, 80)}...
-                    </div>
-                  )}
-                  <div className="article-card-badges">
-                    {article.status && article.status !== 'unread' && (
-                      <span className={`badge badge-${article.status}`}>
-                        {t(`articles.status.${article.status}`)}
-                      </span>
-                    )}
-                    {article.is_filtered && <span className="badge badge-filtered">{t('articles.filtered')}</span>}
-                    {article.is_saved && <span className="badge badge-saved">{t('articles.saved')}</span>}
-                  </div>
-                </div>
+                />
               ))
             )}
           </div>
         </div>
 
-        {/* Column 3: Article Content */}
-        <div className="articles-col-content">
-          {selectedArticle ? (
-            <div className="article-content">
-              <h2 className="article-content-title">{selectedArticle.title}</h2>
-              <div className="article-content-meta">
-                <span>{getFeedTitle(selectedArticle.feed_id)}</span>
-                <span>{formatDate(selectedArticle.published)}</span>
-                {selectedArticle.author && <span>{selectedArticle.author}</span>}
-              </div>
-              <a
-                href={selectedArticle.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-secondary btn-sm"
-              >
-                <ExternalLink size={14} />
-                {t('articles.viewOriginal')}
-              </a>
-
-              <div className="article-content-section">
-                <h4>{t('articles.summary')}</h4>
-                <p>{selectedArticle.summary || t('articles.noSummary')}</p>
-              </div>
-
-              <div className="article-content-section">
-                <h4>{t('articles.content')}</h4>
-                <div dangerouslySetInnerHTML={{__html: selectedArticle.content || ''}} />
-              </div>
-
-              <div className="article-content-actions">
-                <button
-                  onClick={() => handleAccept(selectedArticle.id)}
-                  disabled={selectedArticle.status === 'accepted'}
-                  className="btn btn-primary"
-                >
-                  <Check size={16} />
-                  {t('articles.accept')}
-                </button>
-                <button
-                  onClick={() => handleReject(selectedArticle.id)}
-                  disabled={selectedArticle.status === 'rejected'}
-                  className="btn btn-danger"
-                >
-                  <X size={16} />
-                  {t('articles.reject')}
-                </button>
-                <button
-                  onClick={() => handleSnooze(selectedArticle.id)}
-                  disabled={selectedArticle.status === 'snoozed'}
-                  className="btn btn-secondary"
-                >
-                  <Clock size={16} />
-                  {t('articles.snooze')}
-                </button>
-              </div>
-
-              <div className="article-content-actions">
-                <button
-                  onClick={() => handleGenerateSummary(selectedArticle.id)}
-                  disabled={generatingSummary === selectedArticle.id}
-                  className="btn btn-secondary"
-                >
-                  <Sparkles size={16} />
-                  {generatingSummary === selectedArticle.id ? t('common.loading') : t('articles.aiSummary')}
-                </button>
-                {!selectedArticle.is_saved && (
-                  <button
-                    onClick={() => handleCreateNote(selectedArticle.id)}
-                    className="btn btn-primary"
-                  >
-                    <Save size={16} />
-                    {t('articles.saveAsNote')}
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="empty-state">
-              <FileText size={48} />
-              <p>{t('articles.selectToView')}</p>
-            </div>
+        {/* Column 3: Article Reader */}
+        <div className={`article-reader-col ${mobileReaderVisible ? 'mobile-visible' : ''}`}>
+          {mobileReaderVisible && (
+            <button
+              className="btn btn-ghost"
+              onClick={handleBack}
+              style={{marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '4px'}}
+            >
+              <ChevronLeft size={16} />
+              Back to list
+            </button>
           )}
+          <ArticleReader
+            article={selectedArticle}
+            feedName={selectedArticle ? getFeedName(selectedArticle.feed_id) : ''}
+            isSummarizing={isSummarizing === selectedArticle?.id}
+            onAccept={handleAccept}
+            onReject={handleReject}
+            onSnooze={handleSnooze}
+            onSave={handleSave}
+            onGenerateSummary={handleGenerateSummary}
+            onOpenExternal={handleOpenExternal}
+            onBack={handleBack}
+          />
         </div>
       </div>
     </div>

@@ -30,7 +30,7 @@ func (r *NoteRepository) GetAll() ([]models.Note, error) {
 	}
 	defer rows.Close()
 
-	var notes []models.Note
+	var notes = []models.Note{}
 	for rows.Next() {
 		var note models.Note
 		err := rows.Scan(&note.ID, &note.ArticleID, &note.FilePath, &note.Title, &note.CreatedAt)
