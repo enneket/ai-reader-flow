@@ -1,8 +1,8 @@
 import {useState, useEffect} from 'react'
 import {useParams, Link, useNavigate} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
-import {FileText, Sparkles, Save, ExternalLink, LayoutGrid, Settings} from 'lucide-react'
-import {GetArticles, GetFeeds, GenerateSummary, CreateNote, FilterAllArticles} from '../../wailsjs/go/main/App'
+import {FileText, Sparkles, Save, ExternalLink, LayoutGrid, Settings, Check, X, Clock} from 'lucide-react'
+import {GetArticles, GetFeeds, GenerateSummary, CreateNote, FilterAllArticles, AcceptArticle, RejectArticle, SnoozeArticle, GetDeadFeeds} from '../../wailsjs/go/main/App'
 import {models} from '../../wailsjs/go/models'
 
 export function ArticleList() {
@@ -16,6 +16,7 @@ export function ArticleList() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [generatingSummary, setGeneratingSummary] = useState<number | null>(null)
+  const [deadFeeds, setDeadFeeds] = useState<models.Feed[]>([])
   const params = useParams()
 
   // Load from URL params on mount
@@ -27,7 +28,17 @@ export function ArticleList() {
 
   useEffect(() => {
     loadFeeds()
+    loadDeadFeeds()
   }, [])
+
+  const loadDeadFeeds = async () => {
+    try {
+      const data = await GetDeadFeeds()
+      setDeadFeeds(data || [])
+    } catch (err) {
+      console.error('Failed to load dead feeds:', err)
+    }
+  }
 
   useEffect(() => {
     loadArticles()
@@ -80,6 +91,45 @@ export function ArticleList() {
       await loadArticles()
     } catch (err: any) {
       setError(err.message || 'Failed to create note')
+    }
+  }
+
+  const handleAccept = async (id: number) => {
+    try {
+      await AcceptArticle(id)
+      await loadArticles()
+      const updated = articles.find(a => a.id === id)
+      if (updated) {
+        setSelectedArticle({...updated, status: 'accepted'})
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to accept article')
+    }
+  }
+
+  const handleReject = async (id: number) => {
+    try {
+      await RejectArticle(id)
+      await loadArticles()
+      const updated = articles.find(a => a.id === id)
+      if (updated) {
+        setSelectedArticle({...updated, status: 'rejected'})
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to reject article')
+    }
+  }
+
+  const handleSnooze = async (id: number) => {
+    try {
+      await SnoozeArticle(id)
+      await loadArticles()
+      const updated = articles.find(a => a.id === id)
+      if (updated) {
+        setSelectedArticle({...updated, status: 'snoozed'})
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to snooze article')
     }
   }
 
@@ -149,6 +199,13 @@ export function ArticleList() {
         </nav>
       </header>
 
+      {/* Dead Feeds Banner */}
+      {deadFeeds.length > 0 && (
+        <div className="dead-feeds-banner">
+          <span>{t('feeds.deadWarning', { count: deadFeeds.length })}</span>
+        </div>
+      )}
+
       {/* 3 Column Content */}
       <div className="articles-3col">
         {/* Column 1: Feed List */}
@@ -183,6 +240,10 @@ export function ArticleList() {
               className="form-select-sm"
             >
               <option value="all">{t('articles.all')}</option>
+              <option value="unread">{t('articles.status.unread')}</option>
+              <option value="accepted">{t('articles.status.accepted')}</option>
+              <option value="rejected">{t('articles.status.rejected')}</option>
+              <option value="snoozed">{t('articles.status.snoozed')}</option>
               <option value="filtered">{t('articles.filtered')}</option>
               <option value="saved">{t('articles.saved')}</option>
             </select>
@@ -210,6 +271,11 @@ export function ArticleList() {
                     </div>
                   )}
                   <div className="article-card-badges">
+                    {article.status && article.status !== 'unread' && (
+                      <span className={`badge badge-${article.status}`}>
+                        {t(`articles.status.${article.status}`)}
+                      </span>
+                    )}
                     {article.is_filtered && <span className="badge badge-filtered">{t('articles.filtered')}</span>}
                     {article.is_saved && <span className="badge badge-saved">{t('articles.saved')}</span>}
                   </div>
@@ -247,6 +313,33 @@ export function ArticleList() {
               <div className="article-content-section">
                 <h4>{t('articles.content')}</h4>
                 <div dangerouslySetInnerHTML={{__html: selectedArticle.content || ''}} />
+              </div>
+
+              <div className="article-content-actions">
+                <button
+                  onClick={() => handleAccept(selectedArticle.id)}
+                  disabled={selectedArticle.status === 'accepted'}
+                  className="btn btn-primary"
+                >
+                  <Check size={16} />
+                  {t('articles.accept')}
+                </button>
+                <button
+                  onClick={() => handleReject(selectedArticle.id)}
+                  disabled={selectedArticle.status === 'rejected'}
+                  className="btn btn-danger"
+                >
+                  <X size={16} />
+                  {t('articles.reject')}
+                </button>
+                <button
+                  onClick={() => handleSnooze(selectedArticle.id)}
+                  disabled={selectedArticle.status === 'snoozed'}
+                  className="btn btn-secondary"
+                >
+                  <Clock size={16} />
+                  {t('articles.snooze')}
+                </button>
               </div>
 
               <div className="article-content-actions">

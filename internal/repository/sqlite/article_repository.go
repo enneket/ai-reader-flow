@@ -13,11 +13,15 @@ func NewArticleRepository() *ArticleRepository {
 }
 
 func (r *ArticleRepository) Create(article *models.Article) error {
+	status := article.Status
+	if status == "" {
+		status = "unread"
+	}
 	result, err := DB.Exec(
-		`INSERT INTO articles (feed_id, title, link, content, summary, author, published, is_filtered, is_saved, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO articles (feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		article.FeedID, article.Title, article.Link, article.Content, article.Summary,
-		article.Author, article.Published.Format(time.RFC3339), article.IsFiltered, article.IsSaved, article.CreatedAt.Format(time.RFC3339),
+		article.Author, article.Published.Format(time.RFC3339), article.IsFiltered, article.IsSaved, status, article.CreatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
 		return err
@@ -29,7 +33,7 @@ func (r *ArticleRepository) Create(article *models.Article) error {
 
 func (r *ArticleRepository) GetByFeedID(feedID int64) ([]models.Article, error) {
 	rows, err := DB.Query(
-		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, created_at
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at
 		FROM articles WHERE feed_id = ? ORDER BY published DESC`,
 		feedID,
 	)
@@ -42,12 +46,20 @@ func (r *ArticleRepository) GetByFeedID(feedID int64) ([]models.Article, error) 
 }
 
 func (r *ArticleRepository) GetAll(filterMode string) ([]models.Article, error) {
-	query := `SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, created_at FROM articles`
+	query := `SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at FROM articles`
 	switch filterMode {
 	case "filtered":
 		query += ` WHERE is_filtered = 1`
 	case "saved":
 		query += ` WHERE is_saved = 1`
+	case "unread":
+		query += ` WHERE status = 'unread'`
+	case "accepted":
+		query += ` WHERE status = 'accepted'`
+	case "rejected":
+		query += ` WHERE status = 'rejected'`
+	case "snoozed":
+		query += ` WHERE status = 'snoozed'`
 	}
 	query += ` ORDER BY published DESC`
 
@@ -70,14 +82,14 @@ func (r *ArticleRepository) GetSaved() ([]models.Article, error) {
 
 func (r *ArticleRepository) GetByID(id int64) (*models.Article, error) {
 	row := DB.QueryRow(
-		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, created_at
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at
 		FROM articles WHERE id = ?`,
 		id,
 	)
 
 	var a models.Article
 	var published, createdAt sql.NullString
-	err := row.Scan(&a.ID, &a.FeedID, &a.Title, &a.Link, &a.Content, &a.Summary, &a.Author, &published, &a.IsFiltered, &a.IsSaved, &createdAt)
+	err := row.Scan(&a.ID, &a.FeedID, &a.Title, &a.Link, &a.Content, &a.Summary, &a.Author, &published, &a.IsFiltered, &a.IsSaved, &a.Status, &createdAt)
 	if err != nil {
 		return nil, err
 	}
@@ -92,8 +104,8 @@ func (r *ArticleRepository) GetByID(id int64) (*models.Article, error) {
 
 func (r *ArticleRepository) Update(article *models.Article) error {
 	_, err := DB.Exec(
-		`UPDATE articles SET title = ?, content = ?, summary = ?, is_filtered = ?, is_saved = ? WHERE id = ?`,
-		article.Title, article.Content, article.Summary, article.IsFiltered, article.IsSaved, article.ID,
+		`UPDATE articles SET title = ?, content = ?, summary = ?, is_filtered = ?, is_saved = ?, status = ? WHERE id = ?`,
+		article.Title, article.Content, article.Summary, article.IsFiltered, article.IsSaved, article.Status, article.ID,
 	)
 	return err
 }
@@ -106,6 +118,15 @@ func (r *ArticleRepository) SetFiltered(id int64, filtered bool) error {
 func (r *ArticleRepository) SetSaved(id int64, saved bool) error {
 	_, err := DB.Exec(`UPDATE articles SET is_saved = ? WHERE id = ?`, saved, id)
 	return err
+}
+
+func (r *ArticleRepository) SetStatus(id int64, status string) error {
+	_, err := DB.Exec(`UPDATE articles SET status = ? WHERE id = ?`, status, id)
+	return err
+}
+
+func (r *ArticleRepository) GetByStatus(status string) ([]models.Article, error) {
+	return r.GetAll(status)
 }
 
 func (r *ArticleRepository) Delete(id int64) error {
@@ -124,7 +145,7 @@ func (r *ArticleRepository) scanArticles(rows *sql.Rows) ([]models.Article, erro
 	for rows.Next() {
 		var a models.Article
 		var published, createdAt sql.NullString
-		err := rows.Scan(&a.ID, &a.FeedID, &a.Title, &a.Link, &a.Content, &a.Summary, &a.Author, &published, &a.IsFiltered, &a.IsSaved, &createdAt)
+		err := rows.Scan(&a.ID, &a.FeedID, &a.Title, &a.Link, &a.Content, &a.Summary, &a.Author, &published, &a.IsFiltered, &a.IsSaved, &a.Status, &createdAt)
 		if err != nil {
 			continue
 		}
@@ -133,6 +154,9 @@ func (r *ArticleRepository) scanArticles(rows *sql.Rows) ([]models.Article, erro
 		}
 		if createdAt.Valid {
 			a.CreatedAt, _ = time.Parse(time.RFC3339, createdAt.String)
+		}
+		if a.Status == "" {
+			a.Status = "unread"
 		}
 		articles = append(articles, a)
 	}

@@ -9,7 +9,8 @@ type Feed struct {
 	Description string    `json:"description"`
 	IconURL     string    `json:"icon_url"`
 	LastFetched time.Time `json:"last_fetched"`
-	CreatedAt   time.Time `json:"created_at"`
+	IsDead     bool      `json:"is_dead"` // true if feed returned 404/410
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type Article struct {
@@ -23,6 +24,7 @@ type Article struct {
 	Published  time.Time `json:"published"`
 	IsFiltered bool      `json:"is_filtered"`
 	IsSaved    bool      `json:"is_saved"`
+	Status     string    `json:"status"` // "unread", "accepted", "rejected", "snoozed"
 	CreatedAt  time.Time `json:"created_at"`
 }
 

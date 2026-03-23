@@ -496,6 +496,26 @@ a:hover {
   color: #059669;
 }
 
+.badge-accepted {
+  background: #D1FAE5;
+  color: #059669;
+}
+
+.badge-rejected {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.badge-snoozed {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.badge-unread {
+  background: #DBEAFE;
+  color: #2563EB;
+}
+
 /* ============================================
    Lists
    ============================================ */
@@ -741,6 +761,17 @@ a:hover {
   height: 100%;
   padding: 0 var(--space-4);
   gap: var(--space-1);
+}
+
+.dead-feeds-banner {
+  background: #FEF3C7;
+  color: #92400E;
+  padding: var(--space-2) var(--space-4);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-bottom: 1px solid #FDE68A;
 }
 
 .articles-nav-item {

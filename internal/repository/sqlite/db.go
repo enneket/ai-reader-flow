@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -44,6 +45,7 @@ func createTables() error {
 		description TEXT,
 		icon_url TEXT,
 		last_fetched TEXT,
+		is_dead INTEGER DEFAULT 0,
 		created_at TEXT DEFAULT CURRENT_TIMESTAMP
 	);
 
@@ -58,6 +60,7 @@ func createTables() error {
 		published TEXT,
 		is_filtered INTEGER DEFAULT 0,
 		is_saved INTEGER DEFAULT 0,
+		status TEXT DEFAULT 'unread',
 		created_at TEXT DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE
 	);
@@ -87,10 +90,34 @@ func createTables() error {
 
 	CREATE INDEX IF NOT EXISTS idx_articles_feed_id ON articles(feed_id);
 	CREATE INDEX IF NOT EXISTS idx_articles_is_filtered ON articles(is_filtered);
+	CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
 	CREATE INDEX IF NOT EXISTS idx_notes_article_id ON notes(article_id);
 	`
 
 	_, err := DB.Exec(schema)
+	if err != nil {
+		return err
+	}
+
+	// Migration: add is_dead column if it doesn't exist (for existing databases)
+	_ = migrateAddColumn("feeds", "is_dead", "INTEGER DEFAULT 0")
+	// Migration: add status column if it doesn't exist (for existing databases)
+	_ = migrateAddColumn("articles", "status", "TEXT DEFAULT 'unread'")
+
+	return nil
+}
+
+func migrateAddColumn(table, column, definition string) error {
+	// Check if column exists
+	var count int
+	err := DB.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM pragma_table_info('%s') WHERE name = '%s'", table, column)).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil // column already exists
+	}
+	_, err = DB.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, definition))
 	return err
 }
 

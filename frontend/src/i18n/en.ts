@@ -14,6 +14,8 @@ export const en = {
     viewArticles: "View Articles",
     delete: "Delete",
     empty: "No feeds yet. Add your first RSS feed to get started.",
+    deadWarning: "{{count}} feed(s) no longer available (404/410)",
+    viewDead: "View",
   },
   articles: {
     title: "Articles",
@@ -31,6 +33,15 @@ export const en = {
     content: "Content",
     noSummary: "No summary available. Click 'AI Summary' to generate one.",
     selectToView: "Select an article to view its content",
+    accept: "Accept",
+    reject: "Reject",
+    snooze: "Snooze",
+    status: {
+      unread: "Unread",
+      accepted: "Accepted",
+      rejected: "Rejected",
+      snoozed: "Snoozed",
+    },
   },
   notes: {
     title: "Notes",

@@ -49,6 +49,35 @@ func (a *App) DeleteFeed(id int64) error {
 	return rssService.DeleteFeed(id)
 }
 
+// AcceptArticle marks article as accepted
+func (a *App) AcceptArticle(id int64) error {
+	return rssService.SetArticleStatus(id, "accepted")
+}
+
+// RejectArticle marks article as rejected
+func (a *App) RejectArticle(id int64) error {
+	return rssService.SetArticleStatus(id, "rejected")
+}
+
+// SnoozeArticle marks article as snoozed
+func (a *App) SnoozeArticle(id int64) error {
+	return rssService.SetArticleStatus(id, "snoozed")
+}
+
+// GetDeadFeeds returns feeds that returned 404/410
+func (a *App) GetDeadFeeds() []models.Feed {
+	feeds, err := rssService.GetDeadFeeds()
+	if err != nil {
+		return []models.Feed{}
+	}
+	return feeds
+}
+
+// DeleteDeadFeed deletes a dead feed
+func (a *App) DeleteDeadFeed(id int64) error {
+	return rssService.DeleteFeed(id)
+}
+
 // RefreshFeed refreshes a single feed
 func (a *App) RefreshFeed(id int64) error {
 	return rssService.RefreshFeed(id)

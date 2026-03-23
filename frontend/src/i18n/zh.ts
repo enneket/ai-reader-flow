@@ -14,6 +14,8 @@ export const zh = {
     viewArticles: "查看文章",
     delete: "删除",
     empty: "暂无订阅源。添加第一个 RSS 订阅源开始使用。",
+    deadWarning: "{{count}} 个订阅源已失效（404/410）",
+    viewDead: "查看",
   },
   articles: {
     title: "文章",
@@ -31,6 +33,15 @@ export const zh = {
     content: "正文",
     noSummary: "暂无摘要。点击'AI 摘要'生成。",
     selectToView: "选择一篇文章查看内容",
+    accept: "接受",
+    reject: "拒绝",
+    snooze: "稍后读",
+    status: {
+      unread: "未读",
+      accepted: "已接受",
+      rejected: "已拒绝",
+      snoozed: "稍后读",
+    },
   },
   notes: {
     title: "笔记",
