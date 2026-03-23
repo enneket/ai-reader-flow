@@ -65,7 +65,7 @@ export const en = {
     value: "Value",
     action: "Action",
     addRule: "Add Rule",
-    noFilterRules: "暂无筛选规则。",
+    noFilterRules: "No filter rules yet.",
     language: "Language",
     english: "English",
     chinese: "中文",

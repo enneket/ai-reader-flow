@@ -100,7 +100,7 @@ export function ArticleList() {
       await loadArticles()
       const updated = articles.find(a => a.id === id)
       if (updated) {
-        setSelectedArticle({...updated, status: 'accepted'})
+        setSelectedArticle(models.Article.createFrom({...updated, status: 'accepted'}))
       }
     } catch (err: any) {
       setError(err.message || 'Failed to accept article')
@@ -113,7 +113,7 @@ export function ArticleList() {
       await loadArticles()
       const updated = articles.find(a => a.id === id)
       if (updated) {
-        setSelectedArticle({...updated, status: 'rejected'})
+        setSelectedArticle(models.Article.createFrom({...updated, status: 'rejected'}))
       }
     } catch (err: any) {
       setError(err.message || 'Failed to reject article')
@@ -126,7 +126,7 @@ export function ArticleList() {
       await loadArticles()
       const updated = articles.find(a => a.id === id)
       if (updated) {
-        setSelectedArticle({...updated, status: 'snoozed'})
+        setSelectedArticle(models.Article.createFrom({...updated, status: 'snoozed'}))
       }
     } catch (err: any) {
       setError(err.message || 'Failed to snooze article')

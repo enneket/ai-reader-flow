@@ -74,6 +74,7 @@ export namespace models {
 	    published: any;
 	    is_filtered: boolean;
 	    is_saved: boolean;
+	    status: string;
 	    // Go type: time
 	    created_at: any;
 	
@@ -93,6 +94,7 @@ export namespace models {
 	        this.published = this.convertValues(source["published"], null);
 	        this.is_filtered = source["is_filtered"];
 	        this.is_saved = source["is_saved"];
+	        this.status = source["status"];
 	        this.created_at = this.convertValues(source["created_at"], null);
 	    }
 	
@@ -122,6 +124,7 @@ export namespace models {
 	    icon_url: string;
 	    // Go type: time
 	    last_fetched: any;
+	    is_dead: boolean;
 	    // Go type: time
 	    created_at: any;
 	
@@ -137,6 +140,7 @@ export namespace models {
 	        this.description = source["description"];
 	        this.icon_url = source["icon_url"];
 	        this.last_fetched = this.convertValues(source["last_fetched"], null);
+	        this.is_dead = source["is_dead"];
 	        this.created_at = this.convertValues(source["created_at"], null);
 	    }
 	
