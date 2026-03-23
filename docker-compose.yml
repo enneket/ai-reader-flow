@@ -1,11 +1,10 @@
-version: '3.9'
 services:
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
     ports:
-      - "8080:8080"
+      - "18080:8080"
     volumes:
       - ./data:/data
     environment:
@@ -17,7 +16,7 @@ services:
       context: .
       dockerfile: Dockerfile.web
     ports:
-      - "80:80"
+      - "180:80"
     depends_on:
       - api
     restart: unless-stopped
