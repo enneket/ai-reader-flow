@@ -14,18 +14,20 @@ type Feed struct {
 }
 
 type Article struct {
-	ID         int64     `json:"id"`
-	FeedID     int64     `json:"feed_id"`
-	Title      string    `json:"title"`
-	Link       string    `json:"link"`
-	Content    string    `json:"content"`
-	Summary    string    `json:"summary"`
-	Author     string    `json:"author"`
-	Published  time.Time `json:"published"`
-	IsFiltered bool      `json:"is_filtered"`
-	IsSaved    bool      `json:"is_saved"`
-	Status     string    `json:"status"` // "unread", "accepted", "rejected", "snoozed"
-	CreatedAt  time.Time `json:"created_at"`
+	ID           int64     `json:"id"`
+	FeedID       int64     `json:"feed_id"`
+	Title        string    `json:"title"`
+	Link         string    `json:"link"`
+	Content      string    `json:"content"`
+	Summary      string    `json:"summary"`
+	Author       string    `json:"author"`
+	Published    time.Time `json:"published"`
+	IsFiltered   bool      `json:"is_filtered"`
+	IsSaved      bool      `json:"is_saved"`
+	Status       string    `json:"status"` // "unread", "accepted", "rejected", "snoozed"
+	CreatedAt    time.Time `json:"created_at"`
+	Embedding    []float32 `json:"-"` // not exposed to JSON API
+	QualityScore int       `json:"quality_score"`
 }
 
 type FilterRule struct {

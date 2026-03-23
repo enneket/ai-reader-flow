@@ -4,12 +4,26 @@ import (
 	"ai-rss-reader/internal/ai"
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/repository/sqlite"
+	"errors"
+	"fmt"
+	"math"
 	"strings"
+
+	"golang.org/x/sync/errgroup"
 )
+
+// ArticleRepo defines the repository methods needed by FilterService.
+type ArticleRepo interface {
+	GetAll(filterMode string) ([]models.Article, error)
+	GetUnreadWithoutEmbedding() ([]models.Article, error)
+	SaveEmbedding(id int64, embedding []float32) error
+	UpdateQualityScore(id int64, score int) error
+	SetFiltered(id int64, filtered bool) error
+}
 
 type FilterService struct {
 	ruleRepo    *sqlite.FilterRuleRepository
-	articleRepo *sqlite.ArticleRepository
+	articleRepo ArticleRepo
 }
 
 func NewFilterService() *FilterService {
@@ -119,6 +133,197 @@ func (s *FilterService) FilterAllArticles() error {
 			continue
 		}
 		s.articleRepo.SetFiltered(article.ID, !shouldShow)
+	}
+
+	return nil
+}
+
+// CosineSimilarity computes cosine similarity between two vectors.
+// Returns 0 for nil/empty/mismatched-length vectors.
+func CosineSimilarity(a, b []float32) float64 {
+	if a == nil || b == nil || len(a) == 0 || len(b) == 0 || len(a) != len(b) {
+		return 0
+	}
+
+	var dotProd float64
+	var normA float64
+	var normB float64
+	for i := range a {
+		dotProd += float64(a[i]) * float64(b[i])
+		normA += float64(a[i]) * float64(a[i])
+		normB += float64(b[i]) * float64(b[i])
+	}
+
+	if normA == 0 || normB == 0 {
+		return 0
+	}
+	return dotProd / (math.Sqrt(normA) * math.Sqrt(normB))
+}
+
+// QualityScore returns 0-40 based on title clarity + content length.
+// Threshold: 30 (articles below are auto-hidden).
+func (s *FilterService) QualityScore(article *models.Article) int {
+	titleScore := scoreTitle(article.Title)
+	lengthScore := scoreLength(article.Content)
+	return titleScore + lengthScore
+}
+
+// scoreTitle returns 0-25 based on title characteristics.
+func scoreTitle(title string) int {
+	length := len(title)
+	if length < 5 || length > 150 {
+		return 0
+	}
+	if length < 10 {
+		return 5
+	}
+	if length <= 100 {
+		score := 20
+		// bonus for numbers
+		for _, c := range title {
+			if c >= '0' && c <= '9' {
+				score += 5
+				break
+			}
+		}
+		// bonus for uppercase letters (excluding first letter)
+		for _, c := range title[1:] {
+			if c >= 'A' && c <= 'Z' {
+				score += 5
+				break
+			}
+		}
+		if score > 25 {
+			score = 25
+		}
+		return score
+	}
+	// 100 < length <= 150
+	return 25
+}
+
+// scoreLength returns 0-15 based on content length.
+func scoreLength(content string) int {
+	length := len(content)
+	if length < 500 {
+		return 0
+	}
+	if length < 1000 {
+		return 5
+	}
+	if length < 2000 {
+		return 10
+	}
+	return 15
+}
+
+// semanticDedupBatch marks articles for filtering that are semantically duplicate
+// within the same batch. Returns a map of articleID -> true if should be filtered.
+// When two articles have cosine similarity > 0.85, the one with lower quality score
+// is marked for filtering.
+func (s *FilterService) semanticDedupBatch(articles []models.Article, embeddings map[int64][]float32) map[int64]bool {
+	toFilter := make(map[int64]bool)
+
+	for i := 0; i < len(articles); i++ {
+		for j := i + 1; j < len(articles); j++ {
+			a, b := &articles[i], &articles[j]
+			embA, embB := embeddings[a.ID], embeddings[b.ID]
+			if embA == nil || embB == nil {
+				continue
+			}
+
+			sim := CosineSimilarity(embA, embB)
+			if sim > 0.85 {
+				scoreA := s.QualityScore(a)
+				scoreB := s.QualityScore(b)
+				// lower score gets filtered
+				if scoreA >= scoreB {
+					toFilter[b.ID] = true
+				} else {
+					toFilter[a.ID] = true
+				}
+			}
+		}
+	}
+	return toFilter
+}
+
+// FilterAllArticlesNew is the new Plan B implementation that computes embeddings,
+// deduplicates semantically within the batch, and scores quality.
+func (s *FilterService) FilterAllArticlesNew() error {
+	newArticles, err := s.articleRepo.GetUnreadWithoutEmbedding()
+	if err != nil {
+		return err
+	}
+	if len(newArticles) == 0 {
+		return nil
+	}
+
+	// Step 1: compute embeddings in parallel
+	provider := ai.GetProvider()
+	type result struct {
+		id    int64
+		emb   []float32
+		err   error
+	}
+	results := make(chan result, len(newArticles))
+	sem := make(chan struct{}, 10)
+	var wg errgroup.Group
+
+	for i := range newArticles {
+		wg.Go(func() error {
+			a := &newArticles[i]
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			text := a.Title + "\n\n" + a.Summary
+			if len(text) > 50000 {
+				text = text[:50000]
+			}
+			emb, err := provider.GetEmbedding(text)
+			results <- result{id: a.ID, emb: emb, err: err}
+			return nil
+		})
+	}
+	wg.Wait()
+	close(results)
+
+	// collect errors and embeddings
+	var errs []error
+	embeddings := make(map[int64][]float32)
+	for res := range results {
+		if res.err != nil {
+			errs = append(errs, fmt.Errorf("embedding article %d: %w", res.id, res.err))
+		} else {
+			embeddings[res.id] = res.emb
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	// save embeddings to DB
+	for id, emb := range embeddings {
+		if err := s.articleRepo.SaveEmbedding(id, emb); err != nil {
+			return fmt.Errorf("save embedding %d: %w", id, err)
+		}
+	}
+
+	// Step 2: semantic dedup within batch
+	toFilter := s.semanticDedupBatch(newArticles, embeddings)
+
+	// Step 3: quality score and mark filtered
+	for i := range newArticles {
+		a := &newArticles[i]
+		if toFilter[a.ID] {
+			s.articleRepo.SetFiltered(a.ID, true)
+			continue
+		}
+		score := s.QualityScore(a)
+		s.articleRepo.UpdateQualityScore(a.ID, score)
+		if score < 30 {
+			s.articleRepo.SetFiltered(a.ID, true)
+		}
 	}
 
 	return nil

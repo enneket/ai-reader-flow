@@ -8,12 +8,19 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // AIServiceProvider defines the interface for AI backends
 type AIServiceProvider interface {
 	GenerateSummary(content string) (string, error)
 	FilterArticle(content string, rules []string) (bool, error)
+	GetEmbedding(text string) ([]float32, error)
+}
+
+// EmbeddingProvider is the interface for embedding-only backends (used by FilterService)
+type EmbeddingProvider interface {
+	GetEmbedding(text string) ([]float32, error)
 }
 
 // OpenAIProvider implements AIServiceProvider using OpenAI API
@@ -100,7 +107,7 @@ func (p *OpenAIProvider) GenerateSummary(content string) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -156,7 +163,7 @@ func (p *OpenAIProvider) FilterArticle(content string, rules []string) (bool, er
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return false, err
@@ -185,6 +192,53 @@ func (p *OpenAIProvider) FilterArticle(content string, rules []string) (bool, er
 	}
 
 	return false, fmt.Errorf("unexpected response format")
+}
+
+func (p *OpenAIProvider) GetEmbedding(text string) ([]float32, error) {
+	reqBody := map[string]interface{}{
+		"model": "text-embedding-3-small",
+		"input": text,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", p.BaseURL+"/v1/embeddings", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.APIKey)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Data []struct {
+			Embedding []float32 `json:"embedding"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("openai embed: %w: %s", err, string(body))
+	}
+
+	if len(result.Data) == 0 {
+		return nil, fmt.Errorf("openai embed: no embedding returned")
+	}
+
+	return result.Data[0].Embedding, nil
 }
 
 func (p *ClaudeProvider) GenerateSummary(content string) (string, error) {
@@ -269,7 +323,7 @@ func (p *ClaudeProvider) FilterArticle(content string, rules []string) (bool, er
 	req.Header.Set("x-api-key", p.APIKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return false, err
@@ -298,6 +352,54 @@ func (p *ClaudeProvider) FilterArticle(content string, rules []string) (bool, er
 	return false, fmt.Errorf("unexpected response format")
 }
 
+func (p *ClaudeProvider) GetEmbedding(text string) ([]float32, error) {
+	reqBody := map[string]interface{}{
+		"model":       "claude-embedding-3",
+		"inputs": []string{text},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", p.BaseURL+"/v1/embeddings", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", p.APIKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Data []struct {
+			Embedding []float32 `json:"embedding"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("claude embed: %w: %s", err, string(body))
+	}
+
+	if len(result.Data) == 0 {
+		return nil, fmt.Errorf("claude embed: no embedding returned")
+	}
+
+	return result.Data[0].Embedding, nil
+}
+
 func (p *OllamaProvider) GenerateSummary(content string) (string, error) {
 	systemPrompt := "You are a helpful assistant that summarizes articles. Provide a concise summary in 2-3 sentences."
 	userPrompt := fmt.Sprintf("Summarize the following article:\n\n%s", content)
@@ -321,7 +423,7 @@ func (p *OllamaProvider) GenerateSummary(content string) (string, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -368,7 +470,7 @@ func (p *OllamaProvider) FilterArticle(content string, rules []string) (bool, er
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return false, err
@@ -391,4 +493,48 @@ func (p *OllamaProvider) FilterArticle(content string, rules []string) (bool, er
 	}
 
 	return false, fmt.Errorf("unexpected response format")
+}
+
+func (p *OllamaProvider) GetEmbedding(text string) ([]float32, error) {
+	reqBody := map[string]interface{}{
+		"model": p.Model,
+		"input": text,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", p.BaseURL+"/api/embed", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Embeddings [][]float32 `json:"embeddings"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("ollama embed: %w: %s", err, string(body))
+	}
+
+	if len(result.Embeddings) == 0 || len(result.Embeddings[0]) == 0 {
+		return nil, fmt.Errorf("ollama embed: no embedding returned")
+	}
+
+	return result.Embeddings[0], nil
 }

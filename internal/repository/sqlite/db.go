@@ -103,6 +103,9 @@ func createTables() error {
 	_ = migrateAddColumn("feeds", "is_dead", "INTEGER DEFAULT 0")
 	// Migration: add status column if it doesn't exist (for existing databases)
 	_ = migrateAddColumn("articles", "status", "TEXT DEFAULT 'unread'")
+	// Migration: add embedding and quality_score columns for Plan B
+	_ = migrateAddColumn("articles", "embedding", "TEXT")
+	_ = migrateAddColumn("articles", "quality_score", "INTEGER DEFAULT 0")
 
 	return nil
 }

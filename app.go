@@ -83,9 +83,12 @@ func (a *App) RefreshFeed(id int64) error {
 	return rssService.RefreshFeed(id)
 }
 
-// RefreshAllFeeds refreshes all feeds
+// RefreshAllFeeds refreshes all feeds and auto-filters new articles
 func (a *App) RefreshAllFeeds() error {
-	return rssService.RefreshAllFeeds()
+	if err := rssService.RefreshAllFeeds(); err != nil {
+		return err
+	}
+	return filterService.FilterAllArticlesNew()
 }
 
 // GetArticles returns articles, optionally filtered by feedID and filterMode
