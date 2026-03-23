@@ -5,7 +5,10 @@ import (
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/repository/sqlite"
 	"fmt"
+	"log"
 	"strings"
+	"sync"
+	"time"
 )
 
 type SummaryService struct {
@@ -44,15 +47,63 @@ func (s *SummaryService) GenerateSummaryForArticle(articleID int64) (string, err
 		return "", err
 	}
 
-	return s.GenerateSummary(article)
+	// Skip if summary already exists
+	if article.Summary != "" {
+		return article.Summary, nil
+	}
+
+	summary, err := s.GenerateSummary(article)
+	if err != nil {
+		// Retry once after 5s delay
+		time.Sleep(5 * time.Second)
+		article, err := s.articleRepo.GetByID(articleID)
+		if err != nil {
+			return "", err
+		}
+		if article.Summary != "" {
+			return article.Summary, nil
+		}
+		summary, err = s.GenerateSummary(article)
+		if err != nil {
+			return "", err
+		}
+	}
+	return summary, nil
 }
 
-func (s *SummaryService) BatchGenerateSummaries(articleIDs []int64) error {
+func (s *SummaryService) BatchGenerateSummaries(articleIDs []int64, concurrency int) error {
+	if len(articleIDs) == 0 {
+		return nil
+	}
+	if concurrency <= 0 {
+		concurrency = 5
+	}
+
+	sem := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
+	var errMu sync.Mutex
+	var errs []error
+
 	for _, id := range articleIDs {
-		_, err := s.GenerateSummaryForArticle(id)
-		if err != nil {
-			fmt.Printf("Warning: failed to generate summary for article %d: %v\n", id, err)
-		}
+		wg.Add(1)
+		go func(articleID int64) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			_, err := s.GenerateSummaryForArticle(articleID)
+			if err != nil {
+				errMu.Lock()
+				errs = append(errs, err)
+				errMu.Unlock()
+				log.Printf("Warning: failed to generate summary for article %d: %v\n", articleID, err)
+			}
+		}(id)
+	}
+	wg.Wait()
+
+	if len(errs) > 0 {
+		return errs[0]
 	}
 	return nil
 }

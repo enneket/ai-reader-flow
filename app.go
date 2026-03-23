@@ -88,7 +88,15 @@ func (a *App) RefreshAllFeeds() error {
 	if err := rssService.RefreshAllFeeds(); err != nil {
 		return err
 	}
-	return filterService.FilterAllArticlesNew()
+	newArticleIDs, err := filterService.FilterAllArticlesNew()
+	if err != nil {
+		return err
+	}
+	// Launch background goroutine to generate summaries — does not block refresh
+	go func() {
+		summaryService.BatchGenerateSummaries(newArticleIDs, 5)
+	}()
+	return nil
 }
 
 // GetArticles returns articles, optionally filtered by feedID and filterMode

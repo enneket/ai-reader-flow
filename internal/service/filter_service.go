@@ -250,13 +250,14 @@ func (s *FilterService) semanticDedupBatch(articles []models.Article, embeddings
 
 // FilterAllArticlesNew is the new Plan B implementation that computes embeddings,
 // deduplicates semantically within the batch, and scores quality.
-func (s *FilterService) FilterAllArticlesNew() error {
+// Returns the IDs of articles that passed filtering (new + not filtered).
+func (s *FilterService) FilterAllArticlesNew() ([]int64, error) {
 	newArticles, err := s.articleRepo.GetUnreadWithoutEmbedding()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(newArticles) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// Step 1: compute embeddings in parallel
@@ -299,20 +300,21 @@ func (s *FilterService) FilterAllArticlesNew() error {
 		}
 	}
 	if len(errs) > 0 {
-		return errors.Join(errs...)
+		return nil, errors.Join(errs...)
 	}
 
 	// save embeddings to DB
 	for id, emb := range embeddings {
 		if err := s.articleRepo.SaveEmbedding(id, emb); err != nil {
-			return fmt.Errorf("save embedding %d: %w", id, err)
+			return nil, fmt.Errorf("save embedding %d: %w", id, err)
 		}
 	}
 
 	// Step 2: semantic dedup within batch
 	toFilter := s.semanticDedupBatch(newArticles, embeddings)
 
-	// Step 3: quality score and mark filtered
+	// Step 3: quality score and mark filtered; collect passing IDs
+	var passedIDs []int64
 	for i := range newArticles {
 		a := &newArticles[i]
 		if toFilter[a.ID] {
@@ -323,8 +325,10 @@ func (s *FilterService) FilterAllArticlesNew() error {
 		s.articleRepo.UpdateQualityScore(a.ID, score)
 		if score < 30 {
 			s.articleRepo.SetFiltered(a.ID, true)
+		} else {
+			passedIDs = append(passedIDs, a.ID)
 		}
 	}
 
-	return nil
+	return passedIDs, nil
 }
