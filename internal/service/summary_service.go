@@ -87,9 +87,13 @@ func (s *SummaryService) BatchGenerateSummaries(articleIDs []int64, concurrency 
 	for _, id := range articleIDs {
 		wg.Add(1)
 		go func(articleID int64) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
+			defer func() {
+				<-sem
+				wg.Done()
+				if r := recover(); r != nil {
+					log.Printf("Panic in BatchGenerateSummaries for article %d: %v\n", articleID, r)
+				}
+			}()
 
 			_, err := s.GenerateSummaryForArticle(articleID)
 			if err != nil {
