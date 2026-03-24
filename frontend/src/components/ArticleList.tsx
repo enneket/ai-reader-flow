@@ -1,6 +1,6 @@
 import {useState, useEffect} from 'react'
 import {useNavigate} from 'react-router-dom'
-import {Rss, FileText, ChevronLeft, ChevronRight, Settings} from 'lucide-react'
+import {Rss, FileText, ChevronLeft, ChevronRight, Settings, Plus, X} from 'lucide-react'
 import {api, Article, Feed} from '../api'
 import {Masthead} from './Masthead'
 import {ArticleCard} from './ArticleCard'
@@ -22,6 +22,10 @@ export function ArticleList() {
     return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
   })
   const [mobileReaderVisible, setMobileReaderVisible] = useState(false)
+  const [showAddFeed, setShowAddFeed] = useState(false)
+  const [newFeedUrl, setNewFeedUrl] = useState('')
+  const [addFeedLoading, setAddFeedLoading] = useState(false)
+  const [addFeedError, setAddFeedError] = useState('')
 
   // Load initial data
   useEffect(() => {
@@ -82,6 +86,23 @@ export function ArticleList() {
 
   const handleSettings = () => {
     navigate('/settings')
+  }
+
+  const handleAddFeed = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newFeedUrl.trim()) return
+    setAddFeedLoading(true)
+    setAddFeedError('')
+    try {
+      await api.addFeed(newFeedUrl)
+      setNewFeedUrl('')
+      setShowAddFeed(false)
+      await loadFeeds()
+    } catch (err: any) {
+      setAddFeedError(err.message || 'Failed to add feed')
+    } finally {
+      setAddFeedLoading(false)
+    }
   }
 
   const handleFeedClick = (feedId: number) => {
@@ -217,6 +238,15 @@ export function ArticleList() {
           </nav>
 
           <div className="sidebar-footer">
+            {!sidebarCollapsed && (
+              <button
+                className="sidebar-add-btn"
+                onClick={() => setShowAddFeed(true)}
+                title="Add feed"
+              >
+                <Plus size={16} />
+              </button>
+            )}
             <button className="sidebar-collapse-btn" onClick={toggleSidebar}>
               {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
@@ -295,6 +325,39 @@ export function ArticleList() {
           />
         </div>
       </div>
+
+      {/* Add Feed Modal */}
+      {showAddFeed && (
+        <div className="modal-overlay" onClick={() => setShowAddFeed(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>添加订阅源</h2>
+              <button className="btn btn-ghost btn-icon" onClick={() => setShowAddFeed(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleAddFeed} className="modal-body">
+              {addFeedError && (
+                <div className="alert alert-error" style={{marginBottom: '12px'}}>
+                  <span>{addFeedError}</span>
+                </div>
+              )}
+              <input
+                type="url"
+                value={newFeedUrl}
+                onChange={e => setNewFeedUrl(e.target.value)}
+                placeholder="https://example.com/feed.xml"
+                className="form-input"
+                required
+                autoFocus
+              />
+              <button type="submit" disabled={addFeedLoading} className="btn btn-primary" style={{marginTop: '12px', width: '100%'}}>
+                {addFeedLoading ? '添加中...' : '添加订阅源'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
