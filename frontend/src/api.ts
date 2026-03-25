@@ -116,6 +116,25 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(config),
     }),
+
+  // ─── OPML ────────────────────────────────────────────────────────────────
+
+  exportOPML: () => {
+    const base = ''
+    return fetch(`${base}/opml`).then(res => {
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+      return res.blob()
+    })
+  },
+
+  importOPML: (blob: Blob) => {
+    const base = ''
+    return fetch(`${base}/opml`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/xml' },
+      body: blob,
+    }).then(res => res.json())
+  },
 }
 
 // ─── Models (plain interfaces, match Go backend) ─────────────────────────

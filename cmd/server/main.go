@@ -16,6 +16,7 @@ import (
 	"ai-rss-reader/internal/ai"
 	"ai-rss-reader/internal/config"
 	"ai-rss-reader/internal/models"
+	"ai-rss-reader/internal/opml"
 	"ai-rss-reader/internal/repository/sqlite"
 	"ai-rss-reader/internal/service"
 )
@@ -104,6 +105,10 @@ func main() {
 
 	// Health check
 	mux.HandleFunc("GET /health", handleHealth)
+
+	// OPML
+	mux.HandleFunc("GET /opml", handleExportOPML)
+	mux.HandleFunc("POST /opml", handleImportOPML)
 
 	// CORS middleware
 	handler := corsMiddleware(mux)
@@ -556,4 +561,55 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "db": "connected"})
+}
+
+// ─── OPML ───────────────────────────────────────────────────────────────────
+
+func handleExportOPML(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	feeds, err := rssService.GetFeeds()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data, err := opml.Export(feeds)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="feeds.opml"`)
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+}
+
+func handleImportOPML(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.Header.Get("Content-Type") != "application/xml" && r.Header.Get("Content-Type") != "text/xml" {
+		http.Error(w, "Content-Type must be application/xml", http.StatusBadRequest)
+		return
+	}
+	urls, err := opml.Import(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(urls) == 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"imported": 0, "message": "no feeds found in OPML"})
+		return
+	}
+	added := 0
+	for _, url := range urls {
+		_, err := rssService.AddFeed(url)
+		if err == nil {
+			added++
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"imported": added, "total": len(urls)})
 }

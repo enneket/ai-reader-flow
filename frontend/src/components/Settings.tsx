@@ -1,5 +1,5 @@
-import {useState, useEffect} from 'react'
-import {Save, Plus, Trash2} from 'lucide-react'
+import {useState, useEffect, useRef} from 'react'
+import {Save, Plus, Trash2, Upload, Download} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
 import {changeLanguage} from '../i18n'
 import i18n from '../i18n'
@@ -31,6 +31,10 @@ export function Settings() {
   const [ruleType, setRuleType] = useState('keyword')
   const [ruleValue, setRuleValue] = useState('')
   const [ruleAction, setRuleAction] = useState('exclude')
+
+  // OPML import
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => {
     loadAIConfig()
@@ -112,6 +116,42 @@ export function Settings() {
       await loadFilterRules()
     } catch (err: any) {
       setError(err.message || 'Failed to delete filter rule')
+    }
+  }
+
+  const handleExportOPML = async () => {
+    try {
+      const blob = await api.exportOPML()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'feeds.opml'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setError(err.message || 'Failed to export OPML')
+    }
+  }
+
+  const handleImportOPML = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    setError('')
+    setSuccess('')
+    try {
+      const result = await api.importOPML(file) as { imported: number; total: number; message?: string }
+      if (result.imported === 0 && result.message) {
+        setSuccess(result.message)
+      } else {
+        setSuccess(`Imported ${result.imported} of ${result.total} feeds`)
+      }
+      setTimeout(() => setSuccess(''), 5000)
+    } catch (err: any) {
+      setError(err.message || 'Failed to import OPML')
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -280,6 +320,34 @@ export function Settings() {
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="settings-section">
+          <h3>OPML</h3>
+          <p style={{color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', fontSize: '0.875rem'}}>
+            Export or import your RSS feed subscriptions via OPML file.
+          </p>
+          <div className="form-row">
+            <button onClick={handleExportOPML} className="btn btn-secondary">
+              <Download size={16} />
+              Export OPML
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              className="btn btn-secondary"
+            >
+              <Upload size={16} />
+              {importing ? 'Importing...' : 'Import OPML'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".opml,.xml"
+              style={{display: 'none'}}
+              onChange={handleImportOPML}
+            />
+          </div>
         </section>
       </div>
     </>
