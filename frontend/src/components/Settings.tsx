@@ -1,5 +1,5 @@
 import {useState, useEffect, useRef} from 'react'
-import {Save, Plus, Trash2, Upload, Download} from 'lucide-react'
+import {Save, Plus, Trash2, Upload, Download, Sun, Moon} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
 import {changeLanguage} from '../i18n'
 import i18n from '../i18n'
@@ -35,6 +35,14 @@ export function Settings() {
   // OPML import
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
 
   useEffect(() => {
     loadAIConfig()
@@ -187,6 +195,21 @@ export function Settings() {
               ]}
               className="language-select"
             />
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <h3>Appearance</h3>
+          <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+            <button
+              type="button"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="btn btn-secondary"
+              style={{display: 'flex', alignItems: 'center', gap: '8px'}}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            </button>
           </div>
         </section>
 

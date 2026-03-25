@@ -7,7 +7,7 @@
    CSS Variables - The Magazine Design System
    ============================================ */
 :root {
-  /* Colors — dark theme */
+  /* Colors — dark theme (default) */
   --bg: #1B2637;
   --surface: #243447;
   --border: #2E4057;
@@ -836,4 +836,18 @@ body {
 
 .sidebar-add-btn:hover {
   opacity: 0.8;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg: #F8F9FA;
+  --surface: #FFFFFF;
+  --border: #E5E7EB;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+  --accent: #D97706;
+  --accent-hover: #B45309;
+  --success: #10B981;
+  --danger: #DC2626;
+  --info: #3B82F6;
 }
