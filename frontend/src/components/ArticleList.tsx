@@ -26,8 +26,50 @@ export function ArticleList() {
   const [newFeedUrl, setNewFeedUrl] = useState('')
   const [addFeedLoading, setAddFeedLoading] = useState(false)
   const [addFeedError, setAddFeedError] = useState('')
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
-  // Load initial data
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (showAddFeed) return
+
+      switch (e.key) {
+        case 'j':
+          navigateNext()
+          break
+        case 'k':
+          navigatePrev()
+          break
+        case 'o':
+        case 'Enter':
+          if (selectedArticle) setMobileReaderVisible(true)
+          break
+        case 'Escape':
+          setMobileReaderVisible(false)
+          setSelectedArticle(null)
+          break
+        case 's':
+          if (selectedArticle) handleSave(selectedArticle.id)
+          break
+        case 'a':
+          if (selectedArticle) handleAccept(selectedArticle.id)
+          break
+        case 'x':
+          if (selectedArticle) handleReject(selectedArticle.id)
+          break
+        case 'r':
+          if (!isRefreshing) handleRefresh()
+          break
+        case '?':
+          setShowShortcuts(v => !v)
+          break
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [selectedArticle, isRefreshing, showAddFeed, articles])
   useEffect(() => {
     loadFeeds()
     loadArticles()
@@ -224,6 +266,20 @@ export function ArticleList() {
     setSelectedArticle(null)
   }
 
+  const navigateNext = () => {
+    if (articles.length === 0) return
+    const idx = selectedArticle ? articles.findIndex(a => a.id === selectedArticle.id) : -1
+    const nextIdx = Math.min(idx + 1, articles.length - 1)
+    handleArticleClick(articles[nextIdx])
+  }
+
+  const navigatePrev = () => {
+    if (articles.length === 0) return
+    const idx = selectedArticle ? articles.findIndex(a => a.id === selectedArticle.id) : 0
+    const prevIdx = Math.max(idx - 1, 0)
+    handleArticleClick(articles[prevIdx])
+  }
+
   const toggleSidebar = () => {
     const next = !sidebarCollapsed
     setSidebarCollapsed(next)
@@ -381,6 +437,37 @@ export function ArticleList() {
           />
         </div>
       </div>
+
+      {/* Shortcuts Help */}
+      {showShortcuts && (
+        <div className="modal-overlay" onClick={() => setShowShortcuts(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{minWidth: '280px'}}>
+            <div className="modal-header">
+              <h2>Keyboard Shortcuts</h2>
+              <button className="btn btn-ghost btn-icon" onClick={() => setShowShortcuts(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body" style={{display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.875rem'}}>
+              {[
+                ['j / k', 'Next / Previous article'],
+                ['o / Enter', 'Open article reader'],
+                ['Esc', 'Close reader'],
+                ['a', 'Accept article'],
+                ['x', 'Reject article'],
+                ['s', 'Save as note'],
+                ['r', 'Refresh all feeds'],
+                ['?', 'Toggle this help'],
+              ].map(([key, desc]) => (
+                <div key={key} style={{display: 'flex', justifyContent: 'space-between', gap: '16px'}}>
+                  <kbd style={{background: 'var(--bg-surface)', padding: '2px 8px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem'}}>{key}</kbd>
+                  <span style={{color: 'var(--text-secondary)'}}>{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Feed Modal */}
       {showAddFeed && (
