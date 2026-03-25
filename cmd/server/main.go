@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"ai-rss-reader/internal/ai"
 	"ai-rss-reader/internal/config"
@@ -100,6 +102,9 @@ func main() {
 	mux.HandleFunc("GET /api/ai-config", handleGetAIConfig)
 	mux.HandleFunc("PUT /api/ai-config", handleSaveAIConfig)
 
+	// Health check
+	mux.HandleFunc("GET /health", handleHealth)
+
 	// CORS middleware
 	handler := corsMiddleware(mux)
 
@@ -108,17 +113,29 @@ func main() {
 		port = "8080"
 	}
 
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: handler,
+	}
+
 	// Graceful shutdown
 	go func() {
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 		<-sigChan
 		log.Println("Shutting down server...")
-		os.Exit(0)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("Server shutdown error: %v", err)
+		}
+		log.Println("Server stopped")
 	}()
 
 	log.Printf("Server starting on :%s", port)
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server error: %v", err)
 	}
 }
@@ -518,4 +535,25 @@ func handleSaveAIConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	ai.InitProvider(cfg.AIProvider)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ─── Health Check ─────────────────────────────────────────────────────────────
+
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// Check DB connectivity
+	if sqlite.DB == nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"status": "down", "db": "no connection"})
+		return
+	}
+	if err := sqlite.DB.Ping(); err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]string{"status": "down", "db": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "db": "connected"})
 }
