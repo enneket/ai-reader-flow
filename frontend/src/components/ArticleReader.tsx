@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify'
-import {ExternalLink, Check, X, Clock, Save, Sparkles, FileText} from 'lucide-react'
+import {ExternalLink, Check, X, Clock, Save, Sparkles, FileText, RefreshCw} from 'lucide-react'
 import {Article} from '../api'
 import {StatusBadge} from './StatusBadge'
 
@@ -12,6 +12,7 @@ interface ArticleReaderProps {
   onSnooze: (id: number) => void
   onSave: (id: number) => void
   onGenerateSummary: (id: number) => void
+  onRefresh: (id: number) => void
   onOpenExternal: (url: string) => void
   onBack?: () => void
 }
@@ -36,6 +37,7 @@ export function ArticleReader({
   onSnooze,
   onSave,
   onGenerateSummary,
+  onRefresh,
   onOpenExternal,
   onBack,
 }: ArticleReaderProps) {
@@ -151,6 +153,15 @@ export function ArticleReader({
           >
             <Sparkles size={14} />
             {isSummarizing ? 'Summarizing…' : 'Generate Summary'}
+          </button>
+        )}
+        {hasContent && article.content.length < 300 && (
+          <button
+            className="btn btn-secondary"
+            onClick={() => onRefresh(article.id)}
+          >
+            <RefreshCw size={14} />
+            Fetch Full Article
           </button>
         )}
         <a

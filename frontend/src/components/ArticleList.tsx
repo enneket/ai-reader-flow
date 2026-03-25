@@ -179,6 +179,18 @@ export function ArticleList() {
     }
   }
 
+  const handleFetchFullArticle = async (id: number) => {
+    try {
+      const updated = await api.refreshArticle(id)
+      await loadArticles()
+      if (selectedArticle?.id === id) {
+        setSelectedArticle(updated as any)
+      }
+    } catch (err) {
+      console.error('Failed to fetch full article:', err)
+    }
+  }
+
   const handleOpenExternal = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer')
   }
@@ -320,6 +332,7 @@ export function ArticleList() {
             onSnooze={handleSnooze}
             onSave={handleSave}
             onGenerateSummary={handleGenerateSummary}
+            onRefresh={handleFetchFullArticle}
             onOpenExternal={handleOpenExternal}
             onBack={handleBack}
           />

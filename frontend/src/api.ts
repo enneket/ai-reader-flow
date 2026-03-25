@@ -65,6 +65,8 @@ export const api = {
 
   getArticle: (id: number) => request<Article>(`/articles/${id}`),
 
+  refreshArticle: (id: number) => request<Article>(`/articles/${id}/refresh`, { method: 'POST' }),
+
   acceptArticle: (id: number) =>
     request<void>(`/articles/${id}/accept`, { method: 'POST' }),
 

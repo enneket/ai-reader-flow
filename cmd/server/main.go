@@ -82,6 +82,7 @@ func main() {
 	// Articles
 	mux.HandleFunc("GET /api/articles", handleGetArticles)
 	mux.HandleFunc("GET /api/articles/{id}", handleGetArticle)
+	mux.HandleFunc("POST /api/articles/{id}/refresh", handleRefreshArticle)
 	mux.HandleFunc("POST /api/articles/{id}/accept", handleAcceptArticle)
 	mux.HandleFunc("POST /api/articles/{id}/reject", handleRejectArticle)
 	mux.HandleFunc("POST /api/articles/{id}/snooze", handleSnoozeArticle)
@@ -318,6 +319,20 @@ func handleGetArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	article, err := rssService.GetArticle(id)
+	if err != nil || article == nil {
+		http.Error(w, "article not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, article)
+}
+
+func handleRefreshArticle(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseArticleID("/api/articles", r)
+	if !ok {
+		http.Error(w, "invalid article id", http.StatusBadRequest)
+		return
+	}
+	article, err := rssService.RefreshArticle(id)
 	if err != nil || article == nil {
 		http.Error(w, "article not found", http.StatusNotFound)
 		return

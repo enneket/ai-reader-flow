@@ -1,6 +1,7 @@
 package service
 
 import (
+	"ai-rss-reader/internal/fetch"
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/repository/sqlite"
 	"errors"
@@ -17,6 +18,7 @@ type RSSService struct {
 	feedRepo    *sqlite.FeedRepository
 	articleRepo *sqlite.ArticleRepository
 	parser      *gofeed.Parser
+	fetcher     *fetch.Fetcher
 }
 
 func NewRSSService() *RSSService {
@@ -24,6 +26,7 @@ func NewRSSService() *RSSService {
 		feedRepo:    sqlite.NewFeedRepository(),
 		articleRepo: sqlite.NewArticleRepository(),
 		parser:      gofeed.NewParser(),
+		fetcher:     fetch.NewFetcher(),
 	}
 }
 
@@ -218,4 +221,57 @@ func (s *RSSService) GetArticles(feedID int64, filterMode string, limit, offset 
 
 func (s *RSSService) GetArticle(id int64) (*models.Article, error) {
 	return s.articleRepo.GetByID(id)
+}
+
+// RefreshArticle fetches the full article content from the original URL
+// and updates the article in the database. Returns the updated article.
+func (s *RSSService) RefreshArticle(id int64) (*models.Article, error) {
+	article, err := s.articleRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if article.Link == "" {
+		return article, nil
+	}
+	fullContent, err := s.fetcher.FetchFullContent(article.Link)
+	if err != nil {
+		return article, nil // return original on failure
+	}
+	article.Content = fullContent
+	article.Summary = truncate(fullContent, 300)
+	if err := s.articleRepo.Update(article); err != nil {
+		return article, err
+	}
+	return article, nil
+}
+
+// truncate returns the first n chars of s, stripping HTML tags.
+func truncate(s string, n int) string {
+	s = stripHTML(s)
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
+}
+
+// stripHTML removes HTML tags from s.
+func stripHTML(s string) string {
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	// Simple tag strip — good enough for summaries
+	idx := 0
+	out := make([]byte, 0, len(s))
+	for idx < len(s) {
+		if s[idx] == '<' {
+			// skip to next '>'
+			for idx < len(s) && s[idx] != '>' {
+				idx++
+			}
+			idx++ // skip '>'
+			continue
+		}
+		out = append(out, s[idx])
+		idx++
+	}
+	return string(out)
 }
