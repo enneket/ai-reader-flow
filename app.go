@@ -101,7 +101,7 @@ func (a *App) RefreshAllFeeds() error {
 
 // GetArticles returns articles, optionally filtered by feedID and filterMode
 func (a *App) GetArticles(feedID int64, filterMode string) []models.Article {
-	articles, err := rssService.GetArticles(feedID, filterMode)
+	articles, err := rssService.GetArticles(feedID, filterMode, 0, 0)
 	if err != nil {
 		return []models.Article{}
 	}

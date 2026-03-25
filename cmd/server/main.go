@@ -283,7 +283,9 @@ func handleGetArticles(w http.ResponseWriter, r *http.Request) {
 	if filterMode == "" {
 		filterMode = "all"
 	}
-	articles, _ := rssService.GetArticles(feedID, filterMode)
+	limit := int(parseQueryInt(r, "limit", 100))
+	offset := int(parseQueryInt(r, "offset", 0))
+	articles, _ := rssService.GetArticles(feedID, filterMode, limit, offset)
 	writeJSON(w, http.StatusOK, articles)
 }
 

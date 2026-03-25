@@ -14,7 +14,7 @@ import (
 
 // ArticleRepo defines the repository methods needed by FilterService.
 type ArticleRepo interface {
-	GetAll(filterMode string) ([]models.Article, error)
+	GetAll(filterMode string, limit, offset int) ([]models.Article, error)
 	GetUnreadWithoutEmbedding() ([]models.Article, error)
 	SaveEmbedding(id int64, embedding []float32) error
 	UpdateQualityScore(id int64, score int) error
@@ -122,17 +122,23 @@ func (s *FilterService) filterWithAI(article *models.Article, rules []models.Fil
 }
 
 func (s *FilterService) FilterAllArticles() error {
-	articles, err := s.articleRepo.GetAll("all")
-	if err != nil {
-		return err
-	}
-
-	for _, article := range articles {
-		shouldShow, err := s.FilterArticle(&article)
+	const batchSize = 100
+	for offset := 0; ; offset += batchSize {
+		articles, err := s.articleRepo.GetAll("all", batchSize, offset)
 		if err != nil {
-			continue
+			return err
 		}
-		s.articleRepo.SetFiltered(article.ID, !shouldShow)
+		if len(articles) == 0 {
+			break
+		}
+
+		for _, article := range articles {
+			shouldShow, err := s.FilterArticle(&article)
+			if err != nil {
+				continue
+			}
+			s.articleRepo.SetFiltered(article.ID, !shouldShow)
+		}
 	}
 
 	return nil

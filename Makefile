@@ -1,12 +1,10 @@
-.PHONY: all dev dev:go dev:frontend build build-docker up down logs test clean
+.PHONY: all dev:go dev:frontend build build-docker up down logs test clean
 
 APP_NAME := ai-rss-reader
 FRONTEND_DIR := frontend
 BUILD_DIR := build
 
 all: build
-
-dev: dev:go dev:frontend
 
 dev:go:
 	go run ./cmd/server

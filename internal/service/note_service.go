@@ -5,18 +5,21 @@ import (
 	"ai-rss-reader/internal/repository"
 	"ai-rss-reader/internal/repository/sqlite"
 	"fmt"
+	"log"
 	"time"
 )
 
 type NoteService struct {
-	noteRepo *sqlite.NoteRepository
-	noteFS   *repository.NoteFS
+	noteRepo    *sqlite.NoteRepository
+	articleRepo *sqlite.ArticleRepository
+	noteFS      *repository.NoteFS
 }
 
 func NewNoteService(notesDir string) *NoteService {
 	return &NoteService{
-		noteRepo: sqlite.NewNoteRepository(),
-		noteFS:   repository.NewNoteFS(notesDir),
+		noteRepo:    sqlite.NewNoteRepository(),
+		articleRepo: sqlite.NewArticleRepository(),
+		noteFS:      repository.NewNoteFS(notesDir),
 	}
 }
 
@@ -52,8 +55,9 @@ func (s *NoteService) CreateNote(article *models.Article, summary string) (*mode
 	}
 
 	// Mark article as saved
-	articleRepo := sqlite.NewArticleRepository()
-	articleRepo.SetSaved(article.ID, true)
+	if err := s.articleRepo.SetSaved(article.ID, true); err != nil {
+		log.Printf("warning: failed to mark article %d as saved: %v", article.ID, err)
+	}
 
 	return note, nil
 }
@@ -78,7 +82,7 @@ func (s *NoteService) DeleteNote(noteID int64) error {
 
 	// Delete file
 	if err := s.noteFS.DeleteNote(note.FilePath); err != nil {
-		fmt.Printf("Warning: failed to delete note file: %v\n", err)
+		log.Printf("warning: failed to delete note file %s: %v", note.FilePath, err)
 	}
 
 	// Delete index
@@ -87,8 +91,9 @@ func (s *NoteService) DeleteNote(noteID int64) error {
 	}
 
 	// Mark article as unsaved
-	articleRepo := sqlite.NewArticleRepository()
-	articleRepo.SetSaved(note.ArticleID, false)
+	if err := s.articleRepo.SetSaved(note.ArticleID, false); err != nil {
+		log.Printf("warning: failed to mark article %d as unsaved: %v", note.ArticleID, err)
+	}
 
 	return nil
 }

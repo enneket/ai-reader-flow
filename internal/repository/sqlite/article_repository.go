@@ -4,6 +4,7 @@ import (
 	"ai-rss-reader/internal/models"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"time"
 )
 
@@ -32,11 +33,14 @@ func (r *ArticleRepository) Create(article *models.Article) error {
 	return nil
 }
 
-func (r *ArticleRepository) GetByFeedID(feedID int64) ([]models.Article, error) {
+func (r *ArticleRepository) GetByFeedID(feedID int64, limit, offset int) ([]models.Article, error) {
+	if limit <= 0 {
+		limit = 100
+	}
 	rows, err := DB.Query(
 		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
-		FROM articles WHERE feed_id = ? ORDER BY published DESC`,
-		feedID,
+		FROM articles WHERE feed_id = ? ORDER BY published DESC LIMIT ? OFFSET ?`,
+		feedID, limit, offset,
 	)
 	if err != nil {
 		return nil, err
@@ -46,7 +50,10 @@ func (r *ArticleRepository) GetByFeedID(feedID int64) ([]models.Article, error) 
 	return r.scanArticles(rows)
 }
 
-func (r *ArticleRepository) GetAll(filterMode string) ([]models.Article, error) {
+func (r *ArticleRepository) GetAll(filterMode string, limit, offset int) ([]models.Article, error) {
+	if limit <= 0 {
+		limit = 100
+	}
 	query := `SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0) FROM articles`
 	switch filterMode {
 	case "filtered":
@@ -62,9 +69,9 @@ func (r *ArticleRepository) GetAll(filterMode string) ([]models.Article, error) 
 	case "snoozed":
 		query += ` WHERE status = 'snoozed'`
 	}
-	query += ` ORDER BY published DESC`
+	query += ` ORDER BY published DESC LIMIT ? OFFSET ?`
 
-	rows, err := DB.Query(query)
+	rows, err := DB.Query(query, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -74,11 +81,11 @@ func (r *ArticleRepository) GetAll(filterMode string) ([]models.Article, error) 
 }
 
 func (r *ArticleRepository) GetFiltered() ([]models.Article, error) {
-	return r.GetAll("filtered")
+	return r.GetAll("filtered", 0, 0)
 }
 
 func (r *ArticleRepository) GetSaved() ([]models.Article, error) {
-	return r.GetAll("saved")
+	return r.GetAll("saved", 0, 0)
 }
 
 func (r *ArticleRepository) GetByID(id int64) (*models.Article, error) {
@@ -133,7 +140,7 @@ func (r *ArticleRepository) SetStatus(id int64, status string) error {
 }
 
 func (r *ArticleRepository) GetByStatus(status string) ([]models.Article, error) {
-	return r.GetAll(status)
+	return r.GetAll(status, 0, 0)
 }
 
 func (r *ArticleRepository) Delete(id int64) error {
@@ -186,6 +193,7 @@ func (r *ArticleRepository) scanArticles(rows *sql.Rows) ([]models.Article, erro
 		var qualityScore int
 		err := rows.Scan(&a.ID, &a.FeedID, &a.Title, &a.Link, &a.Content, &a.Summary, &a.Author, &published, &a.IsFiltered, &a.IsSaved, &a.Status, &createdAt, &embJSON, &qualityScore)
 		if err != nil {
+			log.Printf("scan article error (row may be skipped): %v", err)
 			continue
 		}
 		if published.Valid {

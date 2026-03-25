@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"ai-rss-reader/internal/models"
+	"log"
 )
 
 type NoteRepository struct{}
@@ -35,6 +36,7 @@ func (r *NoteRepository) GetAll() ([]models.Note, error) {
 		var note models.Note
 		err := rows.Scan(&note.ID, &note.ArticleID, &note.FilePath, &note.Title, &note.CreatedAt)
 		if err != nil {
+			log.Printf("scan note error (row may be skipped): %v", err)
 			continue
 		}
 		notes = append(notes, note)

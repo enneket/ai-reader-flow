@@ -19,10 +19,13 @@ func InitDB(dataDir string) error {
 
 	dbPath := filepath.Join(dataDir, "reader.db")
 	var err error
-	DB, err = sql.Open("sqlite3", dbPath)
+	DB, err = sql.Open("sqlite3", dbPath+"?_busy_timeout=5000&_journal_mode=WAL")
 	if err != nil {
 		return err
 	}
+
+	DB.SetMaxOpenConns(25)
+	DB.SetMaxIdleConns(5)
 
 	if err = DB.Ping(); err != nil {
 		return err

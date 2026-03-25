@@ -5,6 +5,7 @@ import (
 	"ai-rss-reader/internal/repository/sqlite"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -93,7 +94,9 @@ func (s *RSSService) fetchArticles(feed *models.Feed) error {
 		// Check if article already exists
 		exists, _ := s.articleRepo.LinkExists(article.Link)
 		if !exists {
-			s.articleRepo.Create(article)
+			if err := s.articleRepo.Create(article); err != nil {
+				log.Printf("warning: failed to save article %s: %v", article.Title, err)
+			}
 		}
 	}
 
@@ -206,11 +209,11 @@ func (s *RSSService) SetArticleStatus(id int64, status string) error {
 	return s.articleRepo.SetStatus(id, status)
 }
 
-func (s *RSSService) GetArticles(feedID int64, filterMode string) ([]models.Article, error) {
+func (s *RSSService) GetArticles(feedID int64, filterMode string, limit, offset int) ([]models.Article, error) {
 	if feedID > 0 {
-		return s.articleRepo.GetByFeedID(feedID)
+		return s.articleRepo.GetByFeedID(feedID, limit, offset)
 	}
-	return s.articleRepo.GetAll(filterMode)
+	return s.articleRepo.GetAll(filterMode, limit, offset)
 }
 
 func (s *RSSService) GetArticle(id int64) (*models.Article, error) {
