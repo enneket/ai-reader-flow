@@ -1,26 +1,30 @@
-# gstack
+# CLAUDE.md
 
-Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+## Project
 
-Available skills:
-- /office-hours
-- /plan-ceo-review
-- /plan-eng-review
-- /plan-design-review
-- /design-consultation
-- /review
-- /ship
-- /browse
-- /qa
-- /qa-only
-- /design-review
-- /setup-browser-cookies
-- /retro
-- /investigate
-- /document-release
-- /codex
-- /careful
-- /freeze
-- /guard
-- /unfreeze
-- /gstack-upgrade
+AI RSS Reader — Go REST API + React frontend, SQLite storage, AI-powered filtering.
+
+## Tech Stack
+
+- Go 1.21+, Chi router (stdlib http.ServeMux)
+- React + TypeScript, Vite
+- SQLite (WAL mode, connection pool: MaxOpenConns=25, MaxIdleConns=5)
+- Ollama / OpenAI / Claude for AI features
+
+## Key Commands
+
+```bash
+make dev:go      # Run API server
+make dev:frontend # Run frontend dev
+make build       # Build binary
+make up          # Docker compose up
+make down        # Docker compose down
+```
+
+## Architecture Notes
+
+- Services are global vars in `cmd/server/main.go` (simple DI, no DI framework)
+- Repository uses global `sqlite.DB` connection pool
+- All list queries use limit/offset pagination
+- Errors are logged via `log.Printf`, not silently ignored
+- Frontend state managed via `/api/app-state` (Wails pattern, but now REST)

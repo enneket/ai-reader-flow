@@ -4,6 +4,7 @@ import (
 	"ai-rss-reader/internal/models"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 )
@@ -114,6 +115,31 @@ func (r *ArticleRepository) GetByID(id int64) (*models.Article, error) {
 	}
 	a.QualityScore = qualityScore
 	return &a, nil
+}
+
+func (r *ArticleRepository) GetByIDs(ids []int64) ([]models.Article, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	// Build placeholders: (?, ?, ?)
+	placeholders := ""
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		if i > 0 {
+			placeholders += ","
+		}
+		placeholders += "?"
+		args[i] = id
+	}
+	query := fmt.Sprintf(
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
+		FROM articles WHERE id IN (%s)`, placeholders)
+	rows, err := DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanArticles(rows)
 }
 
 func (r *ArticleRepository) Update(article *models.Article) error {

@@ -1,4 +1,4 @@
-// API client — replaces Wails bindings with fetch calls
+// API client for the Go REST backend
 
 const BASE = '/api'
 
