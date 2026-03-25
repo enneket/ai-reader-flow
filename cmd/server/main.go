@@ -53,7 +53,6 @@ func main() {
 	if err := sqlite.InitDB(dataDir); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer sqlite.CloseDB()
 
 	// Initialize services
 	rssService = service.NewRSSService()
@@ -415,7 +414,11 @@ func handleRefreshArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	article, err := rssService.RefreshArticle(id)
-	if err != nil || article == nil {
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if article == nil {
 		http.Error(w, "article not found", http.StatusNotFound)
 		return
 	}
@@ -726,41 +729,54 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		Saved     int    `json:"saved"`
 	}
 
-	var totalArticles, totalUnread, totalAccepted, totalRejected, totalSnoozed, totalFiltered, totalSaved int
-	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles`).Scan(&totalArticles)
-	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE status = 'unread'`).Scan(&totalUnread)
-	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE status = 'accepted'`).Scan(&totalAccepted)
-	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE status = 'rejected'`).Scan(&totalRejected)
-	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE status = 'snoozed'`).Scan(&totalSnoozed)
-	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE is_filtered = 1`).Scan(&totalFiltered)
-	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE is_saved = 1`).Scan(&totalSaved)
+	// Global counts: one query with CASE WHEN instead of 7 separate COUNT(*)
+	var total, unread, accepted, rejected, snoozed, filtered, saved int
+	err := sqlite.DB.QueryRow(`
+		SELECT
+			COUNT(*),
+			COALESCE(SUM(CASE WHEN status = 'unread' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN status = 'snoozed' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN is_filtered = 1 THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN is_saved = 1 THEN 1 ELSE 0 END), 0)
+		FROM articles
+	`).Scan(&total, &unread, &accepted, &rejected, &snoozed, &filtered, &saved)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	feeds, _ := rssService.GetFeeds()
 	feedStats := make([]feedStat, 0, len(feeds))
 	for _, f := range feeds {
-		var total, unread, accepted, rejected, snoozed, filtered, saved int
-		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ?`, f.ID).Scan(&total)
-		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'unread'`, f.ID).Scan(&unread)
-		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'accepted'`, f.ID).Scan(&accepted)
-		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'rejected'`, f.ID).Scan(&rejected)
-		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'snoozed'`, f.ID).Scan(&snoozed)
-		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND is_filtered = 1`, f.ID).Scan(&filtered)
-		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND is_saved = 1`, f.ID).Scan(&saved)
+		var fTotal, fUnread, fAccepted, fRejected, fSnoozed, fFiltered, fSaved int
+		sqlite.DB.QueryRow(`
+			SELECT
+				COUNT(*),
+				COALESCE(SUM(CASE WHEN status = 'unread' THEN 1 ELSE 0 END), 0),
+				COALESCE(SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END), 0),
+				COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0),
+				COALESCE(SUM(CASE WHEN status = 'snoozed' THEN 1 ELSE 0 END), 0),
+				COALESCE(SUM(CASE WHEN is_filtered = 1 THEN 1 ELSE 0 END), 0),
+				COALESCE(SUM(CASE WHEN is_saved = 1 THEN 1 ELSE 0 END), 0)
+			FROM articles WHERE feed_id = ?
+		`, f.ID).Scan(&fTotal, &fUnread, &fAccepted, &fRejected, &fSnoozed, &fFiltered, &fSaved)
 		feedStats = append(feedStats, feedStat{
-			FeedID: f.ID, Title: f.Title, Total: total,
-			Unread: unread, Accepted: accepted, Rejected: rejected,
-			Snoozed: snoozed, Filtered: filtered, Saved: saved,
+			FeedID: f.ID, Title: f.Title, Total: fTotal,
+			Unread: fUnread, Accepted: fAccepted, Rejected: fRejected,
+			Snoozed: fSnoozed, Filtered: fFiltered, Saved: fSaved,
 		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"total_articles": totalArticles,
-		"unread":        totalUnread,
-		"accepted":      totalAccepted,
-		"rejected":      totalRejected,
-		"snoozed":       totalSnoozed,
-		"filtered":      totalFiltered,
-		"saved":         totalSaved,
+		"total_articles": total,
+		"unread":        unread,
+		"accepted":      accepted,
+		"rejected":      rejected,
+		"snoozed":       snoozed,
+		"filtered":      filtered,
+		"saved":         saved,
 		"feeds":         feedStats,
 	})
 }
