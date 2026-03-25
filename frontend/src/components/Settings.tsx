@@ -163,6 +163,34 @@ export function Settings() {
     }
   }
 
+  const handleExportJSON = async () => {
+    try {
+      const blob = await api.exportSavedArticles('json')
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'saved-articles.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setError(err.message || 'Failed to export articles')
+    }
+  }
+
+  const handleExportMarkdown = async () => {
+    try {
+      const blob = await api.exportSavedArticles('markdown')
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'saved-articles.md'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setError(err.message || 'Failed to export articles')
+    }
+  }
+
   return (
     <>
       <header className="page-header">
@@ -370,6 +398,23 @@ export function Settings() {
               style={{display: 'none'}}
               onChange={handleImportOPML}
             />
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <h3>Export Saved Articles</h3>
+          <p style={{color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', fontSize: '0.875rem'}}>
+            Download your saved articles as JSON or Markdown.
+          </p>
+          <div className="form-row">
+            <button onClick={handleExportJSON} className="btn btn-secondary">
+              <Download size={16} />
+              Export JSON
+            </button>
+            <button onClick={handleExportMarkdown} className="btn btn-secondary">
+              <Download size={16} />
+              Export Markdown
+            </button>
           </div>
         </section>
       </div>

@@ -145,6 +145,15 @@ export const api = {
       body: blob,
     }).then(res => res.json())
   },
+
+  // ─── Export ────────────────────────────────────────────────────────────────
+
+  exportSavedArticles: (format: 'json' | 'markdown' = 'json') => {
+    return fetch(`/api/export?format=${format}`).then(res => {
+      if (!res.ok) throw new Error('Export failed')
+      return res.blob()
+    })
+  },
 }
 
 // ─── Models (plain interfaces, match Go backend) ─────────────────────────

@@ -118,6 +118,9 @@ func main() {
 	// Stats
 	mux.HandleFunc("GET /api/stats", handleStats)
 
+	// Export
+	mux.HandleFunc("GET /api/export", handleExport)
+
 	// SSE events stream
 	mux.HandleFunc("GET /api/events", handleSSEvents)
 
@@ -760,6 +763,77 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		"saved":         totalSaved,
 		"feeds":         feedStats,
 	})
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+func handleExport(w http.ResponseWriter, r *http.Request) {
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json"
+	}
+
+	articles, err := rssService.GetArticles(0, "saved", 0, 0)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(articles) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"articles":[]}`))
+		return
+	}
+
+	if format == "markdown" {
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		w.Header().Set("Content-Disposition", `attachment; filename="saved-articles.md"`)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("# Saved Articles\n\n"))
+		for _, a := range articles {
+			w.Write([]byte(fmt.Sprintf("## [%s](%s)\n\n", a.Title, a.Link)))
+			w.Write([]byte(fmt.Sprintf("**Published:** %s\n\n", a.Published.Format("2006-01-02 15:04"))))
+			if a.Summary != "" {
+				w.Write([]byte(fmt.Sprintf("%s\n\n", a.Summary)))
+			}
+			if a.Content != "" {
+				// Plain text: strip HTML tags roughly
+				content := stripHTML(a.Content)
+				w.Write([]byte(content + "\n\n"))
+			}
+			w.Write([]byte("---\n\n"))
+		}
+	} else {
+		// JSON
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Disposition", `attachment; filename="saved-articles.json"`)
+		writeJSON(w, http.StatusOK, map[string]interface{}{"articles": articles})
+	}
+}
+
+// stripHTML removes basic HTML tags from content
+func stripHTML(html string) string {
+	result := ""
+	depth := 0
+	for _, r := range html {
+		if r == '<' {
+			depth++
+		} else if r == '>' {
+			depth--
+		} else if depth == 0 {
+			result += string(r)
+		}
+	}
+	// Collapse whitespace
+	lines := strings.Split(strings.TrimSpace(result), "\n")
+	var clean []string
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if l != "" {
+			clean = append(clean, l)
+		}
+	}
+	return strings.Join(clean, "\n")
 }
 
 // ─── SSE Events ───────────────────────────────────────────────────────────────
