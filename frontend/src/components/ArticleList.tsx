@@ -33,6 +33,30 @@ export function ArticleList() {
     loadArticles()
   }, [])
 
+  // SSE: listen for new article events and auto-refresh
+  useEffect(() => {
+    let es: EventSource | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout>
+
+    const connect = () => {
+      es = new EventSource('/api/events')
+      es.addEventListener('new_articles', () => {
+        loadArticles()
+        loadFeeds()
+      })
+      es.addEventListener('error', () => {
+        es?.close()
+        reconnectTimer = setTimeout(connect, 5000)
+      })
+    }
+
+    connect()
+    return () => {
+      es?.close()
+      clearTimeout(reconnectTimer)
+    }
+  }, [])
+
   const loadFeeds = async () => {
     try {
       const data = await api.getFeeds()

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	"ai-rss-reader/internal/ai"
 	"ai-rss-reader/internal/config"
+	"ai-rss-reader/internal/events"
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/opml"
 	"ai-rss-reader/internal/repository/sqlite"
@@ -111,6 +113,9 @@ func main() {
 	mux.HandleFunc("GET /opml", handleExportOPML)
 	mux.HandleFunc("POST /opml", handleImportOPML)
 
+	// SSE events stream
+	mux.HandleFunc("GET /api/events", handleSSEvents)
+
 	// CORS middleware
 	handler := corsMiddleware(mux)
 
@@ -139,6 +144,34 @@ func main() {
 		}
 		log.Println("Server stopped")
 	}()
+
+	// Start background feed refresh if configured
+	if cfg.Cron.Enabled && cfg.Cron.IntervalMins > 0 {
+		interval := time.Duration(cfg.Cron.IntervalMins) * time.Minute
+		go func() {
+			// Wait a bit before first refresh so server is fully ready
+			time.Sleep(30 * time.Second)
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for range ticker.C {
+				log.Printf("[cron] Refreshing all feeds (interval: %v)", interval)
+				if err := rssService.RefreshAllFeeds(); err != nil {
+					log.Printf("[cron] RefreshAllFeeds error: %v", err)
+					continue
+				}
+				newArticleIDs, err := filterService.FilterAllArticlesNew()
+				if err != nil {
+					log.Printf("[cron] FilterAllArticlesNew error: %v", err)
+					continue
+				}
+				events.GlobalBroadcaster.Broadcast(events.EventNewArticles, map[string]int{"count": len(newArticleIDs)})
+				go func() {
+					summaryService.BatchGenerateSummaries(newArticleIDs, 5)
+				}()
+			}
+		}()
+		log.Printf("[cron] Feed refresh enabled (every %v)", interval)
+	}
 
 	log.Printf("Server starting on :%s", port)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -291,6 +324,8 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Broadcast to SSE clients so they can refresh their article list
+	events.GlobalBroadcaster.Broadcast(events.EventNewArticles, map[string]int{"count": len(newArticleIDs)})
 	// Launch background goroutine to generate summaries
 	go func() {
 		summaryService.BatchGenerateSummaries(newArticleIDs, 5)
@@ -627,4 +662,47 @@ func handleImportOPML(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"imported": added, "total": len(urls)})
+}
+
+// ─── SSE Events ───────────────────────────────────────────────────────────────
+
+func handleSSEvents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
+	ch := events.GlobalBroadcaster.Add()
+	defer events.GlobalBroadcaster.Remove(ch)
+
+	// Send initial ping
+	fmt.Fprintf(w, "event: ping\ndata: {}\n\n")
+	flusher.Flush()
+
+	// Keep connection alive, drain messages
+	for {
+		select {
+		case data, ok := <-ch:
+			if !ok {
+				return
+			}
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+		case <-r.Context().Done():
+			return
+		}
+	}
 }
