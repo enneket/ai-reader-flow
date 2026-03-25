@@ -84,6 +84,7 @@ func main() {
 
 	// Articles
 	mux.HandleFunc("GET /api/articles", handleGetArticles)
+	mux.HandleFunc("GET /api/articles/search", handleSearchArticles)
 	mux.HandleFunc("GET /api/articles/{id}", handleGetArticle)
 	mux.HandleFunc("POST /api/articles/{id}/refresh", handleRefreshArticle)
 	mux.HandleFunc("POST /api/articles/{id}/accept", handleAcceptArticle)
@@ -370,6 +371,20 @@ func handleGetArticles(w http.ResponseWriter, r *http.Request) {
 	limit := int(parseQueryInt(r, "limit", 100))
 	offset := int(parseQueryInt(r, "offset", 0))
 	articles, _ := rssService.GetArticles(feedID, filterMode, limit, offset)
+	writeJSON(w, http.StatusOK, articles)
+}
+
+func handleSearchArticles(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		writeJSON(w, http.StatusOK, []models.Article{})
+		return
+	}
+	articles, err := rssService.SearchArticles(q, 20)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	writeJSON(w, http.StatusOK, articles)
 }
 

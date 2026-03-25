@@ -231,6 +231,10 @@ func (s *RSSService) GetArticle(id int64) (*models.Article, error) {
 	return s.articleRepo.GetByID(id)
 }
 
+func (s *RSSService) SearchArticles(query string, limit int) ([]models.Article, error) {
+	return s.articleRepo.Search(query, limit)
+}
+
 // RefreshArticle fetches the full article content from the original URL
 // and updates the article in the database. Returns the updated article.
 func (s *RSSService) RefreshArticle(id int64) (*models.Article, error) {

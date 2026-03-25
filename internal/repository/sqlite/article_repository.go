@@ -31,6 +31,8 @@ func (r *ArticleRepository) Create(article *models.Article) error {
 	}
 	id, _ := result.LastInsertId()
 	article.ID = id
+	// Index in FTS for full-text search
+	_ = IndexArticle(article.ID, article.Title, article.Content)
 	return nil
 }
 
@@ -171,7 +173,11 @@ func (r *ArticleRepository) GetByStatus(status string) ([]models.Article, error)
 
 func (r *ArticleRepository) Delete(id int64) error {
 	_, err := DB.Exec(`DELETE FROM articles WHERE id = ?`, id)
-	return err
+	if err != nil {
+		return err
+	}
+	_ = RemoveArticleFTS(id)
+	return nil
 }
 
 // GetUnreadWithoutEmbedding returns unread articles that haven't been embedding-scored yet.
@@ -208,6 +214,26 @@ func (r *ArticleRepository) LinkExists(link string) (bool, error) {
 	var count int
 	err := DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE link = ?`, link).Scan(&count)
 	return count > 0, err
+}
+
+func (r *ArticleRepository) Search(query string, limit int) ([]models.Article, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	// FTS5 search on title + content, return matching article IDs
+	rows, err := DB.Query(`
+		SELECT a.id, a.feed_id, a.title, a.link, a.content, a.summary, a.author, a.published,
+		       a.is_filtered, a.is_saved, a.status, a.created_at, a.embedding, COALESCE(a.quality_score, 0)
+		FROM articles a
+		JOIN articles_fts fts ON a.id = fts.article_id
+		WHERE articles_fts MATCH ?
+		ORDER BY rank
+		LIMIT ?`, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanArticles(rows)
 }
 
 func (r *ArticleRepository) scanArticles(rows *sql.Rows) ([]models.Article, error) {

@@ -18,6 +18,7 @@ export function ArticleList() {
   const [loading, setLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState<number | null>(null)
+  const [searchResults, setSearchResults] = useState<Article[] | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
   })
@@ -311,6 +312,8 @@ export function ArticleList() {
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
         onSettings={handleSettings}
+        onSearchResults={setSearchResults}
+        onClearSearch={() => setSearchResults(null)}
       />
 
       <div className="app-body">
@@ -387,7 +390,31 @@ export function ArticleList() {
           </div>
 
           <div className="article-list">
-            {loading && articles.length === 0 ? (
+            {searchResults !== null ? (
+              searchResults.length === 0 ? (
+                <div className="empty-state">
+                  <FileText />
+                  <p>No results found</p>
+                </div>
+              ) : (
+                <>
+                  <div className="article-list-header" style={{padding: '8px 16px', fontSize: '0.8rem', color: 'var(--text-secondary)'}}>
+                    {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                  </div>
+                  {searchResults.map((article, index) => (
+                    <ArticleCard
+                      key={article.id}
+                      article={article}
+                      feedName={getFeedName(article.feed_id)}
+                      isSelected={selectedArticle?.id === article.id}
+                      isLead={index === 0}
+                      isSummarizing={isSummarizing === article.id}
+                      onClick={() => handleArticleClick(article)}
+                    />
+                  ))}
+                </>
+              )
+            ) : loading && articles.length === 0 ? (
               <div className="loading">Loading…</div>
             ) : articles.length === 0 ? (
               <div className="empty-state">

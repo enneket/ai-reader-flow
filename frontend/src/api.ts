@@ -67,6 +67,10 @@ export const api = {
     return request<Article[]>(`/articles${qs ? `?${qs}` : ''}`)
   },
 
+  searchArticles: (q: string) => {
+    return request<Article[]>(`/articles/search?q=${encodeURIComponent(q)}`)
+  },
+
   getArticle: (id: number) => request<Article>(`/articles/${id}`),
 
   refreshArticle: (id: number) => request<Article>(`/articles/${id}/refresh`, { method: 'POST' }),

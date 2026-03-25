@@ -113,6 +113,9 @@ func createTables() error {
 	_ = migrateAddColumn("articles", "embedding", "TEXT")
 	_ = migrateAddColumn("articles", "quality_score", "INTEGER DEFAULT 0")
 
+	// Create FTS5 virtual table for full-text search
+	_ = createFTSTable()
+
 	return nil
 }
 
@@ -134,4 +137,42 @@ func CloseDB() {
 	if DB != nil {
 		DB.Close()
 	}
+}
+
+func createFTSTable() error {
+	// Create FTS5 virtual table for full-text search on article title + content
+	_, err := DB.Exec(`
+		CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
+			article_id UNINDEXED,
+			title,
+			content,
+			content='articles',
+			content_rowid='id'
+		)
+	`)
+	if err != nil {
+		return err
+	}
+	// Populate FTS table from existing articles (idempotent — just upsert)
+	_, _ = DB.Exec(`
+		INSERT OR IGNORE INTO articles_fts(rowid, article_id, title, content)
+		SELECT id, id, title, COALESCE(content, '') FROM articles
+		WHERE id NOT IN (SELECT article_id FROM articles_fts)
+	`)
+	return nil
+}
+
+// IndexArticle adds an article to the FTS index (called after article is created)
+func IndexArticle(articleID int64, title, content string) error {
+	_, err := DB.Exec(
+		`INSERT OR REPLACE INTO articles_fts(rowid, article_id, title, content) VALUES (?, ?, ?, ?)`,
+		articleID, articleID, title, content,
+	)
+	return err
+}
+
+// RemoveArticleFTS removes an article from the FTS index
+func RemoveArticleFTS(articleID int64) error {
+	_, err := DB.Exec(`DELETE FROM articles_fts WHERE article_id = ?`, articleID)
+	return err
 }
