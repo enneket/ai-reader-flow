@@ -204,6 +204,14 @@ func (s *RSSService) GetDeadFeeds() ([]models.Feed, error) {
 	return s.feedRepo.GetDeadFeeds()
 }
 
+func (s *RSSService) GetFeed(id int64) (*models.Feed, error) {
+	return s.feedRepo.GetByID(id)
+}
+
+func (s *RSSService) UpdateFeed(feed *models.Feed) error {
+	return s.feedRepo.Update(feed)
+}
+
 func (s *RSSService) DeleteFeed(id int64) error {
 	return s.feedRepo.Delete(id)
 }

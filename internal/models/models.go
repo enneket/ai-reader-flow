@@ -11,6 +11,7 @@ type Feed struct {
 	LastFetched time.Time `json:"last_fetched"`
 	IsDead     bool      `json:"is_dead"` // true if feed returned 404/410
 	CreatedAt  time.Time `json:"created_at"`
+	Group      string    `json:"group"` // feed group/folder name, "" means ungrouped
 }
 
 type Article struct {

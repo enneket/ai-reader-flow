@@ -31,6 +31,7 @@ export interface Feed {
   last_fetched: string | null
   is_dead: boolean
   created_at: string
+  group: string
 }
 
 export const api = {
@@ -38,6 +39,9 @@ export const api = {
 
   addFeed: (url: string) =>
     request<Feed>('/feeds', { method: 'POST', body: JSON.stringify({ url }) }),
+
+  updateFeed: (id: number, group: string) =>
+    request<Feed>(`/feeds/${id}`, { method: 'PATCH', body: JSON.stringify({ group }) }),
 
   deleteFeed: (id: number) =>
     request<void>(`/feeds/${id}`, { method: 'DELETE' }),

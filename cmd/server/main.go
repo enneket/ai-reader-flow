@@ -75,6 +75,7 @@ func main() {
 	// Feeds
 	mux.HandleFunc("GET /api/feeds", handleGetFeeds)
 	mux.HandleFunc("POST /api/feeds", handleAddFeed)
+	mux.HandleFunc("PATCH /api/feeds/{id}", handleUpdateFeed)
 	mux.HandleFunc("DELETE /api/feeds/{id}", handleDeleteFeed)
 	mux.HandleFunc("GET /api/feeds/dead", handleGetDeadFeeds)
 	mux.HandleFunc("DELETE /api/feeds/dead/{id}", handleDeleteDeadFeed)
@@ -281,6 +282,31 @@ func handleDeleteFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func handleUpdateFeed(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID("/api/feeds", r)
+	if !ok {
+		http.Error(w, "invalid feed id", http.StatusBadRequest)
+		return
+	}
+	var req struct {
+		Group string `json:"group"`
+	}
+	if !readJSON(w, r, &req) {
+		return
+	}
+	feed, err := rssService.GetFeed(id)
+	if err != nil {
+		http.Error(w, "feed not found", http.StatusNotFound)
+		return
+	}
+	feed.Group = req.Group
+	if err := rssService.UpdateFeed(feed); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, feed)
 }
 
 func handleGetDeadFeeds(w http.ResponseWriter, r *http.Request) {

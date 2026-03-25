@@ -3,6 +3,7 @@ package sqlite
 import (
 	"ai-rss-reader/internal/models"
 	"database/sql"
+	"log"
 	"time"
 )
 
@@ -14,9 +15,9 @@ func NewFeedRepository() *FeedRepository {
 
 func (r *FeedRepository) Create(feed *models.Feed) error {
 	result, err := DB.Exec(
-		`INSERT INTO feeds (title, url, description, icon_url, last_fetched, is_dead, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		feed.Title, feed.URL, feed.Description, feed.IconURL, feed.LastFetched.Format(time.RFC3339), false, feed.CreatedAt.Format(time.RFC3339),
+		`INSERT INTO feeds (title, url, description, icon_url, last_fetched, is_dead, created_at, group_name)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		feed.Title, feed.URL, feed.Description, feed.IconURL, feed.LastFetched.Format(time.RFC3339), false, feed.CreatedAt.Format(time.RFC3339), feed.Group,
 	)
 	if err != nil {
 		return err
@@ -27,7 +28,7 @@ func (r *FeedRepository) Create(feed *models.Feed) error {
 }
 
 func (r *FeedRepository) GetAll() ([]models.Feed, error) {
-	rows, err := DB.Query(`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at FROM feeds ORDER BY created_at DESC`)
+	rows, err := DB.Query(`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at, COALESCE(group_name, '') FROM feeds ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +38,9 @@ func (r *FeedRepository) GetAll() ([]models.Feed, error) {
 	for rows.Next() {
 		var f models.Feed
 		var lastFetched, createdAt sql.NullString
-		err := rows.Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt)
+		err := rows.Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt, &f.Group)
 		if err != nil {
+			log.Printf("scan feed error (row may be skipped): %v", err)
 			continue
 		}
 		if lastFetched.Valid {
@@ -56,9 +58,9 @@ func (r *FeedRepository) GetByID(id int64) (*models.Feed, error) {
 	var f models.Feed
 	var lastFetched, createdAt sql.NullString
 	err := DB.QueryRow(
-		`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at FROM feeds WHERE id = ?`,
+		`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at, COALESCE(group_name, '') FROM feeds WHERE id = ?`,
 		id,
-	).Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt)
+	).Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt, &f.Group)
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +75,8 @@ func (r *FeedRepository) GetByID(id int64) (*models.Feed, error) {
 
 func (r *FeedRepository) Update(feed *models.Feed) error {
 	_, err := DB.Exec(
-		`UPDATE feeds SET title = ?, description = ?, icon_url = ?, last_fetched = ? WHERE id = ?`,
-		feed.Title, feed.Description, feed.IconURL, feed.LastFetched.Format(time.RFC3339), feed.ID,
+		`UPDATE feeds SET title = ?, description = ?, icon_url = ?, last_fetched = ?, group_name = ? WHERE id = ?`,
+		feed.Title, feed.Description, feed.IconURL, feed.LastFetched.Format(time.RFC3339), feed.Group, feed.ID,
 	)
 	return err
 }
@@ -90,7 +92,7 @@ func (r *FeedRepository) MarkDead(id int64) error {
 }
 
 func (r *FeedRepository) GetDeadFeeds() ([]models.Feed, error) {
-	rows, err := DB.Query(`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at FROM feeds WHERE is_dead = 1 ORDER BY created_at DESC`)
+	rows, err := DB.Query(`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at, COALESCE(group_name, '') FROM feeds WHERE is_dead = 1 ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -100,8 +102,9 @@ func (r *FeedRepository) GetDeadFeeds() ([]models.Feed, error) {
 	for rows.Next() {
 		var f models.Feed
 		var lastFetched, createdAt sql.NullString
-		err := rows.Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt)
+		err := rows.Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt, &f.Group)
 		if err != nil {
+			log.Printf("scan dead feed error (row may be skipped): %v", err)
 			continue
 		}
 		if lastFetched.Valid {

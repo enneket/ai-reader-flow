@@ -237,6 +237,18 @@ export function ArticleList() {
 
   const sortedFeeds = [...feeds].sort((a, b) => (a.title || '').localeCompare(b.title || ''))
 
+  // Group feeds by group name
+  const groupedFeeds = sortedFeeds.reduce<Record<string, Feed[]>>((acc, feed) => {
+    const g = feed.group || ''
+    if (!acc[g]) acc[g] = []
+    acc[g].push(feed)
+    return acc
+  }, {})
+  const sortedGroups = Object.keys(groupedFeeds).sort((a, b) => {
+    if (a === '') return -1  // ungrouped at top
+    return a.localeCompare(b)
+  })
+
   return (
     <div className="app">
       <Masthead
@@ -261,14 +273,21 @@ export function ArticleList() {
               <span className="sidebar-feed-name">All Articles</span>
             </div>
 
-            {sortedFeeds.map(feed => (
-              <div
-                key={feed.id}
-                className={`sidebar-item ${selectedFeedId === feed.id ? 'active' : ''}`}
-                onClick={() => handleFeedClick(feed.id)}
-              >
-                <Rss size={16} className="sidebar-item-icon" />
-                <span className="sidebar-feed-name">{feed.title || 'Untitled'}</span>
+            {sortedGroups.map(group => (
+              <div key={group}>
+                {group !== '' && (
+                  <div className="sidebar-group-label">{group}</div>
+                )}
+                {groupedFeeds[group].map(feed => (
+                  <div
+                    key={feed.id}
+                    className={`sidebar-item ${selectedFeedId === feed.id ? 'active' : ''}`}
+                    onClick={() => handleFeedClick(feed.id)}
+                  >
+                    <Rss size={16} className="sidebar-item-icon" />
+                    <span className="sidebar-feed-name">{feed.title || 'Untitled'}</span>
+                  </div>
+                ))}
               </div>
             ))}
           </nav>

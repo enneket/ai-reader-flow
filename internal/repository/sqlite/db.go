@@ -49,7 +49,8 @@ func createTables() error {
 		icon_url TEXT,
 		last_fetched TEXT,
 		is_dead INTEGER DEFAULT 0,
-		created_at TEXT DEFAULT CURRENT_TIMESTAMP
+		created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+		group_name TEXT DEFAULT ''
 	);
 
 	CREATE TABLE IF NOT EXISTS articles (
@@ -104,6 +105,8 @@ func createTables() error {
 
 	// Migration: add is_dead column if it doesn't exist (for existing databases)
 	_ = migrateAddColumn("feeds", "is_dead", "INTEGER DEFAULT 0")
+	// Migration: add group column for feed folders
+	_ = migrateAddColumn("feeds", "group_name", "TEXT DEFAULT ''")
 	// Migration: add status column if it doesn't exist (for existing databases)
 	_ = migrateAddColumn("articles", "status", "TEXT DEFAULT 'unread'")
 	// Migration: add embedding and quality_score columns for Plan B
