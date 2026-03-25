@@ -115,6 +115,9 @@ func main() {
 	mux.HandleFunc("GET /opml", handleExportOPML)
 	mux.HandleFunc("POST /opml", handleImportOPML)
 
+	// Stats
+	mux.HandleFunc("GET /api/stats", handleStats)
+
 	// SSE events stream
 	mux.HandleFunc("GET /api/events", handleSSEvents)
 
@@ -703,6 +706,60 @@ func handleImportOPML(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"imported": added, "total": len(urls)})
+}
+
+// ─── Stats ───────────────────────────────────────────────────────────────────
+
+func handleStats(w http.ResponseWriter, r *http.Request) {
+	type feedStat struct {
+		FeedID    int64  `json:"feed_id"`
+		Title     string `json:"title"`
+		Total     int    `json:"total"`
+		Unread    int    `json:"unread"`
+		Accepted  int    `json:"accepted"`
+		Rejected  int    `json:"rejected"`
+		Snoozed   int    `json:"snoozed"`
+		Filtered  int    `json:"filtered"`
+		Saved     int    `json:"saved"`
+	}
+
+	var totalArticles, totalUnread, totalAccepted, totalRejected, totalSnoozed, totalFiltered, totalSaved int
+	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles`).Scan(&totalArticles)
+	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE status = 'unread'`).Scan(&totalUnread)
+	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE status = 'accepted'`).Scan(&totalAccepted)
+	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE status = 'rejected'`).Scan(&totalRejected)
+	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE status = 'snoozed'`).Scan(&totalSnoozed)
+	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE is_filtered = 1`).Scan(&totalFiltered)
+	_ = sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE is_saved = 1`).Scan(&totalSaved)
+
+	feeds, _ := rssService.GetFeeds()
+	feedStats := make([]feedStat, 0, len(feeds))
+	for _, f := range feeds {
+		var total, unread, accepted, rejected, snoozed, filtered, saved int
+		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ?`, f.ID).Scan(&total)
+		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'unread'`, f.ID).Scan(&unread)
+		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'accepted'`, f.ID).Scan(&accepted)
+		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'rejected'`, f.ID).Scan(&rejected)
+		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'snoozed'`, f.ID).Scan(&snoozed)
+		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND is_filtered = 1`, f.ID).Scan(&filtered)
+		sqlite.DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND is_saved = 1`, f.ID).Scan(&saved)
+		feedStats = append(feedStats, feedStat{
+			FeedID: f.ID, Title: f.Title, Total: total,
+			Unread: unread, Accepted: accepted, Rejected: rejected,
+			Snoozed: snoozed, Filtered: filtered, Saved: saved,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"total_articles": totalArticles,
+		"unread":        totalUnread,
+		"accepted":      totalAccepted,
+		"rejected":      totalRejected,
+		"snoozed":       totalSnoozed,
+		"filtered":      totalFiltered,
+		"saved":         totalSaved,
+		"feeds":         feedStats,
+	})
 }
 
 // ─── SSE Events ───────────────────────────────────────────────────────────────
