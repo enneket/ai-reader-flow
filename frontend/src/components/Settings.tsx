@@ -356,7 +356,7 @@ export function Settings() {
                   <span className={`badge badge-${rule.action}`}>
                     {rule.action}
                   </span>
-                  <span className="badge" style={{background: 'var(--bg-surface)'}}>
+                  <span className="badge" style={{background: 'var(--surface)'}}>
                     {rule.type}
                   </span>
                   <span className="rule-value">{rule.value}</span>

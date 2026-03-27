@@ -487,7 +487,7 @@ export function ArticleList() {
                 ['?', 'Toggle this help'],
               ].map(([key, desc]) => (
                 <div key={key} style={{display: 'flex', justifyContent: 'space-between', gap: '16px'}}>
-                  <kbd style={{background: 'var(--bg-surface)', padding: '2px 8px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem'}}>{key}</kbd>
+                  <kbd style={{background: 'var(--surface)', padding: '2px 8px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem'}}>{key}</kbd>
                   <span style={{color: 'var(--text-secondary)'}}>{desc}</span>
                 </div>
               ))}

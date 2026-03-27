@@ -57,7 +57,7 @@ export function Layout({children}: LayoutProps) {
         </nav>
 
         <div className="sidebar-footer">
-          <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>
+          <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
             AI RSS Reader v1.0
           </div>
         </div>

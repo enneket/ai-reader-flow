@@ -733,6 +733,25 @@ body {
   border-color: var(--accent);
 }
 
+.form-input {
+  font-size: 12px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.form-input::placeholder {
+  color: var(--text-secondary);
+}
+
 /* ============================================
    Loading States
    ============================================ */
