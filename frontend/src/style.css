@@ -33,6 +33,9 @@
   --space-8: 32px;
   --space-12: 48px;
 
+  /* Border radius */
+  --radius: 6px;
+
   /* Layout */
   --sidebar-width: 240px;
   --sidebar-collapsed: 48px;
@@ -901,6 +904,62 @@ body {
 
 .sidebar-add-btn:hover {
   opacity: 0.8;
+}
+
+/* Page layout */
+.page-header {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.page-content {
+  padding: var(--space-6);
+  max-width: 800px;
+}
+
+.settings-section {
+  margin-bottom: var(--space-8);
+  padding: var(--space-4);
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.settings-section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4) 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Form groups */
+.form-group {
+  margin-bottom: var(--space-4);
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.form-row > * {
+  flex: 1;
+  min-width: 150px;
 }
 
 /* Light theme */
