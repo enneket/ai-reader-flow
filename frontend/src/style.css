@@ -251,6 +251,37 @@ body {
   padding: var(--space-2);
 }
 
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: none;
+  position: relative;
+  white-space: nowrap;
+  margin-bottom: var(--space-1);
+}
+
+.nav-item:hover {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--accent);
+  color: white;
+}
+
+.nav-item svg {
+  flex-shrink: 0;
+}
+
 .sidebar-group-label {
   font-size: 0.7rem;
   font-weight: 600;
