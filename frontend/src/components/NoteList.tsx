@@ -155,6 +155,10 @@ export function NoteList() {
         </aside>
 
         <main className="app-main">
+          <header className="page-header">
+            <h1 className="page-title">{t('notes.title')}</h1>
+          </header>
+
           {error && (
             <div className="alert alert-error" style={{margin: 'var(--space-4)'}}>
               <span>{error}</span>
