@@ -1,4 +1,4 @@
-.PHONY: all dev:go dev:frontend build build-docker up down logs test clean
+.PHONY: all dev-go dev-frontend build build-docker up down logs test clean
 
 APP_NAME := ai-rss-reader
 FRONTEND_DIR := frontend
@@ -6,10 +6,10 @@ BUILD_DIR := build
 
 all: build
 
-dev:go:
+dev-go:
 	go run ./cmd/server
 
-dev:frontend:
+dev-frontend:
 	cd $(FRONTEND_DIR) && npm run dev
 
 build: build-docker
