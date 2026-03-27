@@ -834,13 +834,15 @@ body {
    ============================================ */
 .form-select {
   font-size: 12px;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text-secondary);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-primary);
   cursor: pointer;
   font-family: var(--font-sans);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .form-select:focus {
@@ -850,12 +852,14 @@ body {
 
 .form-input {
   font-size: 12px;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
+  border-radius: var(--radius);
+  background: var(--surface);
   color: var(--text-primary);
   font-family: var(--font-sans);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .form-input:focus {
