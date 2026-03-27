@@ -17,55 +17,57 @@ export function Layout({children}: LayoutProps) {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <Rss size={24} />
-            <span>{t('nav.aiRss')}</span>
+      <div className="app-body">
+        <aside className="sidebar">
+          <div className="sidebar-header">
+            <div className="sidebar-logo">
+              <Rss size={24} />
+              <span>{t('nav.aiRss')}</span>
+            </div>
           </div>
-        </div>
 
-        <nav className="sidebar-nav">
-          <Link
-            to="/"
-            className={`nav-item ${isActive('/') && location.pathname === '/' ? 'active' : ''}`}
-          >
-            <LayoutGrid />
-            <span>{t('nav.feeds')}</span>
-          </Link>
-          <Link
-            to="/articles"
-            className={`nav-item ${isActive('/articles') ? 'active' : ''}`}
-          >
-            <FileText />
-            <span>{t('nav.articles')}</span>
-          </Link>
-          <Link
-            to="/notes"
-            className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
-          >
-            <FileText />
-            <span>{t('nav.notes')}</span>
-          </Link>
-          <Link
-            to="/settings"
-            className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
-          >
-            <Settings />
-            <span>{t('nav.settings')}</span>
-          </Link>
-        </nav>
+          <nav className="sidebar-nav">
+            <Link
+              to="/"
+              className={`nav-item ${isActive('/') && location.pathname === '/' ? 'active' : ''}`}
+            >
+              <LayoutGrid />
+              <span>{t('nav.feeds')}</span>
+            </Link>
+            <Link
+              to="/articles"
+              className={`nav-item ${isActive('/articles') ? 'active' : ''}`}
+            >
+              <FileText />
+              <span>{t('nav.articles')}</span>
+            </Link>
+            <Link
+              to="/notes"
+              className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
+            >
+              <FileText />
+              <span>{t('nav.notes')}</span>
+            </Link>
+            <Link
+              to="/settings"
+              className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
+            >
+              <Settings />
+              <span>{t('nav.settings')}</span>
+            </Link>
+          </nav>
 
-        <div className="sidebar-footer">
-          <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
-            AI RSS Reader v1.0
+          <div className="sidebar-footer">
+            <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+              AI RSS Reader v1.0
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      <main className="app-main">
-        {children}
-      </main>
+        <main className="app-main">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

@@ -93,6 +93,12 @@ body {
   overflow: hidden;
 }
 
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
 /* ============================================
    Masthead (48px fixed top)
    ============================================ */
