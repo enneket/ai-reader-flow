@@ -1,6 +1,7 @@
 import {useState, useEffect} from 'react'
-import {useNavigate} from 'react-router-dom'
-import {Rss, FileText, ChevronLeft, ChevronRight, Settings, Plus, X} from 'lucide-react'
+import {useNavigate, Link, useLocation} from 'react-router-dom'
+import {Rss, FileText, ChevronLeft, ChevronRight, Settings, Plus, X, LayoutGrid} from 'lucide-react'
+import {useTranslation} from 'react-i18next'
 import {api, Article, Feed} from '../api'
 import {Masthead} from './Masthead'
 import {ArticleCard} from './ArticleCard'
@@ -10,6 +11,8 @@ const SIDEBAR_COLLAPSED_KEY = 'sidebar_collapsed'
 
 export function ArticleList() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const {t} = useTranslation()
   const [articles, setArticles] = useState<Article[]>([])
   const [feeds, setFeeds] = useState<Feed[]>([])
   const [selectedFeedId, setSelectedFeedId] = useState<number>(0)
@@ -28,6 +31,11 @@ export function ArticleList() {
   const [addFeedLoading, setAddFeedLoading] = useState(false)
   const [addFeedError, setAddFeedError] = useState('')
   const [showShortcuts, setShowShortcuts] = useState(false)
+
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/'
+    return location.pathname.startsWith(path)
+  }
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -317,77 +325,92 @@ export function ArticleList() {
       />
 
       <div className="app-body">
-        {/* Column 1: Feed Sidebar */}
-        <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        {/* Navigation Sidebar - unified across all pages */}
+        <aside className="sidebar">
           <div className="sidebar-header">
-            <span className="sidebar-title">Feeds</span>
+            <div className="sidebar-logo">
+              <Rss size={24} />
+              <span>{t('nav.aiRss')}</span>
+            </div>
           </div>
 
           <nav className="sidebar-nav">
-            <div
-              className={`sidebar-item ${selectedFeedId === 0 ? 'active' : ''}`}
-              onClick={() => handleFeedClick(0)}
+            <Link
+              to="/"
+              className={`nav-item ${isActive('/') && location.pathname === '/' ? 'active' : ''}`}
             >
-              <Rss size={16} className="sidebar-item-icon" />
-              <span className="sidebar-feed-name">All Articles</span>
-            </div>
-
-            {sortedGroups.map(group => (
-              <div key={group}>
-                {group !== '' && (
-                  <div className="sidebar-group-label">{group}</div>
-                )}
-                {groupedFeeds[group].map(feed => (
-                  <div
-                    key={feed.id}
-                    className={`sidebar-item ${selectedFeedId === feed.id ? 'active' : ''}`}
-                    onClick={() => handleFeedClick(feed.id)}
-                  >
-                    <Rss size={16} className="sidebar-item-icon" />
-                    <span className="sidebar-feed-name">{feed.title || 'Untitled'}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
+              <LayoutGrid />
+              <span>{t('nav.feeds')}</span>
+            </Link>
+            <Link
+              to="/articles"
+              className={`nav-item ${isActive('/articles') ? 'active' : ''}`}
+            >
+              <FileText />
+              <span>{t('nav.articles')}</span>
+            </Link>
+            <Link
+              to="/notes"
+              className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
+            >
+              <FileText />
+              <span>{t('nav.notes')}</span>
+            </Link>
+            <Link
+              to="/settings"
+              className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
+            >
+              <Settings />
+              <span>{t('nav.settings')}</span>
+            </Link>
           </nav>
 
           <div className="sidebar-footer">
-            {!sidebarCollapsed && (
-              <button
-                className="sidebar-add-btn"
-                onClick={() => setShowAddFeed(true)}
-                title="Add feed"
-              >
-                <Plus size={16} />
-              </button>
-            )}
-            <button className="sidebar-collapse-btn" onClick={toggleSidebar}>
-              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-            </button>
-            {!sidebarCollapsed && (
-              <div className="sidebar-footer-version">AI RSS Reader</div>
-            )}
+            <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+              AI RSS Reader v1.0
+            </div>
           </div>
         </aside>
 
-        {/* Column 2: Article List */}
-        <div className="article-list-col">
-          <div className="article-list-header">
-            <span className="article-list-title">Today's Briefing</span>
-            <select
-              className="article-list-filter"
-              value={filterMode}
-              onChange={e => setFilterMode(e.target.value)}
-            >
-              <option value="all">All</option>
-              <option value="unread">Unread</option>
-              <option value="accepted">Accepted</option>
-              <option value="rejected">Rejected</option>
-              <option value="snoozed">Snoozed</option>
-              <option value="saved">Saved</option>
-              <option value="filtered">Filtered</option>
-            </select>
-          </div>
+        {/* Main Content */}
+        <main className="app-main">
+          {/* Header with feed filter dropdown */}
+          <header className="page-header">
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px'}}>
+              <h1 className="page-title">Today's Briefing</h1>
+              <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                <select
+                  className="form-select"
+                  style={{width: 'auto', minWidth: '150px'}}
+                  value={selectedFeedId}
+                  onChange={e => setSelectedFeedId(Number(e.target.value))}
+                >
+                  <option value={0}>All Feeds</option>
+                  {sortedFeeds.map(feed => (
+                    <option key={feed.id} value={feed.id}>
+                      {feed.title || 'Untitled'}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="form-select"
+                  style={{width: 'auto', minWidth: '120px'}}
+                  value={filterMode}
+                  onChange={e => setFilterMode(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="unread">Unread</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="snoozed">Snoozed</option>
+                  <option value="saved">Saved</option>
+                  <option value="filtered">Filtered</option>
+                </select>
+              </div>
+            </div>
+          </header>
+
+          <div className="page-content">
 
           <div className="article-list">
             {searchResults !== null ? (
@@ -436,37 +459,40 @@ export function ArticleList() {
             )}
           </div>
         </div>
+      </main>
+    </div>
 
-        {/* Column 3: Article Reader */}
-        <div className={`article-reader-col ${mobileReaderVisible ? 'mobile-visible' : ''}`}>
-          {mobileReaderVisible && (
-            <button
-              className="btn btn-ghost"
-              onClick={handleBack}
-              style={{marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '4px'}}
-            >
-              <ChevronLeft size={16} />
-              Back to list
+    {/* Article Reader Modal */}
+    {selectedArticle && (
+      <div className="modal-overlay" onClick={handleBack}>
+        <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth: '700px', width: '90vw', maxHeight: '90vh', overflow: 'auto'}}>
+          <div className="modal-header">
+            <h2>{selectedArticle.title || 'Article'}</h2>
+            <button className="btn btn-ghost btn-icon" onClick={handleBack}>
+              <X size={18} />
             </button>
-          )}
-          <ArticleReader
-            article={selectedArticle}
-            feedName={selectedArticle ? getFeedName(selectedArticle.feed_id) : ''}
-            isSummarizing={isSummarizing === selectedArticle?.id}
-            onAccept={handleAccept}
-            onReject={handleReject}
-            onSnooze={handleSnooze}
-            onSave={handleSave}
-            onGenerateSummary={handleGenerateSummary}
-            onRefresh={handleFetchFullArticle}
-            onOpenExternal={handleOpenExternal}
-            onBack={handleBack}
-          />
+          </div>
+          <div className="modal-body">
+            <ArticleReader
+              article={selectedArticle}
+              feedName={selectedArticle ? getFeedName(selectedArticle.feed_id) : ''}
+              isSummarizing={isSummarizing === selectedArticle?.id}
+              onAccept={handleAccept}
+              onReject={handleReject}
+              onSnooze={handleSnooze}
+              onSave={handleSave}
+              onGenerateSummary={handleGenerateSummary}
+              onRefresh={handleFetchFullArticle}
+              onOpenExternal={handleOpenExternal}
+              onBack={handleBack}
+            />
+          </div>
         </div>
       </div>
+    )}
 
-      {/* Shortcuts Help */}
-      {showShortcuts && (
+    {/* Shortcuts Help */}
+    {showShortcuts && (
         <div className="modal-overlay" onClick={() => setShowShortcuts(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{minWidth: '280px'}}>
             <div className="modal-header">
