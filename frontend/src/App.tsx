@@ -12,11 +12,11 @@ function App() {
       <Route path="/articles" element={<ArticleList />} />
       <Route path="/articles/:feedId" element={<ArticleList />} />
 
-      {/* Notes page — keeps Layout with sidebar */}
-      <Route path="/notes" element={<Layout><NoteList /></Layout>} />
+      {/* Notes page — standalone layout */}
+      <Route path="/notes" element={<NoteList />} />
 
-      {/* Settings page — keeps Layout with sidebar */}
-      <Route path="/settings" element={<Layout><Settings /></Layout>} />
+      {/* Settings page — standalone layout */}
+      <Route path="/settings" element={<Settings />} />
     </Routes>
   )
 }

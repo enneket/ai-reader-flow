@@ -1,5 +1,6 @@
 import {useState, useEffect, useRef} from 'react'
-import {Save, Plus, Trash2, Upload, Download, Sun, Moon} from 'lucide-react'
+import {Link, useLocation} from 'react-router-dom'
+import {Save, Plus, Trash2, Upload, Download, Sun, Moon, Rss, FileText, LayoutGrid, Settings as SettingsIcon} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
 import {changeLanguage} from '../i18n'
 import i18n from '../i18n'
@@ -8,6 +9,7 @@ import {api, AIProviderConfig, FilterRule} from '../api'
 
 export function Settings() {
   const {t} = useTranslation()
+  const location = useLocation()
   const [aiConfig, setAIConfig] = useState<AIProviderConfig>({
     provider: 'openai',
     api_key: '',
@@ -177,6 +179,11 @@ export function Settings() {
     }
   }
 
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/'
+    return location.pathname.startsWith(path)
+  }
+
   const handleExportMarkdown = async () => {
     try {
       const blob = await api.exportSavedArticles('markdown')
@@ -192,12 +199,60 @@ export function Settings() {
   }
 
   return (
-    <>
-      <header className="page-header">
-        <h1 className="page-title">{t('settings.title')}</h1>
-      </header>
+    <div className="app">
+      <div className="app-body">
+        <aside className="sidebar">
+          <div className="sidebar-header">
+            <div className="sidebar-logo">
+              <Rss size={24} />
+              <span>{t('nav.aiRss')}</span>
+            </div>
+          </div>
 
-      <div className="page-content">
+          <nav className="sidebar-nav">
+            <Link
+              to="/"
+              className={`nav-item ${isActive('/') && location.pathname === '/' ? 'active' : ''}`}
+            >
+              <LayoutGrid />
+              <span>{t('nav.feeds')}</span>
+            </Link>
+            <Link
+              to="/articles"
+              className={`nav-item ${isActive('/articles') ? 'active' : ''}`}
+            >
+              <FileText />
+              <span>{t('nav.articles')}</span>
+            </Link>
+            <Link
+              to="/notes"
+              className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
+            >
+              <FileText />
+              <span>{t('nav.notes')}</span>
+            </Link>
+            <Link
+              to="/settings"
+              className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
+            >
+              <SettingsIcon />
+              <span>{t('nav.settings')}</span>
+            </Link>
+          </nav>
+
+          <div className="sidebar-footer">
+            <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+              AI RSS Reader v1.0
+            </div>
+          </div>
+        </aside>
+
+        <main className="app-main">
+          <header className="page-header">
+            <h1 className="page-title">{t('settings.title')}</h1>
+          </header>
+
+          <div className="page-content">
         {error && (
           <div className="alert alert-error">
             <span>{error}</span>
@@ -417,7 +472,9 @@ export function Settings() {
             </button>
           </div>
         </section>
-      </div>
-    </>
+        </div>
+      </main>
+    </div>
+    </div>
   )
 }

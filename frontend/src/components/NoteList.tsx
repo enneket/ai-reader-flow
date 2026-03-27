@@ -1,10 +1,12 @@
 import {useState, useEffect} from 'react'
+import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
-import {FileText, Trash2} from 'lucide-react'
+import {FileText, Trash2, Rss, LayoutGrid, Settings} from 'lucide-react'
 import {api, Note} from '../api'
 
 export function NoteList() {
   const {t} = useTranslation()
+  const location = useLocation()
   const [notes, setNotes] = useState<Note[]>([])
   const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const [noteContent, setNoteContent] = useState('')
@@ -72,7 +74,6 @@ export function NoteList() {
     })
   }
 
-  // Simple markdown formatting
   const formatMarkdown = (text: string): string => {
     if (!text) return ''
 
@@ -99,65 +100,114 @@ export function NoteList() {
     return html
   }
 
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/'
+    return location.pathname.startsWith(path)
+  }
+
   return (
-    <>
-      <header className="page-header">
-        <h1 className="page-title">{t('notes.title')}</h1>
-      </header>
-
-      <div className="page-content" style={{padding: 0, height: 'calc(100vh - 73px)'}}>
-        {error && (
-          <div className="alert alert-error" style={{margin: 'var(--space-4)'}}>
-            <span>{error}</span>
-            <button className="alert-close" onClick={() => setError('')}>×</button>
-          </div>
-        )}
-
-        <div className="notes-layout">
-          <aside className="notes-sidebar">
-            <div className="notes-sidebar-header">
-              {notes.length} {notes.length === 1 ? t('notes.note') : t('notes.notes')}
+    <div className="app">
+      <div className="app-body">
+        <aside className="sidebar">
+          <div className="sidebar-header">
+            <div className="sidebar-logo">
+              <Rss size={24} />
+              <span>{t('nav.aiRss')}</span>
             </div>
-            <div className="notes-list">
-              {notes.length === 0 ? (
-                <div className="empty-state" style={{padding: 'var(--space-8)'}}>
-                  <FileText />
-                  <p>{t('notes.empty')}</p>
-                </div>
-              ) : (
-                notes.map((note) => (
-                  <div
-                    key={note.id}
-                    className={`note-item ${selectedNote?.id === note.id ? 'selected' : ''}`}
-                    onClick={() => handleSelectNote(note)}
-                  >
-                    <h4>{note.title || t('notes.untitled')}</h4>
-                    <p className="note-date">{formatDate(note.created_at)}</p>
-                    <button
-                      onClick={(e) => handleDeleteNote(note.id, e)}
-                      className="btn btn-ghost btn-sm btn-icon note-delete-btn"
-                      aria-label="Delete note"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+          </div>
+
+          <nav className="sidebar-nav">
+            <Link
+              to="/"
+              className={`nav-item ${isActive('/') && location.pathname === '/' ? 'active' : ''}`}
+            >
+              <LayoutGrid />
+              <span>{t('nav.feeds')}</span>
+            </Link>
+            <Link
+              to="/articles"
+              className={`nav-item ${isActive('/articles') ? 'active' : ''}`}
+            >
+              <FileText />
+              <span>{t('nav.articles')}</span>
+            </Link>
+            <Link
+              to="/notes"
+              className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
+            >
+              <FileText />
+              <span>{t('nav.notes')}</span>
+            </Link>
+            <Link
+              to="/settings"
+              className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
+            >
+              <Settings />
+              <span>{t('nav.settings')}</span>
+            </Link>
+          </nav>
+
+          <div className="sidebar-footer">
+            <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+              AI RSS Reader v1.0
+            </div>
+          </div>
+        </aside>
+
+        <main className="app-main">
+          {error && (
+            <div className="alert alert-error" style={{margin: 'var(--space-4)'}}>
+              <span>{error}</span>
+              <button className="alert-close" onClick={() => setError('')}>×</button>
+            </div>
+          )}
+
+          <div className="notes-layout">
+            <aside className="notes-sidebar">
+              <div className="notes-sidebar-header">
+                {notes.length} {notes.length === 1 ? t('notes.note') : t('notes.notes')}
+              </div>
+              <div className="notes-list">
+                {notes.length === 0 ? (
+                  <div className="empty-state" style={{padding: 'var(--space-8)'}}>
+                    <FileText />
+                    <p>{t('notes.empty')}</p>
                   </div>
-                ))
+                ) : (
+                  notes.map((note) => (
+                    <div
+                      key={note.id}
+                      className={`note-item ${selectedNote?.id === note.id ? 'selected' : ''}`}
+                      onClick={() => handleSelectNote(note)}
+                    >
+                      <h4>{note.title || t('notes.untitled')}</h4>
+                      <p className="note-date">{formatDate(note.created_at)}</p>
+                      <button
+                        onClick={(e) => handleDeleteNote(note.id, e)}
+                        className="btn btn-ghost btn-sm btn-icon note-delete-btn"
+                        aria-label="Delete note"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </aside>
+
+            <div className="notes-content">
+              {selectedNote ? (
+                <div className="markdown-content" dangerouslySetInnerHTML={{__html: formatMarkdown(noteContent)}} />
+              ) : (
+                <div className="empty-state">
+                  <FileText />
+                  <p>{t('notes.selectToView')}</p>
+                </div>
               )}
             </div>
-          </aside>
-
-          <div className="notes-content">
-            {selectedNote ? (
-              <div className="markdown-content" dangerouslySetInnerHTML={{__html: formatMarkdown(noteContent)}} />
-            ) : (
-              <div className="empty-state">
-                <FileText />
-                <p>{t('notes.selectToView')}</p>
-              </div>
-            )}
           </div>
-        </div>
+        </main>
       </div>
-    </>
+    </div>
   )
 }
