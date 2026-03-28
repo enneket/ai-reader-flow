@@ -271,10 +271,6 @@ export function Settings() {
         </aside>
 
         <main className="app-main">
-          <header className="page-header">
-            <h1 className="page-title">{t('settings.title')}</h1>
-          </header>
-
           <div className="page-content">
         {error && (
           <div className="alert alert-error">
