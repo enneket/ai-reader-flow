@@ -198,8 +198,31 @@ export function Settings() {
     }
   }
 
+  const today = new Date()
+  const dateStr = today.toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
   return (
     <div className="app">
+      {/* Unified top masthead - consistent across all pages */}
+      <header className="masthead">
+        <div className="masthead-left">
+          <a href="/" className="masthead-logo">
+            AI RSS Reader
+          </a>
+        </div>
+        <div className="masthead-center">{dateStr}</div>
+        <div className="masthead-right">
+          <Link to="/settings" className="masthead-btn" title="Settings">
+            <SettingsIcon size={18} />
+          </Link>
+        </div>
+      </header>
+
       <div className="app-body">
         <aside className="sidebar">
           <div className="sidebar-header">
