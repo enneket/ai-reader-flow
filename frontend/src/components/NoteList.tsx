@@ -187,9 +187,6 @@ export function NoteList() {
 
           <div className="notes-layout">
             <aside className="notes-sidebar">
-              <div className="notes-sidebar-header">
-                {notes.length} {notes.length === 1 ? t('notes.note') : t('notes.notes')}
-              </div>
               <div className="notes-list">
                 {notes.length === 0 ? (
                   <div className="empty-state" style={{padding: 'var(--space-8)'}}>
