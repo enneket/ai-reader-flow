@@ -1185,6 +1185,92 @@ body {
 }
 
 /* ============================================
+   Feeds Layout (Four Column)
+   ============================================ */
+.feeds-list-col {
+  width: 280px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+.feeds-list-header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.feeds-add-form {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: var(--space-2);
+}
+
+.feeds-add-form .form-input {
+  flex: 1;
+  font-size: 0.85rem;
+  padding: var(--space-1) var(--space-2);
+}
+
+.feeds-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.feed-item {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.feed-item:hover {
+  background: var(--bg);
+}
+
+.feed-item.selected {
+  background: var(--accent);
+  color: white;
+}
+
+.feed-item.selected .feed-item-url {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.feed-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.feed-item-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-item-url {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================
    Articles Layout (Three Column)
    ============================================ */
 .articles-layout {
@@ -1200,6 +1286,14 @@ body {
   flex-direction: column;
   flex-shrink: 0;
   background: var(--bg);
+}
+
+.articles-list-header {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .articles-list {

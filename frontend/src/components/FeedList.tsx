@@ -1,18 +1,24 @@
 import {useState, useEffect} from 'react'
-import {Link, useLocation, useNavigate} from 'react-router-dom'
+import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
 import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid} from 'lucide-react'
-import {api, Feed} from '../api'
+import {api, Feed, Article} from '../api'
+import {ArticleCard} from './ArticleCard'
+import {ArticleReader} from './ArticleReader'
 
 export function FeedList() {
   const {t} = useTranslation()
   const location = useLocation()
-  const navigate = useNavigate()
   const [feeds, setFeeds] = useState<Feed[]>([])
+  const [selectedFeed, setSelectedFeed] = useState<Feed | null>(null)
+  const [articles, setArticles] = useState<Article[]>([])
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
   const [newFeedUrl, setNewFeedUrl] = useState('')
   const [loading, setLoading] = useState(false)
+  const [articlesLoading, setArticlesLoading] = useState(false)
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [isSummarizing, setIsSummarizing] = useState<number | null>(null)
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -47,6 +53,25 @@ export function FeedList() {
     }
   }, [error])
 
+  const loadArticles = async (feedId: number) => {
+    setArticlesLoading(true)
+    try {
+      const data = await api.getArticles(feedId, 'all', 100, 0)
+      const sorted = (data || []).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))
+      setArticles(sorted)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load articles')
+    } finally {
+      setArticlesLoading(false)
+    }
+  }
+
+  const handleSelectFeed = (feed: Feed) => {
+    setSelectedFeed(feed)
+    setSelectedArticle(null)
+    loadArticles(feed.id)
+  }
+
   const handleAddFeed = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newFeedUrl.trim()) return
@@ -54,9 +79,12 @@ export function FeedList() {
     setLoading(true)
     setError('')
     try {
-      await api.addFeed(newFeedUrl)
+      const newFeed = await api.addFeed(newFeedUrl)
       setNewFeedUrl('')
       await loadFeeds()
+      if (newFeed) {
+        handleSelectFeed(newFeed)
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to add feed')
     } finally {
@@ -69,6 +97,11 @@ export function FeedList() {
     e.stopPropagation()
     try {
       await api.deleteFeed(id)
+      if (selectedFeed?.id === id) {
+        setSelectedFeed(null)
+        setArticles([])
+        setSelectedArticle(null)
+      }
       await loadFeeds()
     } catch (err: any) {
       setError(err.message || 'Failed to delete feed')
@@ -80,12 +113,84 @@ export function FeedList() {
     setError('')
     try {
       await api.refreshAllFeeds()
+      if (selectedFeed) {
+        await loadArticles(selectedFeed.id)
+      }
       await loadFeeds()
     } catch (err: any) {
       setError(err.message || 'Failed to refresh feeds')
     } finally {
       setRefreshing(false)
     }
+  }
+
+  const handleArticleClick = (article: Article) => {
+    setSelectedArticle(article)
+  }
+
+  const handleBack = () => {
+    setSelectedArticle(null)
+  }
+
+  const handleAccept = async (id: number) => {
+    try {
+      await api.acceptArticle(id)
+      if (selectedFeed) await loadArticles(selectedFeed.id)
+    } catch (err: any) {
+      console.error('Failed to accept article:', err)
+    }
+  }
+
+  const handleReject = async (id: number) => {
+    try {
+      await api.rejectArticle(id)
+      if (selectedFeed) await loadArticles(selectedFeed.id)
+    } catch (err: any) {
+      console.error('Failed to reject article:', err)
+    }
+  }
+
+  const handleSnooze = async (id: number) => {
+    try {
+      await api.snoozeArticle(id)
+      if (selectedFeed) await loadArticles(selectedFeed.id)
+    } catch (err: any) {
+      console.error('Failed to snooze article:', err)
+    }
+  }
+
+  const handleSave = async (id: number) => {
+    try {
+      await api.createNote(id, '')
+      if (selectedFeed) await loadArticles(selectedFeed.id)
+    } catch (err: any) {
+      console.error('Failed to save note:', err)
+    }
+  }
+
+  const handleGenerateSummary = async (id: number) => {
+    setIsSummarizing(id)
+    try {
+      await api.generateSummary(id)
+      if (selectedFeed) await loadArticles(selectedFeed.id)
+    } catch (err: any) {
+      console.error('Failed to generate summary:', err)
+    } finally {
+      setIsSummarizing(null)
+    }
+  }
+
+  const handleFetchFullArticle = async (id: number) => {
+    try {
+      await api.refreshArticle(id)
+      if (selectedFeed) await loadArticles(selectedFeed.id)
+    } catch (err: any) {
+      console.error('Failed to fetch full article:', err)
+    }
+  }
+
+  const handleOpenExternal = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -106,6 +211,7 @@ export function FeedList() {
       </header>
 
       <div className="app-body">
+        {/* Column 1: Sidebar Navigation */}
         <aside className="sidebar">
           <div className="sidebar-header">
             <div className="sidebar-logo">
@@ -152,77 +258,133 @@ export function FeedList() {
           </div>
         </aside>
 
-        <main className="app-main">
-          <div className="page-content">
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)'}}>
-              <h1 style={{fontSize: '1.5rem', fontWeight: 600}}>{t('feeds.title')}</h1>
-              <button
-                onClick={handleRefreshAll}
-                disabled={refreshing}
-                className="btn btn-secondary"
-              >
-                <RefreshCw size={14} className={refreshing ? 'spinning' : ''} />
-                {refreshing ? 'Refreshing...' : t('feeds.refreshAll')}
-              </button>
+        {/* Column 2: Feed List */}
+        <div className="feeds-list-col">
+          <div className="feeds-list-header">
+            <span style={{fontSize: '0.9rem', fontWeight: 600}}>{t('feeds.title')}</span>
+            <button
+              onClick={handleRefreshAll}
+              disabled={refreshing}
+              className="btn btn-ghost btn-sm"
+              title="Refresh all"
+            >
+              <RefreshCw size={14} className={refreshing ? 'spinning' : ''} />
+            </button>
+          </div>
+
+          <form onSubmit={handleAddFeed} className="feeds-add-form">
+            <input
+              type="url"
+              value={newFeedUrl}
+              onChange={(e) => setNewFeedUrl(e.target.value)}
+              placeholder={t('feeds.placeholder')}
+              className="form-input"
+              required
+            />
+            <button type="submit" disabled={loading} className="btn btn-primary btn-sm">
+              <Plus size={14} />
+            </button>
+          </form>
+
+          {error && (
+            <div className="alert alert-error" style={{margin: 'var(--space-2)'}}>
+              <span>{error}</span>
             </div>
+          )}
 
-            {error && (
-              <div className="alert alert-error" style={{marginBottom: 'var(--space-4)'}}>
-                <span>{error}</span>
-                <button className="alert-close" onClick={() => setError('')}>×</button>
-              </div>
-            )}
-
-            <form onSubmit={handleAddFeed} style={{display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)'}}>
-              <input
-                type="url"
-                value={newFeedUrl}
-                onChange={(e) => setNewFeedUrl(e.target.value)}
-                placeholder={t('feeds.placeholder')}
-                className="form-input"
-                required
-              />
-              <button type="submit" disabled={loading} className="btn btn-primary">
-                <Plus size={14} />
-                {t('feeds.addFeed')}
-              </button>
-            </form>
-
+          <div className="feeds-list">
             {feeds.length === 0 ? (
-              <div className="empty-state">
-                <Rss size={48} />
-                <p>{t('feeds.empty')}</p>
+              <div className="empty-state" style={{padding: 'var(--space-4)', textAlign: 'center', color: 'var(--text-secondary)'}}>
+                <Rss size={24} />
+                <p style={{fontSize: '0.8rem', marginTop: 'var(--space-2)'}}>{t('feeds.empty')}</p>
               </div>
             ) : (
-              <div className="list">
-                {feeds.map((feed) => (
-                  <div
-                    key={feed.id}
-                    className="card feed-card clickable"
-                    onClick={() => navigate(`/articles/${feed.id}`)}
-                  >
-                    <div className="feed-info">
-                      <h3>{feed.title || 'Untitled Feed'}</h3>
-                      <p className="feed-url">{feed.url}</p>
-                      {feed.description && (
-                        <p className="feed-desc">{feed.description}</p>
-                      )}
-                    </div>
-                    <div className="feed-actions">
-                      <button
-                        onClick={(e) => handleDeleteFeed(feed.id, e)}
-                        className="btn btn-ghost btn-sm btn-icon"
-                        aria-label={t('feeds.delete')}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+              feeds.map((feed) => (
+                <div
+                  key={feed.id}
+                  className={`feed-item ${selectedFeed?.id === feed.id ? 'selected' : ''}`}
+                  onClick={() => handleSelectFeed(feed)}
+                >
+                  <div className="feed-item-info">
+                    <span className="feed-item-title">{feed.title || 'Untitled Feed'}</span>
+                    <span className="feed-item-url">{feed.url}</span>
                   </div>
-                ))}
-              </div>
+                  <button
+                    onClick={(e) => handleDeleteFeed(feed.id, e)}
+                    className="btn btn-ghost btn-sm btn-icon"
+                    aria-label="Delete feed"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))
             )}
           </div>
-        </main>
+        </div>
+
+        {/* Column 3: Articles List */}
+        <div className="articles-list-col">
+          <div className="articles-list-header">
+            <span style={{fontSize: '0.9rem', fontWeight: 600}}>
+              {selectedFeed ? (selectedFeed.title || 'Articles') : 'Select a feed'}
+            </span>
+            <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>
+              {articles.length} article{articles.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="articles-list">
+            {!selectedFeed ? (
+              <div className="empty-state" style={{padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-secondary)'}}>
+                <FileText size={32} />
+                <p style={{fontSize: '0.85rem', marginTop: 'var(--space-2)'}}>Select a feed to view articles</p>
+              </div>
+            ) : articlesLoading ? (
+              <div className="loading" style={{padding: 'var(--space-4)'}}>Loading...</div>
+            ) : articles.length === 0 ? (
+              <div className="empty-state" style={{padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-secondary)'}}>
+                <FileText size={32} />
+                <p style={{fontSize: '0.85rem', marginTop: 'var(--space-2)'}}>No articles yet</p>
+              </div>
+            ) : (
+              articles.map((article, index) => (
+                <ArticleCard
+                  key={article.id}
+                  article={article}
+                  feedName={selectedFeed?.title || ''}
+                  isSelected={selectedArticle?.id === article.id}
+                  isLead={index === 0}
+                  isSummarizing={isSummarizing === article.id}
+                  onClick={() => handleArticleClick(article)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Column 4: Article Reader */}
+        <div className="articles-reader-col">
+          {selectedArticle ? (
+            <ArticleReader
+              article={selectedArticle}
+              feedName={selectedFeed?.title || ''}
+              isSummarizing={isSummarizing === selectedArticle?.id}
+              onAccept={handleAccept}
+              onReject={handleReject}
+              onSnooze={handleSnooze}
+              onSave={handleSave}
+              onGenerateSummary={handleGenerateSummary}
+              onRefresh={handleFetchFullArticle}
+              onOpenExternal={handleOpenExternal}
+              onBack={handleBack}
+            />
+          ) : (
+            <div className="articles-empty-reader">
+              <FileText size={48} />
+              <p>Select an article to read</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
