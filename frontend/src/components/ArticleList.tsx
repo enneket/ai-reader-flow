@@ -374,44 +374,7 @@ export function ArticleList() {
 
         {/* Main Content */}
         <main className="app-main">
-          {/* Header with feed filter dropdown */}
-          <header className="page-header">
-            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px'}}>
-              <h1 className="page-title">Today's Briefing</h1>
-              <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                <select
-                  className="form-select"
-                  style={{width: 'auto', minWidth: '150px'}}
-                  value={selectedFeedId}
-                  onChange={e => setSelectedFeedId(Number(e.target.value))}
-                >
-                  <option value={0}>All Feeds</option>
-                  {sortedFeeds.map(feed => (
-                    <option key={feed.id} value={feed.id}>
-                      {feed.title || 'Untitled'}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="form-select"
-                  style={{width: 'auto', minWidth: '120px'}}
-                  value={filterMode}
-                  onChange={e => setFilterMode(e.target.value)}
-                >
-                  <option value="all">All</option>
-                  <option value="unread">Unread</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="snoozed">Snoozed</option>
-                  <option value="saved">Saved</option>
-                  <option value="filtered">Filtered</option>
-                </select>
-              </div>
-            </div>
-          </header>
-
           <div className="page-content">
-
           <div className="article-list">
             {searchResults !== null ? (
               searchResults.length === 0 ? (
