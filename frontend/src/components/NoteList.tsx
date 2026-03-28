@@ -141,8 +141,8 @@ export function NoteList() {
 
           <nav className="sidebar-nav">
             <Link
-              to="/"
-              className={`nav-item ${isActive('/') && location.pathname === '/' ? 'active' : ''}`}
+              to="/feeds"
+              className={`nav-item ${isActive('/feeds') ? 'active' : ''}`}
             >
               <LayoutGrid />
               <span>{t('nav.feeds')}</span>
