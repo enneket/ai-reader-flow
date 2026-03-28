@@ -1184,6 +1184,53 @@ body {
   color: var(--text-primary);
 }
 
+/* ============================================
+   Articles Layout (Three Column)
+   ============================================ */
+.articles-layout {
+  display: flex;
+  height: calc(100vh - 73px);
+  overflow: hidden;
+}
+
+.articles-list-col {
+  width: var(--list-width);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+.articles-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.articles-reader-col {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6);
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+}
+
+.articles-empty-reader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.articles-empty-reader p {
+  margin-top: var(--space-4);
+  font-size: 14px;
+}
+
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3 {

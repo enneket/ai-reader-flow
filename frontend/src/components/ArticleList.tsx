@@ -1,6 +1,6 @@
 import {useState, useEffect} from 'react'
 import {useNavigate, Link, useLocation} from 'react-router-dom'
-import {Rss, FileText, ChevronLeft, ChevronRight, Settings, Plus, X, LayoutGrid} from 'lucide-react'
+import {Rss, FileText, Settings, X, LayoutGrid} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
 import {api, Article, Feed} from '../api'
 import {Masthead} from './Masthead'
@@ -372,22 +372,45 @@ export function ArticleList() {
           </div>
         </aside>
 
-        {/* Main Content */}
+        {/* Main Content - Three Column Layout */}
         <main className="app-main">
-          <div className="page-content">
-          <div className="article-list">
-            {searchResults !== null ? (
-              searchResults.length === 0 ? (
-                <div className="empty-state">
-                  <FileText />
-                  <p>No results found</p>
-                </div>
-              ) : (
-                <>
-                  <div className="article-list-header" style={{padding: '8px 16px', fontSize: '0.8rem', color: 'var(--text-secondary)'}}>
-                    {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+          <div className="articles-layout">
+            {/* Middle: Article List */}
+            <div className="articles-list-col">
+              <div className="articles-list">
+                {searchResults !== null ? (
+                  searchResults.length === 0 ? (
+                    <div className="empty-state">
+                      <FileText />
+                      <p>No results found</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="article-list-header" style={{padding: '8px 16px', fontSize: '0.8rem', color: 'var(--text-secondary)'}}>
+                        {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                      </div>
+                      {searchResults.map((article, index) => (
+                        <ArticleCard
+                          key={article.id}
+                          article={article}
+                          feedName={getFeedName(article.feed_id)}
+                          isSelected={selectedArticle?.id === article.id}
+                          isLead={index === 0}
+                          isSummarizing={isSummarizing === article.id}
+                          onClick={() => handleArticleClick(article)}
+                        />
+                      ))}
+                    </>
+                  )
+                ) : loading && articles.length === 0 ? (
+                  <div className="loading">Loading…</div>
+                ) : articles.length === 0 ? (
+                  <div className="empty-state">
+                    <FileText />
+                    <p>Your briefing is clear</p>
                   </div>
-                  {searchResults.map((article, index) => (
+                ) : (
+                  articles.map((article, index) => (
                     <ArticleCard
                       key={article.id}
                       article={article}
@@ -397,60 +420,36 @@ export function ArticleList() {
                       isSummarizing={isSummarizing === article.id}
                       onClick={() => handleArticleClick(article)}
                     />
-                  ))}
-                </>
-              )
-            ) : loading && articles.length === 0 ? (
-              <div className="loading">Loading…</div>
-            ) : articles.length === 0 ? (
-              <div className="empty-state">
-                <FileText />
-                <p>Your briefing is clear</p>
+                  ))
+                )}
               </div>
-            ) : (
-              articles.map((article, index) => (
-                <ArticleCard
-                  key={article.id}
-                  article={article}
-                  feedName={getFeedName(article.feed_id)}
-                  isSelected={selectedArticle?.id === article.id}
-                  isLead={index === 0}
-                  isSummarizing={isSummarizing === article.id}
-                  onClick={() => handleArticleClick(article)}
-                />
-              ))
-            )}
-          </div>
-        </div>
-      </main>
-    </div>
+            </div>
 
-    {/* Article Reader Modal */}
-    {selectedArticle && (
-      <div className="modal-overlay" onClick={handleBack}>
-        <div className="modal" onClick={e => e.stopPropagation()} style={{maxWidth: '700px', width: '90vw', maxHeight: '90vh', overflow: 'auto'}}>
-          <div className="modal-header">
-            <h2>{selectedArticle.title || 'Article'}</h2>
-            <button className="btn btn-ghost btn-icon" onClick={handleBack}>
-              <X size={18} />
-            </button>
+            {/* Right: Article Reader */}
+            <div className="articles-reader-col">
+              {selectedArticle ? (
+                <ArticleReader
+                  article={selectedArticle}
+                  feedName={selectedArticle ? getFeedName(selectedArticle.feed_id) : ''}
+                  isSummarizing={isSummarizing === selectedArticle?.id}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                  onSnooze={handleSnooze}
+                  onSave={handleSave}
+                  onGenerateSummary={handleGenerateSummary}
+                  onRefresh={handleFetchFullArticle}
+                  onOpenExternal={handleOpenExternal}
+                  onBack={handleBack}
+                />
+              ) : (
+                <div className="articles-empty-reader">
+                  <FileText size={48} />
+                  <p>Select an article to read</p>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="modal-body">
-            <ArticleReader
-              article={selectedArticle}
-              feedName={selectedArticle ? getFeedName(selectedArticle.feed_id) : ''}
-              isSummarizing={isSummarizing === selectedArticle?.id}
-              onAccept={handleAccept}
-              onReject={handleReject}
-              onSnooze={handleSnooze}
-              onSave={handleSave}
-              onGenerateSummary={handleGenerateSummary}
-              onRefresh={handleFetchFullArticle}
-              onOpenExternal={handleOpenExternal}
-              onBack={handleBack}
-            />
-          </div>
-        </div>
+        </main>
       </div>
     )}
 
