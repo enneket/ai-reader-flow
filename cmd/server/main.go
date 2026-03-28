@@ -33,13 +33,8 @@ var (
 )
 
 func main() {
-	// Determine data directory
-	exe, err := os.Executable()
-	if err != nil {
-		dataDir = "./data"
-	} else {
-		dataDir = filepath.Join(filepath.Dir(exe), "data")
-	}
+	// Determine data directory - use fixed path for development
+	dataDir = "./data"
 
 	// Load config
 	cfg, err := config.LoadConfig()
