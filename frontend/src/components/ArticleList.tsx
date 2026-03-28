@@ -1,6 +1,6 @@
 import {useState, useEffect} from 'react'
 import {useNavigate, Link, useLocation} from 'react-router-dom'
-import {Rss, FileText, Settings, X, LayoutGrid} from 'lucide-react'
+import {Rss, FileText, Settings, Plus, X, LayoutGrid} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
 import {api, Article, Feed} from '../api'
 import {Masthead} from './Masthead'
@@ -377,6 +377,19 @@ export function ArticleList() {
           <div className="articles-layout">
             {/* Middle: Article List */}
             <div className="articles-list-col">
+              <div className="article-list-header" style={{padding: 'var(--space-4)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                <span style={{fontSize: '0.8rem', color: 'var(--text-secondary)'}}>
+                  {articles.length} article{articles.length !== 1 ? 's' : ''}
+                </span>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setShowAddFeed(true)}
+                  title="Add feed"
+                >
+                  <Plus size={14} />
+                  Add Feed
+                </button>
+              </div>
               <div className="articles-list">
                 {searchResults !== null ? (
                   searchResults.length === 0 ? (
