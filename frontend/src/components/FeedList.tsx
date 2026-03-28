@@ -326,7 +326,7 @@ export function FeedList() {
         <div className="articles-list-col">
           <div className="articles-list-header">
             <span style={{fontSize: '0.9rem', fontWeight: 600}}>
-              {selectedFeed ? (selectedFeed.title || 'Articles') : 'Select a feed'}
+              {selectedFeed?.title || ''}
             </span>
             <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>
               {articles.length} article{articles.length !== 1 ? 's' : ''}
