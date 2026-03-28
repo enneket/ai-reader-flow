@@ -52,6 +52,9 @@ func (s *RSSService) AddFeed(url string) (*models.Feed, error) {
 	}
 
 	if err := s.feedRepo.Create(newFeed); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return nil, errors.New("this feed has already been added")
+		}
 		return nil, fmt.Errorf("failed to save feed: %w", err)
 	}
 
