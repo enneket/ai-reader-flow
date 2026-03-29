@@ -127,6 +127,11 @@ export const api = {
       body: JSON.stringify(config),
     }),
 
+  testAIConfig: () =>
+    request<{success: boolean; message?: string; error?: string}>('/ai-config/test', {
+      method: 'POST',
+    }),
+
   // ─── OPML ────────────────────────────────────────────────────────────────
 
   exportOPML: () => {
@@ -154,6 +159,17 @@ export const api = {
       return res.blob()
     })
   },
+
+  // ─── Briefings ────────────────────────────────────────────────────────────
+
+  getBriefings: () => request<Briefing[]>('/briefings'),
+
+  getBriefing: (id: number) => request<Briefing>(`/briefings/${id}`),
+
+  generateBriefing: () => request<void>('/briefings/generate', { method: 'POST' }),
+
+  deleteBriefing: (id: number) =>
+    request<void>(`/briefings/${id}`, { method: 'DELETE' }),
 }
 
 // ─── Models (plain interfaces, match Go backend) ─────────────────────────
@@ -197,4 +213,29 @@ export interface AIProviderConfig {
   base_url: string
   model: string
   max_tokens: number
+}
+
+export interface BriefingArticle {
+  id: number
+  briefing_item_id: number
+  article_id: number
+  title: string
+}
+
+export interface BriefingItem {
+  id: number
+  briefing_id: number
+  topic: string
+  summary: string
+  sort_order: number
+  articles: BriefingArticle[]
+}
+
+export interface Briefing {
+  id: number
+  status: string
+  error?: string
+  created_at: string
+  completed_at?: string
+  items?: BriefingItem[]
 }

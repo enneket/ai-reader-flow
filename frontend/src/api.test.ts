@@ -3,7 +3,7 @@ import { api, type Feed, type Article, type Note, type FilterRule, type AIProvid
 
 // Mock fetch
 const mockFetch = vi.fn()
-global.fetch = mockFetch
+vi.stubGlobal('fetch', mockFetch)
 
 // Helper to create mock response with proper headers
 function createMockResponse(data: unknown, options: { ok?: boolean; status?: number; statusText?: string; isJson?: boolean } = {}) {

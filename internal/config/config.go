@@ -27,8 +27,10 @@ type AppConfig struct {
 }
 
 type CronConfig struct {
-	Enabled    bool `toml:"enabled"`
+	Enabled     bool `toml:"enabled"`
 	IntervalMins int `toml:"interval_mins"`
+	Hour        int  `toml:"hour"`        // 每日触发小时 (0-23)
+	Minute      int  `toml:"minute"`      // 每日触发分钟 (0-59)
 }
 
 var AppConfig_ *Config
@@ -48,6 +50,8 @@ func LoadConfig() (*Config, error) {
 		Cron: CronConfig{
 			Enabled:     true,
 			IntervalMins: 30,
+			Hour:        9,  // 默认早上 9 点
+			Minute:      0,
 		},
 	}
 

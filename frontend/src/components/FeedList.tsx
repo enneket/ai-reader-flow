@@ -1,7 +1,7 @@
 import {useState, useEffect} from 'react'
 import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
-import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid} from 'lucide-react'
+import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid, StickyNote} from 'lucide-react'
 import {api, Feed, Article} from '../api'
 import {ArticleCard} from './ArticleCard'
 import {ArticleReader} from './ArticleReader'
@@ -56,7 +56,7 @@ export function FeedList() {
   const loadArticles = async (feedId: number) => {
     setArticlesLoading(true)
     try {
-      const data = await api.getArticles(feedId, 'all', 100, 0)
+      const data = await api.getArticles(feedId, 'all')
       const sorted = (data || []).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))
       setArticles(sorted)
     } catch (err: any) {
@@ -239,7 +239,7 @@ export function FeedList() {
               to="/notes"
               className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
             >
-              <FileText />
+              <StickyNote />
               <span>{t('nav.notes')}</span>
             </Link>
             <Link

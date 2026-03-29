@@ -1,24 +1,18 @@
 import {Routes, Route} from 'react-router-dom'
-import {ArticleList} from './components/ArticleList'
+import {Briefing} from './components/Briefing'
 import {FeedList} from './components/FeedList'
-import {NoteList} from './components/NoteList'
 import {Settings} from './components/Settings'
 
 function App() {
   return (
     <Routes>
-      {/* Main reading view — The Magazine layout */}
-      <Route path="/" element={<ArticleList />} />
-      <Route path="/articles" element={<ArticleList />} />
-      <Route path="/articles/:feedId" element={<ArticleList />} />
+      {/* Briefing page — AI-generated daily briefing */}
+      <Route path="/" element={<Briefing />} />
 
       {/* Feeds page — manage subscriptions */}
       <Route path="/feeds" element={<FeedList />} />
 
-      {/* Notes page — standalone layout */}
-      <Route path="/notes" element={<NoteList />} />
-
-      {/* Settings page — standalone layout */}
+      {/* Settings page */}
       <Route path="/settings" element={<Settings />} />
     </Routes>
   )

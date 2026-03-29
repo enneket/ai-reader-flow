@@ -21,15 +21,18 @@ import (
 	"ai-rss-reader/internal/opml"
 	"ai-rss-reader/internal/repository/sqlite"
 	"ai-rss-reader/internal/service"
+
+	"github.com/robfig/cron/v3"
 )
 
 // Global services (same as main.go)
 var (
-	rssService     *service.RSSService
-	filterService  *service.FilterService
-	summaryService *service.SummaryService
-	noteService    *service.NoteService
-	dataDir       string
+	rssService      *service.RSSService
+	filterService   *service.FilterService
+	summaryService  *service.SummaryService
+	noteService     *service.NoteService
+	briefingService *service.BriefingService
+	dataDir         string
 )
 
 func main() {
@@ -59,6 +62,9 @@ func main() {
 	if err := noteService.Init(); err != nil {
 		log.Printf("Warning: failed to initialize note service: %v", err)
 	}
+
+	// Initialize briefing service
+	briefingService = service.NewBriefingService()
 
 	// Initialize AI provider
 	ai.InitProvider(cfg.AIProvider)
@@ -98,9 +104,17 @@ func main() {
 	mux.HandleFunc("GET /api/notes/{id}", handleReadNote)
 	mux.HandleFunc("DELETE /api/notes/{id}", handleDeleteNote)
 
+	// Briefings
+	mux.HandleFunc("GET /api/briefings", handleGetBriefings)
+	mux.HandleFunc("GET /api/briefings/{id}", handleGetBriefing)
+	mux.HandleFunc("POST /api/briefings/generate", handleGenerateBriefing)
+	mux.HandleFunc("DELETE /api/briefings/{id}", handleDeleteBriefing)
+	mux.HandleFunc("GET /api/briefings/{id}/status", handleGetBriefingStatus)
+
 	// AI Config
 	mux.HandleFunc("GET /api/ai-config", handleGetAIConfig)
 	mux.HandleFunc("PUT /api/ai-config", handleSaveAIConfig)
+	mux.HandleFunc("POST /api/ai-config/test", handleTestAIConfig)
 
 	// Health check
 	mux.HandleFunc("GET /health", handleHealth)
@@ -147,32 +161,21 @@ func main() {
 		log.Println("Server stopped")
 	}()
 
-	// Start background feed refresh if configured
-	if cfg.Cron.Enabled && cfg.Cron.IntervalMins > 0 {
-		interval := time.Duration(cfg.Cron.IntervalMins) * time.Minute
-		go func() {
-			// Wait a bit before first refresh so server is fully ready
-			time.Sleep(30 * time.Second)
-			ticker := time.NewTicker(interval)
-			defer ticker.Stop()
-			for range ticker.C {
-				log.Printf("[cron] Refreshing all feeds (interval: %v)", interval)
-				if err := rssService.RefreshAllFeeds(); err != nil {
-					log.Printf("[cron] RefreshAllFeeds error: %v", err)
-					continue
-				}
-				newArticleIDs, err := filterService.FilterAllArticlesNew()
-				if err != nil {
-					log.Printf("[cron] FilterAllArticlesNew error: %v", err)
-					continue
-				}
-				events.GlobalBroadcaster.Broadcast(events.EventNewArticles, map[string]int{"count": len(newArticleIDs)})
-				go func() {
-					summaryService.BatchGenerateSummaries(newArticleIDs, 5)
-				}()
+	// Start background briefing cron if configured
+	if cfg.Cron.Enabled {
+		c := cron.New()
+		// Run at specific time each day: "Minute Hour * * *"
+		schedule := fmt.Sprintf("%d %d * * *", cfg.Cron.Minute, cfg.Cron.Hour)
+		c.AddFunc(schedule, func() {
+			log.Printf("[cron] Daily briefing at %02d:%02d - refreshing feeds first", cfg.Cron.Hour, cfg.Cron.Minute)
+			if err := rssService.RefreshAllFeeds(); err != nil {
+				log.Printf("[cron] RefreshAllFeeds error: %v", err)
 			}
-		}()
-		log.Printf("[cron] Feed refresh enabled (every %v)", interval)
+			log.Printf("[cron] Generating daily briefing")
+			briefingService.GenerateBriefing()
+		})
+		c.Start()
+		log.Printf("[cron] Briefing scheduled at %02d:%02d daily", cfg.Cron.Hour, cfg.Cron.Minute)
 	}
 
 	log.Printf("Server starting on :%s", port)
@@ -590,6 +593,65 @@ func handleDeleteNote(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ─── Briefing Handlers ─────────────────────────────────────────────────────────
+
+func handleGetBriefings(w http.ResponseWriter, r *http.Request) {
+	limit := int(parseQueryInt(r, "limit", 20))
+	offset := int(parseQueryInt(r, "offset", 0))
+	briefings, _ := briefingService.GetAllBriefings(limit, offset)
+	writeJSON(w, http.StatusOK, briefings)
+}
+
+func handleGetBriefing(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID("/api/briefings", r)
+	if !ok {
+		http.Error(w, "invalid briefing id", http.StatusBadRequest)
+		return
+	}
+	briefing, err := briefingService.GetBriefingWithItems(id)
+	if err != nil {
+		http.Error(w, "briefing not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, briefing)
+}
+
+func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
+	// Create briefing in background
+	go func() {
+		briefingService.GenerateBriefing()
+	}()
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func handleDeleteBriefing(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID("/api/briefings", r)
+	if !ok {
+		http.Error(w, "invalid briefing id", http.StatusBadRequest)
+		return
+	}
+	briefingService.DeleteBriefing(id)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func handleGetBriefingStatus(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID("/api/briefings", r)
+	if !ok {
+		http.Error(w, "invalid briefing id", http.StatusBadRequest)
+		return
+	}
+	briefing, err := briefingService.GetBriefingWithItems(id)
+	if err != nil {
+		http.Error(w, "briefing not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":     briefing.Status,
+		"error":      briefing.Error,
+		"created_at": briefing.CreatedAt,
+	})
+}
+
 // ─── AI Config Handlers ───────────────────────────────────────────────────────
 
 func handleGetAIConfig(w http.ResponseWriter, r *http.Request) {
@@ -635,6 +697,31 @@ func handleSaveAIConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	ai.InitProvider(cfg.AIProvider)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func handleTestAIConfig(w http.ResponseWriter, r *http.Request) {
+	cfg := config.AppConfig_
+	if cfg == nil {
+		cfg, _ = config.LoadConfig()
+	}
+	// Initialize provider with current config
+	ai.InitProvider(cfg.AIProvider)
+	provider := ai.GetProvider()
+
+	// Test with a simple embedding request
+	testText := "Hello, this is a test."
+	_, err := provider.GetEmbedding(testText)
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Connection successful!",
+	})
 }
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
