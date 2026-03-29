@@ -14,6 +14,7 @@ import (
 // AIServiceProvider defines the interface for AI backends
 type AIServiceProvider interface {
 	GenerateSummary(content string) (string, error)
+	GenerateBriefing(prompt string) (string, error)
 	FilterArticle(content string, rules []string) (bool, error)
 	GetEmbedding(text string) ([]float32, error)
 }
@@ -108,6 +109,58 @@ func (p *OpenAIProvider) GenerateSummary(content string) (string, error) {
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
 
 	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
+	if choices, ok := result["choices"].([]interface{}); ok && len(choices) > 0 {
+		if choice, ok := choices[0].(map[string]interface{}); ok {
+			if msg, ok := choice["message"].(map[string]interface{}); ok {
+				if content, ok := msg["content"].(string); ok {
+					return content, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("unexpected response format")
+}
+
+func (p *OpenAIProvider) GenerateBriefing(prompt string) (string, error) {
+	reqBody := map[string]interface{}{
+		"model": p.Model,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"max_tokens": 2000,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", p.BaseURL+"/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.APIKey)
+
+	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -296,6 +349,58 @@ func (p *ClaudeProvider) GenerateSummary(content string) (string, error) {
 	return "", fmt.Errorf("unexpected response format")
 }
 
+func (p *ClaudeProvider) GenerateBriefing(prompt string) (string, error) {
+	reqBody := map[string]interface{}{
+		"model": p.Model,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"system": "你是一个内容策划助手。",
+		"max_tokens": 2000,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", p.BaseURL+"/v1/messages", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", p.APIKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
+	if content, ok := result["content"].([]interface{}); ok && len(content) > 0 {
+		if block, ok := content[0].(map[string]interface{}); ok {
+			if text, ok := block["text"].(string); ok {
+				return text, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("unexpected response format")
+}
+
 func (p *ClaudeProvider) FilterArticle(content string, rules []string) (bool, error) {
 	systemPrompt := "You are a helpful assistant that filters articles. Answer only 'yes' or 'no'."
 	userPrompt := fmt.Sprintf("Should I read this article?\nPreferences:\n%s\n\nArticle:\n%s", strings.Join(rules, "\n"), content)
@@ -424,6 +529,49 @@ func (p *OllamaProvider) GenerateSummary(content string) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
+	if response, ok := result["response"].(string); ok {
+		return response, nil
+	}
+
+	return "", fmt.Errorf("unexpected response format")
+}
+
+func (p *OllamaProvider) GenerateBriefing(prompt string) (string, error) {
+	reqBody := map[string]interface{}{
+		"model":  p.Model,
+		"prompt": prompt,
+		"stream": false,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", p.BaseURL+"/api/generate", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err

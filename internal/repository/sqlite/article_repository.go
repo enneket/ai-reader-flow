@@ -180,6 +180,22 @@ func (r *ArticleRepository) Delete(id int64) error {
 	return nil
 }
 
+// GetRecentForBriefing returns recent unread articles
+func (r *ArticleRepository) GetRecentForBriefing() ([]models.Article, error) {
+	rows, err := DB.Query(
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
+         FROM articles
+         WHERE status = 'unread'
+         ORDER BY created_at DESC
+         LIMIT 100`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanArticles(rows)
+}
+
 // GetUnreadWithoutEmbedding returns unread articles that haven't been embedding-scored yet.
 func (r *ArticleRepository) GetUnreadWithoutEmbedding() ([]models.Article, error) {
 	rows, err := DB.Query(

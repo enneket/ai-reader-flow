@@ -74,11 +74,12 @@ type AppState struct {
 
 // Briefing is an AI-generated daily briefing
 type Briefing struct {
-	ID          int64      `json:"id"`
-	Status      string     `json:"status"` // pending, generating, completed, failed
-	Error       string     `json:"error,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	ID          int64            `json:"id"`
+	Status      string           `json:"status"` // pending, generating, completed, failed
+	Error       string           `json:"error,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	CompletedAt *time.Time       `json:"completed_at,omitempty"`
+	Items       []BriefingItem   `json:"items,omitempty"`
 }
 
 // BriefingItem is a topic within a briefing
