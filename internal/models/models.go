@@ -71,3 +71,42 @@ type AppState struct {
 	AIConfig      AIProviderConfig `json:"ai_config"`
 	FilterMode    string         `json:"filter_mode"` // all, filtered, saved
 }
+
+// Briefing is an AI-generated daily briefing
+type Briefing struct {
+	ID          int64      `json:"id"`
+	Status      string     `json:"status"` // pending, generating, completed, failed
+	Error       string     `json:"error,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+}
+
+// BriefingItem is a topic within a briefing
+type BriefingItem struct {
+	ID         int64            `json:"id"`
+	BriefingID int64           `json:"briefing_id"`
+	Topic     string          `json:"topic"`
+	Summary   string          `json:"summary"`
+	SortOrder int             `json:"sort_order"`
+	Articles  []BriefingArticle `json:"articles"`
+}
+
+// BriefingArticle is a reference to an article within a briefing item
+type BriefingArticle struct {
+	ID            int64  `json:"id"`
+	BriefingItemID int64 `json:"briefing_item_id"`
+	ArticleID     int64  `json:"article_id"`
+	Title         string `json:"title"`
+}
+
+// BriefingTopic is the AI output format for a topic
+type BriefingTopic struct {
+	Name       string   `json:"name"`
+	ArticleIDs []int64  `json:"article_ids"`
+	Summary    string   `json:"summary"`
+}
+
+// BriefingResult is the AI output format
+type BriefingResult struct {
+	Topics []BriefingTopic `json:"topics"`
+}
