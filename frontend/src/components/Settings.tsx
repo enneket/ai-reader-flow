@@ -19,6 +19,7 @@ export function Settings() {
   })
   const [filterRules, setFilterRules] = useState<FilterRule[]>([])
   const [loading, setLoading] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -100,6 +101,33 @@ export function Settings() {
       setError(err.message || 'Failed to save AI config')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    // Save current config first
+    setTestingConnection(true)
+    setError('')
+    setSuccess('')
+    try {
+      await api.saveAIConfig({
+        provider,
+        api_key: apiKey,
+        base_url: baseURL,
+        model,
+        max_tokens: maxTokens,
+      })
+      const result = await api.testAIConfig()
+      if (result.success) {
+        setSuccess('Connection successful! AI is reachable.')
+        setTimeout(() => setSuccess(''), 5000)
+      } else {
+        setError(result.error || 'Connection failed')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to test AI connection')
+    } finally {
+      setTestingConnection(false)
     }
   }
 
@@ -241,18 +269,11 @@ export function Settings() {
               <span>{t('nav.feeds')}</span>
             </Link>
             <Link
-              to="/articles"
-              className={`nav-item ${isActive('/articles') ? 'active' : ''}`}
+              to="/briefing"
+              className={`nav-item ${isActive('/briefing') ? 'active' : ''}`}
             >
               <FileText />
-              <span>{t('nav.articles')}</span>
-            </Link>
-            <Link
-              to="/notes"
-              className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
-            >
-              <FileText />
-              <span>{t('nav.notes')}</span>
+              <span>简报</span>
             </Link>
             <Link
               to="/settings"
@@ -301,7 +322,7 @@ export function Settings() {
         </section>
 
         <section className="settings-section">
-          <h3>Appearance</h3>
+          <h3>{t('settings.appearance')}</h3>
           <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
             <button
               type="button"
@@ -310,7 +331,7 @@ export function Settings() {
               style={{display: 'flex', alignItems: 'center', gap: '8px'}}
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              {theme === 'dark' ? t('settings.switchLight') : t('settings.switchDark')}
             </button>
           </div>
         </section>
@@ -376,6 +397,10 @@ export function Settings() {
               />
             </div>
 
+            <button type="button" onClick={handleTestConnection} disabled={testingConnection || loading} className="btn btn-outline-accent">
+              <Save size={16} />
+              {testingConnection ? t('settings.testing') : t('settings.testConnection')}
+            </button>
             <button type="submit" disabled={loading} className="btn btn-primary">
               <Save size={16} />
               {loading ? t('common.loading') : t('settings.saveAIConfig')}
@@ -448,14 +473,14 @@ export function Settings() {
         </section>
 
         <section className="settings-section">
-          <h3>OPML</h3>
+          <h3>{t('settings.opml')}</h3>
           <p style={{color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', fontSize: '0.875rem'}}>
-            Export or import your RSS feed subscriptions via OPML file.
+            {t('settings.opmlDesc')}
           </p>
           <div className="form-row">
             <button onClick={handleExportOPML} className="btn btn-secondary">
               <Download size={16} />
-              Export OPML
+              {t('settings.exportOPML')}
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -463,7 +488,7 @@ export function Settings() {
               className="btn btn-secondary"
             >
               <Upload size={16} />
-              {importing ? 'Importing...' : 'Import OPML'}
+              {importing ? t('settings.importing') : t('settings.importOPML')}
             </button>
             <input
               ref={fileInputRef}
@@ -476,18 +501,18 @@ export function Settings() {
         </section>
 
         <section className="settings-section">
-          <h3>Export Saved Articles</h3>
+          <h3>{t('settings.exportSaved')}</h3>
           <p style={{color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', fontSize: '0.875rem'}}>
-            Download your saved articles as JSON or Markdown.
+            {t('settings.exportSavedDesc')}
           </p>
           <div className="form-row">
             <button onClick={handleExportJSON} className="btn btn-secondary">
               <Download size={16} />
-              Export JSON
+              {t('settings.exportJSON')}
             </button>
             <button onClick={handleExportMarkdown} className="btn btn-secondary">
               <Download size={16} />
-              Export Markdown
+              {t('settings.exportMarkdown')}
             </button>
           </div>
         </section>

@@ -1,6 +1,6 @@
 import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
-import {Rss, FileText, Settings, LayoutGrid} from 'lucide-react'
+import {Rss, FileText, Settings, LayoutGrid, StickyNote} from 'lucide-react'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -45,7 +45,7 @@ export function Layout({children}: LayoutProps) {
               to="/notes"
               className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
             >
-              <FileText />
+              <StickyNote />
               <span>{t('nav.notes')}</span>
             </Link>
             <Link

@@ -708,9 +708,9 @@ func handleTestAIConfig(w http.ResponseWriter, r *http.Request) {
 	ai.InitProvider(cfg.AIProvider)
 	provider := ai.GetProvider()
 
-	// Test with a simple embedding request
+	// Test with a simple summary request
 	testText := "Hello, this is a test."
-	_, err := provider.GetEmbedding(testText)
+	_, err := provider.GenerateSummary(testText)
 	if err != nil {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"success": false,

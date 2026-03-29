@@ -1,7 +1,7 @@
 import {useState, useEffect} from 'react'
 import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
-import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid, StickyNote} from 'lucide-react'
+import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid} from 'lucide-react'
 import {api, Feed, Article} from '../api'
 import {ArticleCard} from './ArticleCard'
 import {ArticleReader} from './ArticleReader'
@@ -229,18 +229,11 @@ export function FeedList() {
               <span>{t('nav.feeds')}</span>
             </Link>
             <Link
-              to="/articles"
-              className={`nav-item ${isActive('/articles') ? 'active' : ''}`}
+              to="/briefing"
+              className={`nav-item ${isActive('/briefing') ? 'active' : ''}`}
             >
               <FileText />
-              <span>{t('nav.articles')}</span>
-            </Link>
-            <Link
-              to="/notes"
-              className={`nav-item ${isActive('/notes') ? 'active' : ''}`}
-            >
-              <StickyNote />
-              <span>{t('nav.notes')}</span>
+              <span>简报</span>
             </Link>
             <Link
               to="/settings"

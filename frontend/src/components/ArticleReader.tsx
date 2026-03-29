@@ -54,6 +54,9 @@ export function ArticleReader({
 
   const hasSummary = article.summary && article.summary.length > 0
   const hasContent = article.content && article.content.length > 0
+  const cleanSummary = hasSummary
+    ? DOMPurify.sanitize(article.summary)
+    : ''
   const cleanContent = hasContent
     ? DOMPurify.sanitize(article.content)
     : ''
@@ -74,9 +77,10 @@ export function ArticleReader({
 
         {/* Summary lead — shown prominently */}
         {hasSummary && (
-          <div className="article-reader-summary">
-            {article.summary}
-          </div>
+          <div
+            className="article-reader-summary"
+            dangerouslySetInnerHTML={{__html: cleanSummary}}
+          />
         )}
 
         {/* Content */}

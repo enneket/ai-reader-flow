@@ -4,8 +4,8 @@ import (
 	"ai-rss-reader/internal/ai"
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/repository/sqlite"
-	"errors"
 	"fmt"
+	"log"
 	"math"
 	"strings"
 
@@ -305,8 +305,15 @@ func (s *FilterService) FilterAllArticlesNew() ([]int64, error) {
 			embeddings[res.id] = res.emb
 		}
 	}
+	if len(errs) > 0 && len(embeddings) == 0 {
+		// All embeddings failed - log warning but don't fail the whole operation
+		// Just return no new articles to process
+		log.Printf("Warning: all embeddings failed, skipping filter: %v", errs)
+		return nil, nil
+	}
 	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+		log.Printf("Warning: some embeddings failed (%d/%d), continuing with available ones",
+			len(embeddings), len(newArticles))
 	}
 
 	// save embeddings to DB

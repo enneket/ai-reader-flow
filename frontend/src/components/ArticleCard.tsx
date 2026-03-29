@@ -20,11 +20,30 @@ function formatDate(dateStr: string | null): string {
   })
 }
 
+// Strip HTML tags from text
+function stripHtml(html: string): string {
+  if (!html) return ''
+  // Replace BR tags with newlines
+  let text = html.replace(/<br\s*\/?>/gi, '\n')
+  // Strip remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '')
+  // Decode common HTML entities
+  text = text.replace(/&nbsp;/g, ' ')
+  text = text.replace(/&amp;/g, '&')
+  text = text.replace(/&lt;/g, '<')
+  text = text.replace(/&gt;/g, '>')
+  text = text.replace(/&quot;/g, '"')
+  text = text.replace(/&#39;/g, "'")
+  return text.trim()
+}
+
 function truncate(text: string, maxChars: number): string {
   if (!text) return ''
-  if (text.length <= maxChars) return text
+  // Strip HTML first
+  const clean = stripHtml(text)
+  if (clean.length <= maxChars) return clean
   // Don't cut mid-word
-  const truncated = text.substring(0, maxChars)
+  const truncated = clean.substring(0, maxChars)
   const lastSpace = truncated.lastIndexOf(' ')
   return (lastSpace > maxChars * 0.8 ? truncated.substring(0, lastSpace) : truncated) + '…'
 }

@@ -83,13 +83,17 @@ func (s *RSSService) fetchArticles(feed *models.Feed) error {
 			content = item.Description
 		}
 
+		author := ""
+		if item.Author != nil {
+			author = item.Author.Name
+		}
 		article := &models.Article{
 			FeedID:     feed.ID,
 			Title:      item.Title,
 			Link:       item.Link,
 			Content:    content,
 			Summary:    item.Description,
-			Author:     item.Author.Name,
+			Author:     author,
 			Published:  published,
 			IsFiltered: false,
 			IsSaved:    false,

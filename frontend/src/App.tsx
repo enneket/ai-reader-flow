@@ -6,11 +6,11 @@ import {Settings} from './components/Settings'
 function App() {
   return (
     <Routes>
-      {/* Briefing page — AI-generated daily briefing */}
-      <Route path="/" element={<Briefing />} />
-
       {/* Feeds page — manage subscriptions */}
       <Route path="/feeds" element={<FeedList />} />
+
+      {/* Briefing page — AI-generated daily briefing */}
+      <Route path="/briefing" element={<Briefing />} />
 
       {/* Settings page */}
       <Route path="/settings" element={<Settings />} />

@@ -9,9 +9,16 @@ export function Briefing() {
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
 
+  const today = new Date()
+  const dateStr = today.toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
   const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/'
-    return location.pathname.startsWith(path)
+    return location.pathname === path
   }
 
   useEffect(() => {
@@ -61,6 +68,21 @@ export function Briefing() {
 
   return (
     <div className="app">
+      {/* Unified top masthead */}
+      <header className="masthead">
+        <div className="masthead-left">
+          <a href="/feeds" className="masthead-logo">
+            AI RSS Reader
+          </a>
+        </div>
+        <div className="masthead-center">{dateStr}</div>
+        <div className="masthead-right">
+          <Link to="/settings" className="masthead-btn" title="Settings">
+            <Settings size={18} />
+          </Link>
+        </div>
+      </header>
+
       <div className="app-body">
         <aside className="sidebar">
           <div className="sidebar-header">
@@ -79,8 +101,8 @@ export function Briefing() {
               <span>订阅源</span>
             </Link>
             <Link
-              to="/"
-              className={`nav-item ${isActive('/') && location.pathname === '/' ? 'active' : ''}`}
+              to="/briefing"
+              className={`nav-item ${isActive('/briefing') ? 'active' : ''}`}
             >
               <FileText />
               <span>简报</span>
