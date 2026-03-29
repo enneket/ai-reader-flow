@@ -92,10 +92,39 @@ func createTables() error {
 		value TEXT
 	);
 
+	CREATE TABLE IF NOT EXISTS briefings (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		status TEXT DEFAULT 'pending',
+		error TEXT,
+		created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+		completed_at TEXT
+	);
+
+	CREATE TABLE IF NOT EXISTS briefing_items (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		briefing_id INTEGER NOT NULL,
+		topic TEXT NOT NULL,
+		summary TEXT,
+		sort_order INTEGER DEFAULT 0,
+		FOREIGN KEY (briefing_id) REFERENCES briefings(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS briefing_articles (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		briefing_item_id INTEGER NOT NULL,
+		article_id INTEGER NOT NULL,
+		title TEXT,
+		FOREIGN KEY (briefing_item_id) REFERENCES briefing_items(id) ON DELETE CASCADE,
+		FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_articles_feed_id ON articles(feed_id);
 	CREATE INDEX IF NOT EXISTS idx_articles_is_filtered ON articles(is_filtered);
 	CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
 	CREATE INDEX IF NOT EXISTS idx_notes_article_id ON notes(article_id);
+	CREATE INDEX IF NOT EXISTS idx_briefing_items_briefing_id ON briefing_items(briefing_id);
+	CREATE INDEX IF NOT EXISTS idx_briefing_articles_briefing_item_id ON briefing_articles(briefing_item_id);
+	CREATE INDEX IF NOT EXISTS idx_briefings_created_at ON briefings(created_at);
 	`
 
 	_, err := DB.Exec(schema)
