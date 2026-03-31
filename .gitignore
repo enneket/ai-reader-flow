@@ -8,3 +8,4 @@ frontend/dist
 .gstack/
 server
 data/
+*.log
