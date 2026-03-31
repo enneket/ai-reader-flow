@@ -196,6 +196,23 @@ func (r *ArticleRepository) GetRecentForBriefing() ([]models.Article, error) {
 	return r.scanArticles(rows)
 }
 
+// GetArticlesAfter returns articles created after the given time
+func (r *ArticleRepository) GetArticlesAfter(startTime time.Time) ([]models.Article, error) {
+	rows, err := DB.Query(
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
+         FROM articles
+         WHERE created_at > ?
+         ORDER BY created_at DESC
+         LIMIT 100`,
+		startTime,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return r.scanArticles(rows)
+}
+
 // GetUnreadWithoutEmbedding returns unread articles that haven't been embedding-scored yet.
 func (r *ArticleRepository) GetUnreadWithoutEmbedding() ([]models.Article, error) {
 	rows, err := DB.Query(

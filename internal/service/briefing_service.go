@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 )
 
 type BriefingService struct {
-	briefingRepo *sqlite.BriefingRepository
-	articleRepo  *sqlite.ArticleRepository
-	feedRepo     *sqlite.FeedRepository
+	briefingRepo   *sqlite.BriefingRepository
+	articleRepo    *sqlite.ArticleRepository
+	feedRepo       *sqlite.FeedRepository
+	LastRefreshAt  time.Time // 最后刷新时间
+	LastBriefingAt time.Time // 最后生成简报时间
 }
 
 func NewBriefingService() *BriefingService {
@@ -26,6 +29,11 @@ func NewBriefingService() *BriefingService {
 
 // GenerateBriefing creates a new briefing from recent articles
 func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
+	// 0. Check if already generated this round
+	if !s.LastBriefingAt.Before(s.LastRefreshAt) && !s.LastRefreshAt.IsZero() {
+		return nil, fmt.Errorf("本轮已生成简报，请稍后再试")
+	}
+
 	// 1. Create briefing record
 	briefing := &models.Briefing{
 		Status: "generating",
@@ -34,16 +42,16 @@ func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
 		return nil, fmt.Errorf("create briefing: %w", err)
 	}
 
-	// 2. Get recent articles
-	articles, err := s.articleRepo.GetRecentForBriefing()
+	// 2. Get articles after last refresh
+	articles, err := s.articleRepo.GetArticlesAfter(s.LastRefreshAt)
 	if err != nil {
 		s.briefingRepo.UpdateStatus(briefing.ID, "failed", err.Error())
 		return nil, fmt.Errorf("get articles: %w", err)
 	}
 
 	if len(articles) == 0 {
-		s.briefingRepo.UpdateStatus(briefing.ID, "completed", "")
-		return briefing, nil
+		s.briefingRepo.UpdateStatus(briefing.ID, "failed", "暂无新文章")
+		return nil, fmt.Errorf("暂无新文章")
 	}
 
 	// 3. Build articles input for AI
@@ -99,6 +107,7 @@ func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
 
 	// 7. Mark as completed
 	s.briefingRepo.UpdateStatus(briefing.ID, "completed", "")
+	s.LastBriefingAt = time.Now()
 
 	return briefing, nil
 }

@@ -617,11 +617,39 @@ func handleGetBriefing(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
-	// Create briefing in background
-	go func() {
-		briefingService.GenerateBriefing()
-	}()
-	w.WriteHeader(http.StatusAccepted)
+	// 1. 检查本轮是否已生成（检查和使用之间没有操作是安全的）
+	if !briefingService.LastBriefingAt.Before(briefingService.LastRefreshAt) && !briefingService.LastRefreshAt.IsZero() {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"success": false,
+			"error":   "本轮已生成简报，请稍后再试",
+		})
+		return
+	}
+
+	// 2. 刷新所有订阅源
+	if err := rssService.RefreshAllFeeds(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 3. 只在刷新成功后记录刷新时间
+	briefingService.LastRefreshAt = time.Now()
+
+	// 4. 生成简报
+	briefing, err := briefingService.GenerateBriefing()
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// 5. 返回成功
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"id":      briefing.ID,
+	})
 }
 
 func handleDeleteBriefing(w http.ResponseWriter, r *http.Request) {

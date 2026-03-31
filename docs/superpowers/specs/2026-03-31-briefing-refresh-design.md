@@ -31,8 +31,11 @@ var (
    - 否 → 继续
 3. 记录 `lastRefreshAt = time.Now()`
 4. 执行 RSS 刷新，获取新文章
-5. 用本轮新文章（`created_at > lastRefreshAt`）生成简报
-6. 记录 `lastBriefingAt = time.Now()`
+5. 检查是否有新文章：
+   - 无新文章 → 返回提示"暂无新文章"，不生成简报
+   - 有新文章 → 继续
+6. 用本轮新文章（`created_at > lastRefreshAt`）生成简报
+7. 记录 `lastBriefingAt = time.Now()`
 
 ### 数据层修改
 
@@ -76,7 +79,12 @@ func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
         return nil, fmt.Errorf("获取新文章: %w", err)
     }
 
-    // 5. 生成简报...
+    // 5. 检查是否有新文章
+    if len(articles) == 0 {
+        return nil, fmt.Errorf("暂无新文章")
+    }
+
+    // 6. 生成简报...
 }
 ```
 
@@ -88,6 +96,7 @@ func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
 
 - 生成成功后显示"简报生成成功"
 - 如果返回"本轮已生成"错误，显示提示"本轮已生成简报，请稍后再试"
+- 如果返回"暂无新文章"，显示提示"暂无新文章"
 
 ## 实现步骤
 

@@ -166,7 +166,7 @@ export const api = {
 
   getBriefing: (id: number) => request<Briefing>(`/briefings/${id}`),
 
-  generateBriefing: () => request<void>('/briefings/generate', { method: 'POST' }),
+  generateBriefing: () => request<{success: boolean; id?: number; error?: string}>('/briefings/generate', { method: 'POST' }),
 
   deleteBriefing: (id: number) =>
     request<void>(`/briefings/${id}`, { method: 'DELETE' }),

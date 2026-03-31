@@ -51,8 +51,12 @@ export function Briefing() {
   const handleGenerate = async () => {
     setGenerating(true)
     try {
-      await api.generateBriefing()
-      await loadBriefings(0)
+      const result = await api.generateBriefing()
+      if (result.success) {
+        await loadBriefings(0)
+      } else {
+        alert(result.error || '生成失败')
+      }
     } catch (err) {
       console.error('Failed to generate briefing:', err)
     } finally {
