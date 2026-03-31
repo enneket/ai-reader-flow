@@ -162,7 +162,7 @@ export const api = {
 
   // ─── Briefings ────────────────────────────────────────────────────────────
 
-  getBriefings: () => request<Briefing[]>('/briefings'),
+  getBriefings: (limit = 20, offset = 0) => request<Briefing[]>(`/briefings?limit=${limit}&offset=${offset}`),
 
   getBriefing: (id: number) => request<Briefing>(`/briefings/${id}`),
 

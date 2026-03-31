@@ -1433,6 +1433,17 @@ body {
   padding: var(--space-4);
 }
 
+.briefing-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-2) 0;
+}
+
+.briefing-card.selected {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
 .briefing-card-header {
   display: flex;
   align-items: center;
@@ -1528,6 +1539,20 @@ body {
   font-size: 0.85rem;
   color: var(--error);
   margin: var(--space-2) 0 0 0;
+}
+
+.briefing-detail {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: var(--space-6);
+}
+
+.briefing-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
 }
 
 .empty-state {

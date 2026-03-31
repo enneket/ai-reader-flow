@@ -346,9 +346,9 @@ export function Settings() {
                 onChange={(e) => setProvider(e.target.value)}
                 className="form-input form-select"
               >
-                <option value="openai">OpenAI</option>
+                <option value="openai">OpenAI 兼容（通用）</option>
                 <option value="claude">Claude</option>
-                <option value="ollama">Ollama (Local)</option>
+                <option value="ollama">Ollama (本地)</option>
               </select>
             </div>
 

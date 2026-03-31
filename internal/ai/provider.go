@@ -60,7 +60,7 @@ func InitProvider(cfg config.AIProviderConfig) {
 			BaseURL: cfg.BaseURL,
 			Model:   cfg.Model,
 		}
-	default: // openai
+	default: // openai or custom - use OpenAI-compatible format with user-provided base_url
 		currentProvider = &OpenAIProvider{
 			APIKey:    cfg.APIKey,
 			BaseURL:   cfg.BaseURL,
@@ -125,6 +125,14 @@ func (p *OpenAIProvider) GenerateSummary(content string) (string, error) {
 		return "", err
 	}
 
+	// Check for OpenAI error response
+	if errObj, ok := result["error"].(map[string]interface{}); ok {
+		if msg, ok := errObj["message"].(string); ok {
+			return "", fmt.Errorf("openai error: %s", msg)
+		}
+		return "", fmt.Errorf("openai error: %v", errObj)
+	}
+
 	if choices, ok := result["choices"].([]interface{}); ok && len(choices) > 0 {
 		if choice, ok := choices[0].(map[string]interface{}); ok {
 			if msg, ok := choice["message"].(map[string]interface{}); ok {
@@ -175,6 +183,14 @@ func (p *OpenAIProvider) GenerateBriefing(prompt string) (string, error) {
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "", err
+	}
+
+	// Check for OpenAI error response
+	if errObj, ok := result["error"].(map[string]interface{}); ok {
+		if msg, ok := errObj["message"].(string); ok {
+			return "", fmt.Errorf("openai error: %s", msg)
+		}
+		return "", fmt.Errorf("openai error: %v", errObj)
 	}
 
 	if choices, ok := result["choices"].([]interface{}); ok && len(choices) > 0 {

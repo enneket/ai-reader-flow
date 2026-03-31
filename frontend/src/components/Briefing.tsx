@@ -1,13 +1,18 @@
 import {useState, useEffect} from 'react'
-import {Link, useLocation} from 'react-router-dom'
-import {FileText, RefreshCw, Settings, LayoutGrid} from 'lucide-react'
+import {Link, useLocation, useNavigate} from 'react-router-dom'
+import {FileText, RefreshCw, Settings, LayoutGrid, ChevronLeft, ChevronRight} from 'lucide-react'
 import {api, Briefing as BriefingType} from '../api'
+
+const PAGE_SIZE = 20
 
 export function Briefing() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [briefings, setBriefings] = useState<BriefingType[]>([])
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -22,14 +27,20 @@ export function Briefing() {
   }
 
   useEffect(() => {
-    loadBriefings()
+    loadBriefings(0)
   }, [])
 
-  const loadBriefings = async () => {
+  const loadBriefings = async (pageNum: number) => {
     setLoading(true)
     try {
-      const data = await api.getBriefings()
-      setBriefings(data || [])
+      const data = await api.getBriefings(PAGE_SIZE, pageNum * PAGE_SIZE)
+      if (pageNum === 0) {
+        setBriefings(data || [])
+      } else {
+        setBriefings(prev => [...prev, ...(data || [])])
+      }
+      setHasMore((data || []).length === PAGE_SIZE)
+      setPage(pageNum)
     } catch (err) {
       console.error('Failed to load briefings:', err)
     } finally {
@@ -41,12 +52,20 @@ export function Briefing() {
     setGenerating(true)
     try {
       await api.generateBriefing()
-      await loadBriefings()
+      await loadBriefings(0)
     } catch (err) {
       console.error('Failed to generate briefing:', err)
     } finally {
       setGenerating(false)
     }
+  }
+
+  const handleBriefingClick = (briefing: BriefingType) => {
+    navigate(`/briefing/${briefing.id}`)
+  }
+
+  const handleLoadMore = () => {
+    loadBriefings(page + 1)
   }
 
   const formatTime = (dateStr: string) => {
@@ -64,6 +83,17 @@ export function Briefing() {
       month: 'short',
       day: 'numeric',
     })
+  }
+
+  const formatBriefingTitle = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    return `${year}年${month}月${day}日${hours}时${minutes}分${seconds}秒 简报`
   }
 
   return (
@@ -126,7 +156,6 @@ export function Briefing() {
         <main className="app-main">
           <div className="page-content">
             <div className="briefing-header">
-              <h1>简报</h1>
               <button
                 onClick={handleGenerate}
                 disabled={generating}
@@ -137,9 +166,11 @@ export function Briefing() {
               </button>
             </div>
 
-            {loading ? (
+            {loading && briefings.length === 0 && (
               <div className="loading">加载中...</div>
-            ) : briefings.length === 0 ? (
+            )}
+
+            {!loading && briefings.length === 0 && (
               <div className="empty-state">
                 <FileText size={48} />
                 <p>暂无简报</p>
@@ -147,10 +178,18 @@ export function Briefing() {
                   点击上方按钮立即生成
                 </p>
               </div>
-            ) : (
+            )}
+
+            {briefings.length > 0 && (
               <div className="briefing-list">
                 {briefings.map((briefing) => (
-                  <div key={briefing.id} className="briefing-card">
+                  <div
+                    key={briefing.id}
+                    className="briefing-card"
+                    onClick={() => handleBriefingClick(briefing)}
+                    style={{cursor: 'pointer'}}
+                  >
+                    <h3 className="briefing-card-title">{formatBriefingTitle(briefing.created_at)}</h3>
                     <div className="briefing-card-header">
                       <span className="briefing-date">{formatDate(briefing.created_at)}</span>
                       <span className="briefing-time">{formatTime(briefing.created_at)}</span>
@@ -160,26 +199,23 @@ export function Briefing() {
                          briefing.status === 'failed' ? '失败' : briefing.status}
                       </span>
                     </div>
-                    {briefing.status === 'completed' && briefing.items && (
-                      <div className="briefing-items">
-                        {briefing.items.map((item) => (
-                          <div key={item.id} className="briefing-item">
-                            <h3>{item.topic} ({item.articles.length}篇)</h3>
-                            <p className="briefing-summary">{item.summary}</p>
-                            <ul className="briefing-articles">
-                              {item.articles.map((article) => (
-                                <li key={article.id}>{article.title}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                     {briefing.status === 'failed' && briefing.error && (
                       <p className="briefing-error">错误: {briefing.error}</p>
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {hasMore && !loading && briefings.length > 0 && (
+              <div style={{display: 'flex', justifyContent: 'center', marginTop: 'var(--space-4)'}}>
+                <button
+                  onClick={handleLoadMore}
+                  className="btn btn-secondary"
+                >
+                  <ChevronRight size={16} />
+                  加载更多
+                </button>
               </div>
             )}
           </div>
