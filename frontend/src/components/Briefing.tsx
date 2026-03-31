@@ -1,6 +1,7 @@
 import {useState, useEffect} from 'react'
 import {Link, useLocation, useNavigate} from 'react-router-dom'
 import {FileText, RefreshCw, Settings, LayoutGrid, ChevronLeft, ChevronRight} from 'lucide-react'
+import {Modal} from 'antd'
 import {api, Briefing as BriefingType} from '../api'
 
 const PAGE_SIZE = 20
@@ -55,7 +56,10 @@ export function Briefing() {
       if (result.success) {
         await loadBriefings(0)
       } else {
-        alert(result.error || '生成失败')
+        Modal.error({
+          title: '错误',
+          content: result.error || '生成失败',
+        })
       }
     } catch (err) {
       console.error('Failed to generate briefing:', err)
