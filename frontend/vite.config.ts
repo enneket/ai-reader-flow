@@ -6,13 +6,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
+    port: 5561,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:5562',
         changeOrigin: true,
       },
       '/opml': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:5562',
         changeOrigin: true,
       },
     },

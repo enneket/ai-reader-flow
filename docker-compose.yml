@@ -4,11 +4,12 @@ services:
       context: .
       dockerfile: Dockerfile.api
     ports:
-      - "18080:8080"
+      - "18562:5562"
     volumes:
       - ./data:/data
     environment:
       - DB_PATH=/data/reader.db
+      - PORT=5562
     restart: unless-stopped
 
   web:
@@ -16,7 +17,7 @@ services:
       context: .
       dockerfile: Dockerfile.web
     ports:
-      - "180:80"
+      - "5561:80"
     depends_on:
       - api
     restart: unless-stopped
