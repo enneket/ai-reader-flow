@@ -404,10 +404,10 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 		events.GlobalRefreshStatus.Mutex.Unlock()
 
 		// Refresh with progress callback
-		err := rssService.RefreshAllFeedsWithProgress(func(current, currentTotal int, feedTitle string, success, failed int) {
+		err := rssService.RefreshAllFeedsWithProgress(func(idx, total int, feedTitle string, success, failed int) {
 			events.GlobalRefreshStatus.Mutex.Lock()
-			events.GlobalRefreshStatus.Current = current
-			events.GlobalRefreshStatus.Total = currentTotal
+			events.GlobalRefreshStatus.Current = success + failed // 已完成数量
+			events.GlobalRefreshStatus.Total = total
 			events.GlobalRefreshStatus.FeedTitle = feedTitle
 			events.GlobalRefreshStatus.Success = success
 			events.GlobalRefreshStatus.Failed = failed
