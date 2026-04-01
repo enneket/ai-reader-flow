@@ -59,7 +59,7 @@ type OperationState struct {
 // Returns false if another operation is already in progress.
 func (s *OperationState) TryLock(op string) bool {
 	s.mutex.Lock()
-	if s.current != "idle" {
+	if s.current != "" && s.current != "idle" {
 		s.mutex.Unlock()
 		return false
 	}
