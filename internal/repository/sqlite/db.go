@@ -141,6 +141,10 @@ func createTables() error {
 	// Migration: add embedding and quality_score columns for Plan B
 	_ = migrateAddColumn("articles", "embedding", "TEXT")
 	_ = migrateAddColumn("articles", "quality_score", "INTEGER DEFAULT 0")
+	// Migration: add feed refresh status columns
+	_ = migrateAddColumn("feeds", "last_refresh_success", "INTEGER DEFAULT 0")
+	_ = migrateAddColumn("feeds", "last_refresh_error", "TEXT DEFAULT ''")
+	_ = migrateAddColumn("feeds", "last_refreshed", "TEXT")
 
 	// Create FTS5 virtual table for full-text search
 	_ = createFTSTable()
