@@ -70,19 +70,20 @@ func (s *RSSService) AddFeed(url string) (*models.Feed, error) {
 	}
 
 	// Fetch and store articles
-	if err := s.fetchArticles(newFeed); err != nil {
+	if _, err := s.fetchArticles(newFeed); err != nil {
 		fmt.Printf("Warning: failed to fetch articles for feed %s: %v\n", newFeed.Title, err)
 	}
 
 	return newFeed, nil
 }
 
-func (s *RSSService) fetchArticles(feed *models.Feed) error {
+func (s *RSSService) fetchArticles(feed *models.Feed) (int, error) {
 	articles, err := s.parser.ParseURL(feed.URL)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
+	newCount := 0
 	for _, item := range articles.Items {
 		published := time.Now()
 		if item.PublishedParsed != nil {
@@ -117,6 +118,8 @@ func (s *RSSService) fetchArticles(feed *models.Feed) error {
 		if !exists {
 			if err := s.articleRepo.Create(article); err != nil {
 				log.Printf("warning: failed to save article %s: %v", article.Title, err)
+			} else {
+				newCount++
 			}
 		}
 	}
@@ -124,7 +127,7 @@ func (s *RSSService) fetchArticles(feed *models.Feed) error {
 	feed.LastFetched = time.Now()
 	s.feedRepo.Update(feed)
 
-	return nil
+	return newCount, nil
 }
 
 func (s *RSSService) RefreshAllFeeds() error {
@@ -200,7 +203,7 @@ func (s *RSSService) refreshFeedWithRetry(feedID int64) error {
 
 	var lastErr error
 	for i := 0; i < maxRetries; i++ {
-		err := s.fetchArticles(feed)
+		_, err := s.fetchArticles(feed)
 		if err == nil {
 			return nil
 		}
