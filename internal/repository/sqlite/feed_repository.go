@@ -28,7 +28,9 @@ func (r *FeedRepository) Create(feed *models.Feed) error {
 }
 
 func (r *FeedRepository) GetAll() ([]models.Feed, error) {
-	rows, err := DB.Query(`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at, COALESCE(group_name, '') FROM feeds ORDER BY created_at DESC`)
+	rows, err := DB.Query(`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at, COALESCE(group_name, ''),
+	        last_refresh_success, COALESCE(last_refresh_error, ''), last_refreshed
+	 FROM feeds ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +39,9 @@ func (r *FeedRepository) GetAll() ([]models.Feed, error) {
 	var feeds = []models.Feed{}
 	for rows.Next() {
 		var f models.Feed
-		var lastFetched, createdAt sql.NullString
-		err := rows.Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt, &f.Group)
+		var lastFetched, createdAt, lastRefreshed sql.NullString
+		err := rows.Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt, &f.Group,
+			&f.LastRefreshSuccess, &f.LastRefreshError, &lastRefreshed)
 		if err != nil {
 			log.Printf("scan feed error (row may be skipped): %v", err)
 			continue
@@ -49,6 +52,9 @@ func (r *FeedRepository) GetAll() ([]models.Feed, error) {
 		if createdAt.Valid {
 			f.CreatedAt, _ = time.Parse(time.RFC3339, createdAt.String)
 		}
+		if lastRefreshed.Valid {
+			f.LastRefreshed, _ = time.Parse(time.RFC3339, lastRefreshed.String)
+		}
 		feeds = append(feeds, f)
 	}
 	return feeds, nil
@@ -56,11 +62,14 @@ func (r *FeedRepository) GetAll() ([]models.Feed, error) {
 
 func (r *FeedRepository) GetByID(id int64) (*models.Feed, error) {
 	var f models.Feed
-	var lastFetched, createdAt sql.NullString
+	var lastFetched, createdAt, lastRefreshed sql.NullString
 	err := DB.QueryRow(
-		`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at, COALESCE(group_name, '') FROM feeds WHERE id = ?`,
+		`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at, COALESCE(group_name, ''),
+	        last_refresh_success, COALESCE(last_refresh_error, ''), last_refreshed
+	 FROM feeds WHERE id = ?`,
 		id,
-	).Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt, &f.Group)
+	).Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt, &f.Group,
+		&f.LastRefreshSuccess, &f.LastRefreshError, &lastRefreshed)
 	if err != nil {
 		return nil, err
 	}
@@ -69,6 +78,9 @@ func (r *FeedRepository) GetByID(id int64) (*models.Feed, error) {
 	}
 	if createdAt.Valid {
 		f.CreatedAt, _ = time.Parse(time.RFC3339, createdAt.String)
+	}
+	if lastRefreshed.Valid {
+		f.LastRefreshed, _ = time.Parse(time.RFC3339, lastRefreshed.String)
 	}
 	return &f, nil
 }
@@ -83,6 +95,14 @@ func (r *FeedRepository) Update(feed *models.Feed) error {
 
 func (r *FeedRepository) Delete(id int64) error {
 	_, err := DB.Exec(`DELETE FROM feeds WHERE id = ?`, id)
+	return err
+}
+
+func (r *FeedRepository) UpdateRefreshResult(id int64, success int, errorMsg string) error {
+	_, err := DB.Exec(
+		`UPDATE feeds SET last_refresh_success = ?, last_refresh_error = ?, last_refreshed = ? WHERE id = ?`,
+		success, errorMsg, time.Now().Format(time.RFC3339), id,
+	)
 	return err
 }
 
