@@ -6,6 +6,13 @@ import {api, Briefing as BriefingType} from '../api'
 
 const PAGE_SIZE = 20
 
+type ProgressState = {
+  type: 'idle' | 'refreshing' | 'briefing'
+  message: string
+  current?: number
+  total?: number
+}
+
 export function Briefing() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -14,6 +21,7 @@ export function Briefing() {
   const [generating, setGenerating] = useState(false)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [progress, setProgress] = useState<ProgressState>({type: 'idle', message: ''})
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -29,6 +37,69 @@ export function Briefing() {
 
   useEffect(() => {
     loadBriefings(0)
+  }, [])
+
+  // SSE listener for refresh and briefing progress events
+  useEffect(() => {
+    const es = new EventSource('/api/events')
+
+    es.addEventListener('refresh:start', (e) => {
+      const data = JSON.parse(e.data)
+      setProgress({type: 'refreshing', message: `开始刷新 ${data.total || 0} 个订阅源...`, total: data.total})
+      setGenerating(true)
+    })
+
+    es.addEventListener('refresh:progress', (e) => {
+      const data = JSON.parse(e.data)
+      setProgress({
+        type: 'refreshing',
+        message: `正在刷新 ${data.current}/${data.total} 个订阅源: ${data.feedTitle || ''}`,
+        current: data.current,
+        total: data.total,
+      })
+    })
+
+    es.addEventListener('refresh:complete', () => {
+      setProgress({type: 'idle', message: ''})
+    })
+
+    es.addEventListener('refresh:error', (e) => {
+      const data = JSON.parse(e.data)
+      setProgress({type: 'idle', message: ''})
+      setGenerating(false)
+      Modal.error({title: '刷新失败', content: data.message || '刷新订阅源失败'})
+    })
+
+    es.addEventListener('briefing:start', () => {
+      setProgress({type: 'briefing', message: '开始生成简报...'})
+      setGenerating(true)
+    })
+
+    es.addEventListener('briefing:progress', (e) => {
+      const data = JSON.parse(e.data)
+      const stageMessages: Record<string, string> = {
+        checking: '检查生成状态...',
+        fetching: '正在获取文章...',
+        analyzing: '正在分析文章主题...',
+        generating: '正在生成简报...',
+      }
+      setProgress({type: 'briefing', message: stageMessages[data.stage] || data.detail || '生成中...'})
+    })
+
+    es.addEventListener('briefing:complete', () => {
+      setProgress({type: 'idle', message: ''})
+      setGenerating(false)
+      loadBriefings(0)
+    })
+
+    es.addEventListener('briefing:error', (e) => {
+      const data = JSON.parse(e.data)
+      setProgress({type: 'idle', message: ''})
+      setGenerating(false)
+      Modal.error({title: '生成失败', content: data.message || '生成简报失败'})
+    })
+
+    return () => es.close()
   }, [])
 
   const loadBriefings = async (pageNum: number) => {
@@ -50,21 +121,25 @@ export function Briefing() {
   }
 
   const handleGenerate = async () => {
-    setGenerating(true)
     try {
       const result = await api.generateBriefing()
-      if (result.success) {
-        await loadBriefings(0)
-      } else {
-        Modal.error({
-          title: '错误',
-          content: result.error || '生成失败',
-        })
+      if (!result.success) {
+        if (result.code === 'OPERATION_IN_PROGRESS') {
+          Modal.warning({title: '操作冲突', content: result.error || '正在执行其他操作，请稍候'})
+        } else {
+          Modal.error({title: '错误', content: result.error || '生成失败'})
+        }
+        return
       }
-    } catch (err) {
-      console.error('Failed to generate briefing:', err)
-    } finally {
-      setGenerating(false)
+      // SSE will handle setting generating=false on completion/error
+      // But we should set it true immediately for UX
+      setGenerating(true)
+    } catch (err: any) {
+      if (err.message.includes('409')) {
+        Modal.warning({title: '操作冲突', content: '正在刷新或生成中，请稍候'})
+      } else {
+        console.error('Failed to generate briefing:', err)
+      }
     }
   }
 
@@ -173,6 +248,38 @@ export function Briefing() {
                 {generating ? '生成中...' : '立即生成简报'}
               </button>
             </div>
+
+            {progress.type !== 'idle' && (
+              <div style={{
+                padding: 'var(--space-3)',
+                background: 'var(--bg-secondary)',
+                borderRadius: 'var(--radius)',
+                marginBottom: 'var(--space-3)',
+                fontSize: '0.9rem',
+              }}>
+                <div style={{marginBottom: 'var(--space-2)', color: 'var(--text-secondary)'}}>
+                  {progress.type === 'refreshing' ? '🔄 刷新订阅源' : '📝 生成简报'}
+                </div>
+                <div style={{marginBottom: progress.total ? 'var(--space-2)' : 0}}>
+                  {progress.message}
+                </div>
+                {progress.total && progress.current && (
+                  <div style={{
+                    height: '4px',
+                    background: 'var(--bg-primary)',
+                    borderRadius: '2px',
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${(progress.current / progress.total) * 100}%`,
+                      background: 'var(--accent)',
+                      transition: 'width 0.3s ease',
+                    }} />
+                  </div>
+                )}
+              </div>
+            )}
 
             {loading && briefings.length === 0 && (
               <div className="loading">加载中...</div>

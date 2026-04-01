@@ -117,6 +117,12 @@ func (s *RSSService) fetchArticles(feed *models.Feed) error {
 }
 
 func (s *RSSService) RefreshAllFeeds() error {
+	return s.RefreshAllFeedsWithProgress(nil)
+}
+
+// RefreshAllFeedsWithProgress refreshes all feeds with optional progress callback.
+// If onProgress is nil, behaves exactly like RefreshAllFeeds.
+func (s *RSSService) RefreshAllFeedsWithProgress(onProgress func(current, total int, feedTitle string)) error {
 	feeds, err := s.feedRepo.GetAll()
 	if err != nil {
 		return err
@@ -126,31 +132,46 @@ func (s *RSSService) RefreshAllFeeds() error {
 		return nil
 	}
 
+	total := len(feeds)
+	success := 0
+	failed := 0
+
 	// Concurrent: max 5 parallel
 	sem := make(chan struct{}, 5)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	var errs []error
 
-	for _, feed := range feeds {
+	for i, feed := range feeds {
 		wg.Add(1)
-		go func(f models.Feed) {
+		go func(f models.Feed, idx int) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
 			if err := s.refreshFeedWithRetry(f.ID); err != nil {
 				mu.Lock()
-				errs = append(errs, fmt.Errorf("feed %s: %w", f.Title, err))
+				failed++
+				mu.Unlock()
+				log.Printf("refresh feed %s error: %v", f.Title, err)
+			} else {
+				mu.Lock()
+				success++
 				mu.Unlock()
 			}
-		}(feed)
+
+			if onProgress != nil {
+				mu.Lock()
+				current := idx + 1
+				mu.Unlock()
+				onProgress(current, total, f.Title)
+			}
+		}(feed, i)
 	}
 
 	wg.Wait()
 
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+	if failed > 0 {
+		return fmt.Errorf("%d feeds failed (success: %d, failed: %d)", failed, success, failed)
 	}
 	return nil
 }

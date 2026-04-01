@@ -345,22 +345,68 @@ func handleRefreshFeed(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
-	if err := rssService.RefreshAllFeeds(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Check operation mutex - return 409 if another operation is in progress
+	if !events.GlobalOperationState.TryLock("refreshing") {
+		writeJSON(w, http.StatusConflict, map[string]interface{}{
+			"success": false,
+			"error":   "正在刷新订阅源，请稍候",
+			"code":    "OPERATION_IN_PROGRESS",
+		})
 		return
 	}
-	newArticleIDs, err := filterService.FilterAllArticlesNew()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	// Broadcast to SSE clients so they can refresh their article list
-	events.GlobalBroadcaster.Broadcast(events.EventNewArticles, map[string]int{"count": len(newArticleIDs)})
-	// Launch background goroutine to generate summaries
+
+	// Return 202 Accepted immediately
+	taskID := fmt.Sprintf("refresh-%d", time.Now().UnixMilli())
+	writeJSON(w, http.StatusAccepted, map[string]interface{}{
+		"success": true,
+		"taskId":  taskID,
+	})
+
+	// Spawn goroutine for actual work
 	go func() {
-		summaryService.BatchGenerateSummaries(newArticleIDs, 5)
+		defer events.GlobalOperationState.Unlock()
+
+		feeds, _ := rssService.GetFeeds()
+		total := len(feeds)
+
+		// Broadcast start
+		events.GlobalBroadcaster.Broadcast(events.EventRefreshStart, map[string]int{"total": total})
+
+		// Refresh with progress callback
+		err := rssService.RefreshAllFeedsWithProgress(func(current, currentTotal int, feedTitle string) {
+			events.GlobalBroadcaster.Broadcast(events.EventRefreshProgress, events.RefreshProgress{
+				Current:   current,
+				Total:     currentTotal,
+				FeedTitle: feedTitle,
+			})
+		})
+
+		if err != nil {
+			events.GlobalBroadcaster.Broadcast(events.EventRefreshError, map[string]string{"message": err.Error()})
+			return
+		}
+
+		// Filter new articles
+		newArticleIDs, filterErr := filterService.FilterAllArticlesNew()
+		if filterErr != nil {
+			events.GlobalBroadcaster.Broadcast(events.EventRefreshError, map[string]string{"message": filterErr.Error()})
+			return
+		}
+
+		// Broadcast complete
+		events.GlobalBroadcaster.Broadcast(events.EventRefreshComplete, events.RefreshComplete{
+			Success: len(newArticleIDs),
+			Failed:  total - len(newArticleIDs),
+		})
+
+		// Broadcast new articles event so frontend can refresh list
+		events.GlobalBroadcaster.Broadcast(events.EventNewArticles, map[string]int{"count": len(newArticleIDs)})
+
+		// Launch background goroutine to generate summaries
+		go func() {
+			summaryService.BatchGenerateSummaries(newArticleIDs, 5)
+		}()
 	}()
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // ─── Article Handlers ─────────────────────────────────────────────────────────
@@ -617,7 +663,7 @@ func handleGetBriefing(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
-	// 1. 检查本轮是否已生成（检查和使用之间没有操作是安全的）
+	// Check round-block logic
 	if !briefingService.LastBriefingAt.Before(briefingService.LastRefreshAt) && !briefingService.LastRefreshAt.IsZero() {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"success": false,
@@ -626,30 +672,72 @@ func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. 刷新所有订阅源
-	if err := rssService.RefreshAllFeeds(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// 3. 生成简报（成功后才记录刷新时间，避免失败后无法重试）
-	briefing, err := briefingService.GenerateBriefing()
-	if err != nil {
-		writeJSON(w, http.StatusOK, map[string]interface{}{
+	// Check operation mutex - return 409 if another operation is in progress
+	if !events.GlobalOperationState.TryLock("generating") {
+		writeJSON(w, http.StatusConflict, map[string]interface{}{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "正在生成简报，请稍候",
+			"code":    "OPERATION_IN_PROGRESS",
 		})
 		return
 	}
 
-	// 5. 只在成功后记录刷新时间
-	briefingService.LastRefreshAt = time.Now()
-
-	// 6. 返回成功
-	writeJSON(w, http.StatusOK, map[string]interface{}{
+	// Return 202 Accepted immediately
+	taskID := fmt.Sprintf("briefing-%d", time.Now().UnixMilli())
+	writeJSON(w, http.StatusAccepted, map[string]interface{}{
 		"success": true,
-		"id":      briefing.ID,
+		"taskId":  taskID,
 	})
+
+	// Spawn goroutine for actual work
+	go func() {
+		defer events.GlobalOperationState.Unlock()
+
+		// Broadcast start
+		events.GlobalBroadcaster.Broadcast(events.EventBriefingStart, struct{}{})
+
+		// 1. Refresh all feeds with progress
+		feeds, _ := rssService.GetFeeds()
+		total := len(feeds)
+		events.GlobalBroadcaster.Broadcast(events.EventRefreshStart, map[string]int{"total": total})
+
+		refreshErr := rssService.RefreshAllFeedsWithProgress(func(current, currentTotal int, feedTitle string) {
+			events.GlobalBroadcaster.Broadcast(events.EventRefreshProgress, events.RefreshProgress{
+				Current:   current,
+				Total:     currentTotal,
+				FeedTitle: feedTitle,
+			})
+		})
+
+		if refreshErr != nil {
+			events.GlobalBroadcaster.Broadcast(events.EventRefreshError, map[string]string{"message": refreshErr.Error()})
+			events.GlobalBroadcaster.Broadcast(events.EventBriefingError, map[string]string{"message": refreshErr.Error()})
+			return
+		}
+
+		events.GlobalBroadcaster.Broadcast(events.EventRefreshComplete, events.RefreshComplete{Success: total, Failed: 0})
+
+		// 2. Generate briefing with progress
+		briefing, err := briefingService.GenerateBriefingWithProgress(func(stage, detail string) {
+			events.GlobalBroadcaster.Broadcast(events.EventBriefingProgress, events.BriefingProgress{
+				Stage:  stage,
+				Detail: detail,
+			})
+		})
+
+		if err != nil {
+			events.GlobalBroadcaster.Broadcast(events.EventBriefingError, map[string]string{"message": err.Error()})
+			return
+		}
+
+		// 3. Only update LastRefreshAt after successful briefing
+		briefingService.LastRefreshAt = time.Now()
+
+		// Broadcast complete
+		events.GlobalBroadcaster.Broadcast(events.EventBriefingComplete, events.BriefingComplete{
+			BriefingID: briefing.ID,
+		})
+	}()
 }
 
 func handleDeleteBriefing(w http.ResponseWriter, r *http.Request) {

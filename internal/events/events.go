@@ -6,10 +6,77 @@ import (
 	"sync"
 )
 
+// Verify types implement the payloads used in SSE events
+
 // Event types broadcast to SSE clients
 const (
 	EventNewArticles = "new_articles"
+
+	// Refresh events
+	EventRefreshStart    = "refresh:start"
+	EventRefreshProgress = "refresh:progress"
+	EventRefreshComplete = "refresh:complete"
+	EventRefreshError    = "refresh:error"
+
+	// Briefing events
+	EventBriefingStart    = "briefing:start"
+	EventBriefingProgress = "briefing:progress"
+	EventBriefingComplete = "briefing:complete"
+	EventBriefingError    = "briefing:error"
 )
+
+// Refresh progress payload
+type RefreshProgress struct {
+	Current   int    `json:"current"`
+	Total     int    `json:"total"`
+	FeedTitle string `json:"feedTitle"`
+}
+
+// Refresh complete payload
+type RefreshComplete struct {
+	Success int `json:"success"`
+	Failed  int `json:"failed"`
+}
+
+// Briefing progress payload
+type BriefingProgress struct {
+	Stage  string `json:"stage"`
+	Detail string `json:"detail"`
+}
+
+// Briefing complete payload
+type BriefingComplete struct {
+	BriefingID int64 `json:"briefingId"`
+}
+
+// OperationState provides mutual exclusion between refresh and briefing operations
+type OperationState struct {
+	mutex   sync.Mutex
+	current string // "idle" | "refreshing" | "generating"
+}
+
+// TryLock attempts to acquire the operation lock for the given operation name.
+// Returns false if another operation is already in progress.
+func (s *OperationState) TryLock(op string) bool {
+	s.mutex.Lock()
+	if s.current != "idle" {
+		s.mutex.Unlock()
+		return false
+	}
+	s.current = op
+	s.mutex.Unlock()
+	return true
+}
+
+// Unlock releases the current operation lock
+func (s *OperationState) Unlock() {
+	s.mutex.Lock()
+	s.current = "idle"
+	s.mutex.Unlock()
+}
+
+// Global operation state instance
+var GlobalOperationState = &OperationState{}
 
 type Event struct {
 	Type    string      `json:"type"`

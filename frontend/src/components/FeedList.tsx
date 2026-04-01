@@ -2,9 +2,16 @@ import {useState, useEffect} from 'react'
 import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
 import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid} from 'lucide-react'
+import {Modal} from 'antd'
 import {api, Feed, Article} from '../api'
 import {ArticleCard} from './ArticleCard'
 import {ArticleReader} from './ArticleReader'
+
+type RefreshProgress = {
+  message: string
+  current?: number
+  total?: number
+}
 
 export function FeedList() {
   const {t} = useTranslation()
@@ -19,6 +26,7 @@ export function FeedList() {
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState<number | null>(null)
+  const [refreshProgress, setRefreshProgress] = useState<RefreshProgress | null>(null)
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -52,6 +60,46 @@ export function FeedList() {
       return () => clearTimeout(timer)
     }
   }, [error])
+
+  // SSE listener for refresh progress events
+  useEffect(() => {
+    const es = new EventSource('/api/events')
+
+    es.addEventListener('refresh:start', (e) => {
+      const data = JSON.parse(e.data)
+      setRefreshProgress({message: `开始刷新 ${data.total || 0} 个订阅源...`, total: data.total})
+      setRefreshing(true)
+    })
+
+    es.addEventListener('refresh:progress', (e) => {
+      const data = JSON.parse(e.data)
+      setRefreshProgress({
+        message: `正在刷新 ${data.current}/${data.total} 个订阅源: ${data.feedTitle || ''}`,
+        current: data.current,
+        total: data.total,
+      })
+    })
+
+    es.addEventListener('refresh:complete', () => {
+      setRefreshProgress(null)
+      setRefreshing(false)
+      loadFeeds()
+      if (selectedFeed) loadArticles(selectedFeed.id)
+    })
+
+    es.addEventListener('refresh:error', (e) => {
+      const data = JSON.parse(e.data)
+      setRefreshProgress(null)
+      setRefreshing(false)
+      Modal.error({title: '刷新失败', content: data.message || '刷新订阅源失败'})
+    })
+
+    es.addEventListener('briefing:start', () => {
+      // Briefing started from Briefing page - this feedlist doesn't track it
+    })
+
+    return () => es.close()
+  }, [selectedFeed])
 
   const loadArticles = async (feedId: number) => {
     setArticlesLoading(true)
@@ -109,18 +157,17 @@ export function FeedList() {
   }
 
   const handleRefreshAll = async () => {
-    setRefreshing(true)
     setError('')
     try {
       await api.refreshAllFeeds()
-      if (selectedFeed) {
-        await loadArticles(selectedFeed.id)
-      }
-      await loadFeeds()
+      // SSE will handle setting refreshing=true and progress updates
+      // On complete/error it will set refreshing=false
     } catch (err: any) {
-      setError(err.message || 'Failed to refresh feeds')
-    } finally {
-      setRefreshing(false)
+      if (err.message.includes('409')) {
+        Modal.warning({title: '操作冲突', content: '正在刷新或生成中，请稍候'})
+      } else {
+        setError(err.message || 'Failed to refresh feeds')
+      }
     }
   }
 
@@ -282,6 +329,33 @@ export function FeedList() {
           {error && (
             <div className="alert alert-error" style={{margin: 'var(--space-2)'}}>
               <span>{error}</span>
+            </div>
+          )}
+
+          {refreshProgress && (
+            <div style={{
+              padding: 'var(--space-2)',
+              background: 'var(--bg-secondary)',
+              borderRadius: 'var(--radius)',
+              margin: 'var(--space-2)',
+              fontSize: '0.8rem',
+            }}>
+              <div style={{marginBottom: 'var(--space-1)'}}>🔄 {refreshProgress.message}</div>
+              {refreshProgress.total && refreshProgress.current && (
+                <div style={{
+                  height: '3px',
+                  background: 'var(--bg-primary)',
+                  borderRadius: '2px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${(refreshProgress.current / refreshProgress.total) * 100}%`,
+                    background: 'var(--accent)',
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+              )}
             </div>
           )}
 

@@ -55,7 +55,7 @@ export const api = {
     request<void>(`/feeds/${id}/refresh`, { method: 'POST' }),
 
   refreshAllFeeds: () =>
-    request<void>('/refresh', { method: 'POST' }),
+    request<{success: boolean; taskId?: string; error?: string; code?: string}>('/refresh', { method: 'POST' }),
 
   // ─── Articles ────────────────────────────────────────────────────────────
 
@@ -166,7 +166,7 @@ export const api = {
 
   getBriefing: (id: number) => request<Briefing>(`/briefings/${id}`),
 
-  generateBriefing: () => request<{success: boolean; id?: number; error?: string}>('/briefings/generate', { method: 'POST' }),
+  generateBriefing: () => request<{success: boolean; id?: number; error?: string; code?: string}>('/briefings/generate', { method: 'POST' }),
 
   deleteBriefing: (id: number) =>
     request<void>(`/briefings/${id}`, { method: 'DELETE' }),

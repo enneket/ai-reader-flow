@@ -29,7 +29,16 @@ func NewBriefingService() *BriefingService {
 
 // GenerateBriefing creates a new briefing from recent articles
 func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
+	return s.GenerateBriefingWithProgress(nil)
+}
+
+// GenerateBriefingWithProgress creates a briefing with optional progress callback.
+// If onProgress is nil, behaves exactly like GenerateBriefing.
+func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, detail string)) (*models.Briefing, error) {
 	// 0. Check if already generated this round
+	if onProgress != nil {
+		onProgress("checking", "检查生成状态...")
+	}
 	if !s.LastBriefingAt.Before(s.LastRefreshAt) && !s.LastRefreshAt.IsZero() {
 		return nil, fmt.Errorf("本轮已生成简报，请稍后再试")
 	}
@@ -43,6 +52,9 @@ func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
 	}
 
 	// 2. Get articles after last refresh
+	if onProgress != nil {
+		onProgress("fetching", "正在获取文章...")
+	}
 	articles, err := s.articleRepo.GetArticlesAfter(s.LastRefreshAt)
 	if err != nil {
 		s.briefingRepo.UpdateStatus(briefing.ID, "failed", err.Error())
@@ -58,6 +70,9 @@ func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
 	articlesInput := s.buildArticlesInput(articles)
 
 	// 4. Call AI to generate topics
+	if onProgress != nil {
+		onProgress("analyzing", "正在分析文章主题...")
+	}
 	provider := ai.GetProvider()
 	prompt := s.buildPrompt(articlesInput)
 
@@ -75,6 +90,9 @@ func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
 	}
 
 	// 6. Store briefing items
+	if onProgress != nil {
+		onProgress("generating", "正在生成简报...")
+	}
 	for i, topic := range briefingResult.Topics {
 		item := &models.BriefingItem{
 			BriefingID: briefing.ID,
