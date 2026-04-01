@@ -3,15 +3,18 @@ package models
 import "time"
 
 type Feed struct {
-	ID          int64     `json:"id"`
-	Title       string    `json:"title"`
-	URL         string    `json:"url"`
-	Description string    `json:"description"`
-	IconURL     string    `json:"icon_url"`
-	LastFetched time.Time `json:"last_fetched"`
-	IsDead     bool      `json:"is_dead"` // true if feed returned 404/410
-	CreatedAt  time.Time `json:"created_at"`
-	Group      string    `json:"group"` // feed group/folder name, "" means ungrouped
+	ID                int64     `json:"id"`
+	Title             string    `json:"title"`
+	URL               string    `json:"url"`
+	Description       string    `json:"description"`
+	IconURL           string    `json:"icon_url"`
+	LastFetched       time.Time `json:"last_fetched"`
+	IsDead            bool      `json:"is_dead"` // true if feed returned 404/410
+	CreatedAt         time.Time `json:"created_at"`
+	Group             string    `json:"group"` // feed group/folder name, "" means ungrouped
+	LastRefreshSuccess int       `json:"last_refresh_success"` // 新文章数，-1=失败
+	LastRefreshError   string    `json:"last_refresh_error"`   // 失败错误信息
+	LastRefreshed      time.Time `json:"last_refreshed"`       // 最后刷新时间
 }
 
 type Article struct {
