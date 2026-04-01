@@ -6,6 +6,6 @@ frontend/dist
 
 
 .gstack/
-server
+/server
 data/
 *.log
