@@ -136,7 +136,10 @@ func (s *RSSService) RefreshAllFeeds() error {
 
 // RefreshAllFeedsWithProgress refreshes all feeds with optional progress callback.
 // If onProgress is nil, behaves exactly like RefreshAllFeeds.
-func (s *RSSService) RefreshAllFeedsWithProgress(onProgress func(current, total int, feedTitle string, success, failed int)) error {
+// Callback signature: onProgress(idx, total int, feedTitle string, feedId int64, newCount int, errMsg string)
+// newCount is -1 if there was an error, otherwise it's the number of new articles fetched.
+// errMsg is empty string on success, or the error message on failure.
+func (s *RSSService) RefreshAllFeedsWithProgress(onProgress func(idx, total int, feedTitle string, feedId int64, newCount int, errMsg string)) error {
 	feeds, err := s.feedRepo.GetAll()
 	if err != nil {
 		return err
@@ -147,13 +150,10 @@ func (s *RSSService) RefreshAllFeedsWithProgress(onProgress func(current, total 
 	}
 
 	total := len(feeds)
-	success := 0
-	failed := 0
 
 	// Concurrent: max 5 parallel
 	sem := make(chan struct{}, 5)
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 
 	for i, feed := range feeds {
 		wg.Add(1)
@@ -162,24 +162,15 @@ func (s *RSSService) RefreshAllFeedsWithProgress(onProgress func(current, total 
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			if err := s.refreshFeedWithRetry(f.ID); err != nil {
-				mu.Lock()
-				failed++
-				curSuccess := success
-				curFailed := failed
-				mu.Unlock()
+			newCount, err := s.fetchArticles(&f)
+			if err != nil {
 				log.Printf("refresh feed %s error: %v", f.Title, err)
 				if onProgress != nil {
-					onProgress(idx+1, total, f.Title, curSuccess, curFailed)
+					onProgress(idx+1, total, f.Title, f.ID, -1, err.Error())
 				}
 			} else {
-				mu.Lock()
-				success++
-				curSuccess := success
-				curFailed := failed
-				mu.Unlock()
 				if onProgress != nil {
-					onProgress(idx+1, total, f.Title, curSuccess, curFailed)
+					onProgress(idx+1, total, f.Title, f.ID, newCount, "")
 				}
 			}
 		}(feed, i)
@@ -187,9 +178,6 @@ func (s *RSSService) RefreshAllFeedsWithProgress(onProgress func(current, total 
 
 	wg.Wait()
 
-	if failed > 0 {
-		return fmt.Errorf("%d feeds failed (success: %d, failed: %d)", failed, success, failed)
-	}
 	return nil
 }
 

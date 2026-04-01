@@ -31,6 +31,9 @@ type RefreshProgress struct {
 	Current   int    `json:"current"`
 	Total     int    `json:"total"`
 	FeedTitle string `json:"feedTitle"`
+	FeedId    int64  `json:"feedId"`
+	NewCount  int    `json:"newCount"`
+	Error     string `json:"error"`
 }
 
 // Refresh complete payload

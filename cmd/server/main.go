@@ -404,13 +404,17 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 		events.GlobalRefreshStatus.Mutex.Unlock()
 
 		// Refresh with progress callback
-		err := rssService.RefreshAllFeedsWithProgress(func(idx, total int, feedTitle string, success, failed int) {
+		err := rssService.RefreshAllFeedsWithProgress(func(idx, total int, feedTitle string, feedId int64, newCount int, errMsg string) {
 			events.GlobalRefreshStatus.Mutex.Lock()
-			events.GlobalRefreshStatus.Current = success + failed // 已完成数量
+			events.GlobalRefreshStatus.Current = idx // 已完成数量
 			events.GlobalRefreshStatus.Total = total
 			events.GlobalRefreshStatus.FeedTitle = feedTitle
-			events.GlobalRefreshStatus.Success = success
-			events.GlobalRefreshStatus.Failed = failed
+			if errMsg != "" {
+				events.GlobalRefreshStatus.Failed++
+			} else {
+				events.GlobalRefreshStatus.Success++
+			}
+			events.GlobalRefreshStatus.Error = errMsg
 			events.GlobalRefreshStatus.Mutex.Unlock()
 		})
 
@@ -745,11 +749,14 @@ func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
 		total := len(feeds)
 		events.GlobalBroadcaster.Broadcast(events.EventRefreshStart, map[string]int{"total": total})
 
-		refreshErr := rssService.RefreshAllFeedsWithProgress(func(current, currentTotal int, feedTitle string, success, failed int) {
+		refreshErr := rssService.RefreshAllFeedsWithProgress(func(idx, total int, feedTitle string, feedId int64, newCount int, errMsg string) {
 			events.GlobalBroadcaster.Broadcast(events.EventRefreshProgress, events.RefreshProgress{
-				Current:   current,
-				Total:     currentTotal,
+				Current:   idx,
+				Total:     total,
 				FeedTitle: feedTitle,
+				FeedId:    feedId,
+				NewCount:  newCount,
+				Error:     errMsg,
 			})
 		})
 
