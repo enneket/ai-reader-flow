@@ -122,7 +122,7 @@ func (s *RSSService) RefreshAllFeeds() error {
 
 // RefreshAllFeedsWithProgress refreshes all feeds with optional progress callback.
 // If onProgress is nil, behaves exactly like RefreshAllFeeds.
-func (s *RSSService) RefreshAllFeedsWithProgress(onProgress func(current, total int, feedTitle string)) error {
+func (s *RSSService) RefreshAllFeedsWithProgress(onProgress func(current, total int, feedTitle string, success, failed int)) error {
 	feeds, err := s.feedRepo.GetAll()
 	if err != nil {
 		return err
@@ -151,19 +151,22 @@ func (s *RSSService) RefreshAllFeedsWithProgress(onProgress func(current, total 
 			if err := s.refreshFeedWithRetry(f.ID); err != nil {
 				mu.Lock()
 				failed++
+				curSuccess := success
+				curFailed := failed
 				mu.Unlock()
 				log.Printf("refresh feed %s error: %v", f.Title, err)
+				if onProgress != nil {
+					onProgress(idx+1, total, f.Title, curSuccess, curFailed)
+				}
 			} else {
 				mu.Lock()
 				success++
+				curSuccess := success
+				curFailed := failed
 				mu.Unlock()
-			}
-
-			if onProgress != nil {
-				mu.Lock()
-				current := idx + 1
-				mu.Unlock()
-				onProgress(current, total, f.Title)
+				if onProgress != nil {
+					onProgress(idx+1, total, f.Title, curSuccess, curFailed)
+				}
 			}
 		}(feed, i)
 	}

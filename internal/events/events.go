@@ -2,6 +2,7 @@ package events
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 )
@@ -78,6 +79,20 @@ func (s *OperationState) Unlock() {
 // Global operation state instance
 var GlobalOperationState = &OperationState{}
 
+// RefreshStatus holds the current refresh progress state
+type RefreshStatus struct {
+	Mutex   sync.Mutex
+	InProgress bool
+	Current    int
+	Total      int
+	FeedTitle  string
+	Success    int
+	Failed     int
+	Error      string
+}
+
+var GlobalRefreshStatus = &RefreshStatus{}
+
 type Event struct {
 	Type    string      `json:"type"`
 	Payload interface{} `json:"payload,omitempty"`
@@ -111,18 +126,21 @@ func (b *Broadcaster) Remove(ch chan []byte) {
 	b.mu.Unlock()
 }
 
-// Broadcast sends an event to all connected clients
+// Broadcast sends an event to all connected clients in SSE format
 func (b *Broadcaster) Broadcast(eventType string, payload interface{}) {
-	data, err := json.Marshal(Event{Type: eventType, Payload: payload})
+	data, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("broadcast event encode error: %v", err)
 		return
 	}
 
+	// SSE format: "event: <type>\r\ndata: <json>\r\n\r\n"
+	message := fmt.Sprintf("event: %s\r\ndata: %s\r\n\r\n", eventType, data)
+
 	b.mu.RLock()
 	for ch := range b.clients {
 		select {
-		case ch <- data:
+		case ch <- []byte(message):
 		default:
 			// client buffer full, skip
 		}

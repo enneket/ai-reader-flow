@@ -80,6 +80,7 @@ func main() {
 	mux.HandleFunc("GET /api/feeds/dead", handleGetDeadFeeds)
 	mux.HandleFunc("DELETE /api/feeds/dead/{id}", handleDeleteDeadFeed)
 	mux.HandleFunc("POST /api/feeds/{id}/refresh", handleRefreshFeed)
+	mux.HandleFunc("GET /api/refresh/status", handleGetRefreshStatus)
 	mux.HandleFunc("POST /api/refresh", handleRefreshAllFeeds)
 
 	// Articles
@@ -344,6 +345,28 @@ func handleRefreshFeed(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func handleGetRefreshStatus(w http.ResponseWriter, r *http.Request) {
+	events.GlobalRefreshStatus.Mutex.Lock()
+	defer events.GlobalRefreshStatus.Mutex.Unlock()
+
+	if !events.GlobalRefreshStatus.InProgress {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"inProgress": false,
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"inProgress": true,
+		"current":    events.GlobalRefreshStatus.Current,
+		"total":      events.GlobalRefreshStatus.Total,
+		"feedTitle":  events.GlobalRefreshStatus.FeedTitle,
+		"success":    events.GlobalRefreshStatus.Success,
+		"failed":     events.GlobalRefreshStatus.Failed,
+		"error":      events.GlobalRefreshStatus.Error,
+	})
+}
+
 func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 	// Check operation mutex - return 409 if another operation is in progress
 	if !events.GlobalOperationState.TryLock("refreshing") {
@@ -369,31 +392,52 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 		feeds, _ := rssService.GetFeeds()
 		total := len(feeds)
 
-		// Broadcast start
-		events.GlobalBroadcaster.Broadcast(events.EventRefreshStart, map[string]int{"total": total})
+		// Update status: start
+		events.GlobalRefreshStatus.Mutex.Lock()
+		events.GlobalRefreshStatus.InProgress = true
+		events.GlobalRefreshStatus.Current = 0
+		events.GlobalRefreshStatus.Total = total
+		events.GlobalRefreshStatus.FeedTitle = ""
+		events.GlobalRefreshStatus.Success = 0
+		events.GlobalRefreshStatus.Failed = 0
+		events.GlobalRefreshStatus.Error = ""
+		events.GlobalRefreshStatus.Mutex.Unlock()
 
 		// Refresh with progress callback
-		err := rssService.RefreshAllFeedsWithProgress(func(current, currentTotal int, feedTitle string) {
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshProgress, events.RefreshProgress{
-				Current:   current,
-				Total:     currentTotal,
-				FeedTitle: feedTitle,
-			})
+		err := rssService.RefreshAllFeedsWithProgress(func(current, currentTotal int, feedTitle string, success, failed int) {
+			events.GlobalRefreshStatus.Mutex.Lock()
+			events.GlobalRefreshStatus.Current = current
+			events.GlobalRefreshStatus.Total = currentTotal
+			events.GlobalRefreshStatus.FeedTitle = feedTitle
+			events.GlobalRefreshStatus.Success = success
+			events.GlobalRefreshStatus.Failed = failed
+			events.GlobalRefreshStatus.Mutex.Unlock()
 		})
 
 		if err != nil {
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshError, map[string]string{"message": err.Error()})
+			events.GlobalRefreshStatus.Mutex.Lock()
+			events.GlobalRefreshStatus.InProgress = false
+			events.GlobalRefreshStatus.Error = err.Error()
+			events.GlobalRefreshStatus.Mutex.Unlock()
 			return
 		}
 
 		// Filter new articles
 		newArticleIDs, filterErr := filterService.FilterAllArticlesNew()
 		if filterErr != nil {
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshError, map[string]string{"message": filterErr.Error()})
+			events.GlobalRefreshStatus.Mutex.Lock()
+			events.GlobalRefreshStatus.InProgress = false
+			events.GlobalRefreshStatus.Error = filterErr.Error()
+			events.GlobalRefreshStatus.Mutex.Unlock()
 			return
 		}
 
-		// Broadcast complete
+		// Update status: complete
+		events.GlobalRefreshStatus.Mutex.Lock()
+		events.GlobalRefreshStatus.InProgress = false
+		events.GlobalRefreshStatus.Success = len(newArticleIDs)
+		events.GlobalRefreshStatus.Failed = total - len(newArticleIDs)
+		events.GlobalRefreshStatus.Mutex.Unlock()
 		events.GlobalBroadcaster.Broadcast(events.EventRefreshComplete, events.RefreshComplete{
 			Success: len(newArticleIDs),
 			Failed:  total - len(newArticleIDs),
@@ -701,7 +745,7 @@ func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
 		total := len(feeds)
 		events.GlobalBroadcaster.Broadcast(events.EventRefreshStart, map[string]int{"total": total})
 
-		refreshErr := rssService.RefreshAllFeedsWithProgress(func(current, currentTotal int, feedTitle string) {
+		refreshErr := rssService.RefreshAllFeedsWithProgress(func(current, currentTotal int, feedTitle string, success, failed int) {
 			events.GlobalBroadcaster.Broadcast(events.EventRefreshProgress, events.RefreshProgress{
 				Current:   current,
 				Total:     currentTotal,
@@ -1058,7 +1102,7 @@ func handleSSEvents(w http.ResponseWriter, r *http.Request) {
 	defer events.GlobalBroadcaster.Remove(ch)
 
 	// Send initial ping
-	fmt.Fprintf(w, "event: ping\ndata: {}\n\n")
+	fmt.Fprintf(w, "event: ping\r\ndata: {}\r\n\r\n")
 	flusher.Flush()
 
 	// Keep connection alive, drain messages
@@ -1068,7 +1112,7 @@ func handleSSEvents(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			fmt.Fprint(w, data)
 			flusher.Flush()
 		case <-r.Context().Done():
 			return

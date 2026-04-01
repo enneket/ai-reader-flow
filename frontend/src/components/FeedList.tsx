@@ -7,12 +7,6 @@ import {api, Feed, Article} from '../api'
 import {ArticleCard} from './ArticleCard'
 import {ArticleReader} from './ArticleReader'
 
-type RefreshProgress = {
-  message: string
-  current?: number
-  total?: number
-}
-
 export function FeedList() {
   const {t} = useTranslation()
   const location = useLocation()
@@ -26,7 +20,7 @@ export function FeedList() {
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState<number | null>(null)
-  const [refreshProgress, setRefreshProgress] = useState<RefreshProgress | null>(null)
+  const [progressModal, setProgressModal] = useState<{open: boolean; title: string; content: string; percent: number}>({open: false, title: '', content: '', percent: 0})
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -61,45 +55,47 @@ export function FeedList() {
     }
   }, [error])
 
-  // SSE listener for refresh progress events
+  // Polling for refresh progress - only active when refreshing
   useEffect(() => {
-    const es = new EventSource('/api/events')
+    if (!refreshing) return
 
-    es.addEventListener('refresh:start', (e) => {
-      const data = JSON.parse(e.data)
-      setRefreshProgress({message: `开始刷新 ${data.total || 0} 个订阅源...`, total: data.total})
-      setRefreshing(true)
-    })
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/refresh/status')
+        const data = await res.json()
+        if (!data.inProgress) {
+          // Refresh completed
+          setRefreshing(false)
+          if (data.error) {
+            setProgressModal({open: false, title: '', content: '', percent: 0})
+            Modal.error({title: '刷新失败', content: data.error})
+          } else {
+            setProgressModal({open: true, title: '刷新完成', content: `成功刷新 ${data.success || 0} 个订阅源`, percent: 100})
+            setTimeout(() => setProgressModal({open: false, title: '', content: '', percent: 0}), 1500)
+          }
+          if (data.success !== undefined) {
+            loadFeeds()
+            if (selectedFeed) loadArticles(selectedFeed.id)
+          }
+          return
+        }
+        // In progress
+        const completed = (data.success || 0) + (data.failed || 0)
+        const total = data.total || 0
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0
+        setProgressModal({
+          open: true,
+          title: '正在刷新订阅源',
+          content: `正在刷新 ${data.feedTitle || ''} (${completed}/${total})`,
+          percent,
+        })
+      } catch (e) {
+        console.error('Failed to poll refresh status:', e)
+      }
+    }, 2000)
 
-    es.addEventListener('refresh:progress', (e) => {
-      const data = JSON.parse(e.data)
-      setRefreshProgress({
-        message: `正在刷新 ${data.current}/${data.total} 个订阅源: ${data.feedTitle || ''}`,
-        current: data.current,
-        total: data.total,
-      })
-    })
-
-    es.addEventListener('refresh:complete', () => {
-      setRefreshProgress(null)
-      setRefreshing(false)
-      loadFeeds()
-      if (selectedFeed) loadArticles(selectedFeed.id)
-    })
-
-    es.addEventListener('refresh:error', (e) => {
-      const data = JSON.parse(e.data)
-      setRefreshProgress(null)
-      setRefreshing(false)
-      Modal.error({title: '刷新失败', content: data.message || '刷新订阅源失败'})
-    })
-
-    es.addEventListener('briefing:start', () => {
-      // Briefing started from Briefing page - this feedlist doesn't track it
-    })
-
-    return () => es.close()
-  }, [selectedFeed])
+    return () => clearInterval(pollInterval)
+  }, [refreshing, selectedFeed])
 
   const loadArticles = async (feedId: number) => {
     setArticlesLoading(true)
@@ -158,11 +154,14 @@ export function FeedList() {
 
   const handleRefreshAll = async () => {
     setError('')
+    setRefreshing(true)
+    setProgressModal({open: true, title: '正在刷新订阅源', content: '准备中...', percent: 0})
     try {
       await api.refreshAllFeeds()
-      // SSE will handle setting refreshing=true and progress updates
-      // On complete/error it will set refreshing=false
+      // Polling will update the modal
     } catch (err: any) {
+      setRefreshing(false)
+      setProgressModal({open: false, title: '', content: '', percent: 0})
       if (err.message.includes('409')) {
         Modal.warning({title: '操作冲突', content: '正在刷新或生成中，请稍候'})
       } else {
@@ -242,6 +241,27 @@ export function FeedList() {
 
   return (
     <div className="app">
+      <Modal
+        open={progressModal.open}
+        title={progressModal.title}
+        footer={null}
+        closable={false}
+        maskClosable={false}
+      >
+        <div style={{padding: '8px 0'}}>
+          <p>{progressModal.content}</p>
+          <div style={{marginTop: 16}}>
+            <div style={{height: 8, background: 'var(--bg-secondary)', borderRadius: 4, overflow: 'hidden'}}>
+              <div style={{
+                height: '100%',
+                width: `${progressModal.percent}%`,
+                background: 'var(--accent)',
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
+          </div>
+        </div>
+      </Modal>
       {/* Unified top masthead */}
       <header className="masthead">
         <div className="masthead-left">
@@ -332,32 +352,6 @@ export function FeedList() {
             </div>
           )}
 
-          {refreshProgress && (
-            <div style={{
-              padding: 'var(--space-2)',
-              background: 'var(--bg-secondary)',
-              borderRadius: 'var(--radius)',
-              margin: 'var(--space-2)',
-              fontSize: '0.8rem',
-            }}>
-              <div style={{marginBottom: 'var(--space-1)'}}>🔄 {refreshProgress.message}</div>
-              {refreshProgress.total && refreshProgress.current && (
-                <div style={{
-                  height: '3px',
-                  background: 'var(--bg-primary)',
-                  borderRadius: '2px',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${(refreshProgress.current / refreshProgress.total) * 100}%`,
-                    background: 'var(--accent)',
-                    transition: 'width 0.3s ease',
-                  }} />
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="feeds-list">
             {feeds.length === 0 ? (
