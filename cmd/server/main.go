@@ -28,6 +28,7 @@ import (
 // Global services (same as main.go)
 var (
 	rssService      *service.RSSService
+	feedRepo        *sqlite.FeedRepository
 	filterService   *service.FilterService
 	summaryService  *service.SummaryService
 	noteService     *service.NoteService
@@ -54,6 +55,7 @@ func main() {
 
 	// Initialize services
 	rssService = service.NewRSSService()
+	feedRepo = sqlite.NewFeedRepository()
 	filterService = service.NewFilterService()
 	summaryService = service.NewSummaryService()
 
@@ -364,6 +366,7 @@ func handleGetRefreshStatus(w http.ResponseWriter, r *http.Request) {
 		"success":    events.GlobalRefreshStatus.Success,
 		"failed":     events.GlobalRefreshStatus.Failed,
 		"error":      events.GlobalRefreshStatus.Error,
+		"results":    events.GlobalRefreshStatus.Results,
 	})
 }
 
@@ -401,20 +404,33 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 		events.GlobalRefreshStatus.Success = 0
 		events.GlobalRefreshStatus.Failed = 0
 		events.GlobalRefreshStatus.Error = ""
+		events.GlobalRefreshStatus.Results = make(map[int64]events.FeedRefreshResult)
 		events.GlobalRefreshStatus.Mutex.Unlock()
 
 		// Refresh with progress callback
 		err := rssService.RefreshAllFeedsWithProgress(func(idx, total int, feedTitle string, feedId int64, newCount int, errMsg string) {
 			events.GlobalRefreshStatus.Mutex.Lock()
-			events.GlobalRefreshStatus.Current = idx // 已完成数量
+			events.GlobalRefreshStatus.Current = idx
 			events.GlobalRefreshStatus.Total = total
 			events.GlobalRefreshStatus.FeedTitle = feedTitle
+
+			result := events.FeedRefreshResult{
+				FeedID:   feedId,
+				Title:    feedTitle,
+				Success:  errMsg == "",
+				NewCount: newCount,
+				Error:    errMsg,
+			}
+
 			if errMsg != "" {
 				events.GlobalRefreshStatus.Failed++
+				events.GlobalRefreshStatus.Results[feedId] = result
+				feedRepo.UpdateRefreshResult(feedId, -1, errMsg)
 			} else {
 				events.GlobalRefreshStatus.Success++
+				events.GlobalRefreshStatus.Results[feedId] = result
+				feedRepo.UpdateRefreshResult(feedId, newCount, "")
 			}
-			events.GlobalRefreshStatus.Error = errMsg
 			events.GlobalRefreshStatus.Mutex.Unlock()
 		})
 

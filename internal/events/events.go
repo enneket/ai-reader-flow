@@ -82,9 +82,18 @@ func (s *OperationState) Unlock() {
 // Global operation state instance
 var GlobalOperationState = &OperationState{}
 
+// FeedRefreshResult holds per-feed refresh result
+type FeedRefreshResult struct {
+	FeedID   int64  `json:"feedId"`
+	Title    string `json:"title"`
+	Success  bool   `json:"success"`
+	NewCount int    `json:"newCount"` // -1 表示失败
+	Error    string `json:"error"`
+}
+
 // RefreshStatus holds the current refresh progress state
 type RefreshStatus struct {
-	Mutex   sync.Mutex
+	Mutex      sync.Mutex
 	InProgress bool
 	Current    int
 	Total      int
@@ -92,6 +101,7 @@ type RefreshStatus struct {
 	Success    int
 	Failed     int
 	Error      string
+	Results    map[int64]FeedRefreshResult // 新增
 }
 
 var GlobalRefreshStatus = &RefreshStatus{}
