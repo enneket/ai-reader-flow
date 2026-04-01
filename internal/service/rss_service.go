@@ -4,9 +4,11 @@ import (
 	"ai-rss-reader/internal/fetch"
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/repository/sqlite"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -22,10 +24,19 @@ type RSSService struct {
 }
 
 func NewRSSService() *RSSService {
+	// Create HTTP client that skips TLS verification and uses system proxy
+	httpTransport := &http.Transport{
+		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+		Proxy:             http.ProxyFromEnvironment,
+	}
+	httpClient := &http.Client{Transport: httpTransport}
+	parser := gofeed.NewParser()
+	parser.Client = httpClient
+
 	return &RSSService{
 		feedRepo:    sqlite.NewFeedRepository(),
 		articleRepo: sqlite.NewArticleRepository(),
-		parser:      gofeed.NewParser(),
+		parser:      parser,
 		fetcher:     fetch.NewFetcher(),
 	}
 }
