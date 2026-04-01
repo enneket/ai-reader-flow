@@ -632,10 +632,7 @@ func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. 只在刷新成功后记录刷新时间
-	briefingService.LastRefreshAt = time.Now()
-
-	// 4. 生成简报
+	// 3. 生成简报（成功后才记录刷新时间，避免失败后无法重试）
 	briefing, err := briefingService.GenerateBriefing()
 	if err != nil {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -645,7 +642,10 @@ func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. 返回成功
+	// 5. 只在成功后记录刷新时间
+	briefingService.LastRefreshAt = time.Now()
+
+	// 6. 返回成功
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"id":      briefing.ID,
