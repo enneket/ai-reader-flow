@@ -239,3 +239,22 @@ export interface Briefing {
   completed_at?: string
   items?: BriefingItem[]
 }
+
+export interface FeedRefreshResult {
+  feedId: number
+  title: string
+  success: boolean
+  newCount: number
+  error: string
+}
+
+export interface RefreshStatusResponse {
+  inProgress: boolean
+  current: number
+  total: number
+  feedTitle: string
+  success: number
+  failed: number
+  error: string
+  results?: FeedRefreshResult[]
+}
