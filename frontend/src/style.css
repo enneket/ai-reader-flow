@@ -1319,6 +1319,17 @@ body {
   text-overflow: ellipsis;
 }
 
+.feed-item-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.status-failed { color: #ef4444; cursor: help; }
+.status-new { color: #3b82f6; font-size: 0.75rem; }
+.status-ok { color: #22c55e; }
+
 /* ============================================
    Articles Layout (Three Column)
    ============================================ */

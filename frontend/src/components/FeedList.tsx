@@ -73,6 +73,21 @@ export function FeedList() {
             setProgressModal({open: true, title: '刷新完成', content: `成功刷新 ${data.success || 0} 个订阅源`, percent: 100})
             setTimeout(() => setProgressModal({open: false, title: '', content: '', percent: 0}), 1500)
           }
+          // Apply refresh results to local feed state
+          if (data.results && Array.isArray(data.results)) {
+            setFeeds(prevFeeds => prevFeeds.map(feed => {
+              const result = data.results.find((r: { feedId: number }) => r.feedId === feed.id)
+              if (result) {
+                return {
+                  ...feed,
+                  last_refresh_success: result.success ? result.newCount : -1,
+                  last_refresh_error: result.error || '',
+                  last_refreshed: new Date().toISOString(),
+                }
+              }
+              return feed
+            }))
+          }
           if (data.success !== undefined) {
             loadFeeds()
             if (selectedFeed) loadArticles(selectedFeed.id)
@@ -369,6 +384,17 @@ export function FeedList() {
                   <div className="feed-item-info">
                     <span className="feed-item-title">{feed.title || 'Untitled Feed'}</span>
                     <span className="feed-item-url">{feed.url}</span>
+                  </div>
+                  <div className="feed-item-status">
+                    {feed.last_refresh_success === -1 && (
+                      <span className="status-failed" title={feed.last_refresh_error}>❌</span>
+                    )}
+                    {feed.last_refresh_success > 0 && (
+                      <span className="status-new">+{feed.last_refresh_success}</span>
+                    )}
+                    {feed.last_refresh_success === 0 && (
+                      <span className="status-ok">✅</span>
+                    )}
                   </div>
                   <button
                     onClick={(e) => handleDeleteFeed(feed.id, e)}

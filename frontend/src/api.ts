@@ -32,6 +32,9 @@ export interface Feed {
   is_dead: boolean
   created_at: string
   group: string
+  last_refresh_success: number  // -1=failed, 0=success no new articles, >0=success with new articles
+  last_refresh_error: string
+  last_refreshed: string
 }
 
 export const api = {
