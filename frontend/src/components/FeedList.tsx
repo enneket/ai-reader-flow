@@ -107,7 +107,7 @@ export function FeedList() {
       } catch (e) {
         console.error('Failed to poll refresh status:', e)
       }
-    }, 2000)
+    }, 1000)
 
     return () => clearInterval(pollInterval)
   }, [refreshing, selectedFeed])
@@ -391,9 +391,6 @@ export function FeedList() {
                     )}
                     {feed.last_refresh_success > 0 && (
                       <span className="status-new">+{feed.last_refresh_success}</span>
-                    )}
-                    {feed.last_refresh_success === 0 && (
-                      <span className="status-ok">✅</span>
                     )}
                   </div>
                   <button
