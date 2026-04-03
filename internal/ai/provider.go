@@ -159,7 +159,7 @@ func (p *OpenAIProvider) GenerateBriefing(prompt string) (string, error) {
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
-		"max_tokens": 2000,
+		"max_tokens": 16384,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -176,7 +176,7 @@ func (p *OpenAIProvider) GenerateBriefing(prompt string) (string, error) {
 	req.Header.Set("Authorization", "Bearer "+p.APIKey)
 
 	client := &http.Client{
-		Timeout: 120 * time.Second,
+		Timeout: 300 * time.Second,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			Proxy:           http.ProxyFromEnvironment,
@@ -403,7 +403,7 @@ func (p *ClaudeProvider) GenerateBriefing(prompt string) (string, error) {
 			{"role": "user", "content": prompt},
 		},
 		"system": "你是一个内容策划助手。",
-		"max_tokens": 2000,
+		"max_tokens": 16384,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -625,9 +625,10 @@ func (p *OllamaProvider) GenerateSummary(content string) (string, error) {
 
 func (p *OllamaProvider) GenerateBriefing(prompt string) (string, error) {
 	reqBody := map[string]interface{}{
-		"model":  p.Model,
-		"prompt": prompt,
-		"stream": false,
+		"model":      p.Model,
+		"prompt":     prompt,
+		"stream":     false,
+		"max_tokens": 65536,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -643,7 +644,7 @@ func (p *OllamaProvider) GenerateBriefing(prompt string) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{
-		Timeout: 120 * time.Second,
+		Timeout: 300 * time.Second,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			Proxy:           http.ProxyFromEnvironment,

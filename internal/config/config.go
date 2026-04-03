@@ -14,11 +14,13 @@ type Config struct {
 }
 
 type AIProviderConfig struct {
-	Provider  string `toml:"provider"`
-	APIKey    string `toml:"api_key"`
-	BaseURL   string `toml:"base_url"`
-	Model     string `toml:"model"`
-	MaxTokens int    `toml:"max_tokens"`
+	Provider      string `toml:"provider"`
+	APIKey        string `toml:"api_key"`
+	BaseURL       string `toml:"base_url"`
+	Model         string `toml:"model"`
+	MaxTokens     int    `toml:"max_tokens"`
+	ContextWindow int    `toml:"context_window"` // 新增
+	OutputReserve int    `toml:"output_reserve"`  // 新增
 }
 
 type AppConfig struct {
@@ -38,10 +40,12 @@ var AppConfig_ *Config
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
 		AIProvider: AIProviderConfig{
-			Provider:  "openai",
-			BaseURL:   "https://api.openai.com/v1",
-			Model:     "gpt-3.5-turbo",
-			MaxTokens: 500,
+			Provider:      "openai",
+			BaseURL:       "https://api.openai.com/v1",
+			Model:         "gpt-3.5-turbo",
+			MaxTokens:     500,
+			ContextWindow: 32768, // 新增
+			OutputReserve: 2048,  // 新增
 		},
 		App: AppConfig{
 			DataDir: "./data",

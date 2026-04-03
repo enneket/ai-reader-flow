@@ -59,11 +59,13 @@ type Setting struct {
 
 // AIProviderConfig holds AI provider configuration
 type AIProviderConfig struct {
-	Provider   string `json:"provider"`   // openai, claude, ollama
-	APIKey     string `json:"api_key"`
-	BaseURL    string `json:"base_url"`
-	Model      string `json:"model"`
-	MaxTokens  int    `json:"max_tokens"`
+	Provider      string `json:"provider"`   // openai, claude, ollama
+	APIKey        string `json:"api_key"`
+	BaseURL       string `json:"base_url"`
+	Model         string `json:"model"`
+	MaxTokens     int    `json:"max_tokens"`
+	ContextWindow int    `json:"context_window"` // 新增
+	OutputReserve int    `json:"output_reserve"` // 新增
 }
 
 // AppState holds the application state for frontend

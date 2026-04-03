@@ -179,51 +179,54 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 		return nil, fmt.Errorf("暂无新文章")
 	}
 
-	// 3. Build articles input for AI
-	articlesInput := s.buildArticlesInput(articles)
+	// 3. Split articles into token-budgeted batches
+	batches := s.splitIntoBatches(articles)
+	totalBatches := len(batches)
 
-	// 4. Call AI to generate topics
+	// 4. Call AI per batch, collect results
 	if onProgress != nil {
 		onProgress("analyzing", "正在分析文章主题...")
 	}
 	provider := ai.GetProvider()
-	prompt := s.buildPrompt(articlesInput)
+	var allResults []models.BriefingResult
 
-	result, err := provider.GenerateBriefing(prompt)
-	if err != nil {
-		s.briefingRepo.UpdateStatus(briefing.ID, "failed", err.Error())
-		return nil, fmt.Errorf("AI generation: %w", err)
+	for i, batch := range batches {
+		if totalBatches > 1 && onProgress != nil {
+			onProgress("analyzing", fmt.Sprintf("正在分析第 %d/%d 批...", i+1, totalBatches))
+		}
+		articlesInput := s.buildArticlesInput(batch)
+		prompt := s.buildPrompt(articlesInput, len(articles), i, totalBatches)
+
+		result, err := provider.GenerateBriefing(prompt)
+		if err != nil {
+			log.Printf("[briefing] batch %d/%d AI error: %v", i+1, totalBatches, err)
+			continue // Skip failed batch, keep others
+		}
+
+		briefingResult := s.parseAIResult(result)
+		if briefingResult != nil {
+			allResults = append(allResults, *briefingResult)
+		}
 	}
 
-	// 5. Parse AI result — try direct JSON first, then extract from markdown code block
-	var briefingResult models.BriefingResult
-	parseErr := json.Unmarshal([]byte(result), &briefingResult)
-	if parseErr == nil {
-		// Direct parse OK
-	} else {
-		// Try to extract JSON from markdown code block
-		idx := strings.Index(result, "{")
-		if idx != -1 {
-			jsonStr := strings.TrimSpace(result[idx:])
-			endIdx := strings.LastIndex(jsonStr, "}")
-			if endIdx != -1 {
-				jsonStr = jsonStr[:endIdx+1]
-				parseErr = json.Unmarshal([]byte(jsonStr), &briefingResult)
-			}
-		}
-		if parseErr != nil {
-			errMsg := fmt.Sprintf("parse failed: %v | raw: %s", parseErr, result)
-			s.briefingRepo.UpdateStatus(briefing.ID, "failed", errMsg)
-			log.Printf("[briefing] parse failed, raw response: %s", result)
-			return nil, fmt.Errorf("parse AI result: %w", parseErr)
-		}
+	if len(allResults) == 0 {
+		s.briefingRepo.UpdateStatus(briefing.ID, "failed", "所有批次均失败")
+		return nil, fmt.Errorf("AI 生成失败")
+	}
+
+	// 5. Merge results from all batches
+	mergedResult := mergeBriefingResults(allResults)
+
+	if len(mergedResult.Topics) == 0 {
+		s.briefingRepo.UpdateStatus(briefing.ID, "failed", "无有效简报内容")
+		return nil, fmt.Errorf("无有效简报内容")
 	}
 
 	// 6. Store briefing items
 	if onProgress != nil {
 		onProgress("generating", "正在生成简报...")
 	}
-	for i, topic := range briefingResult.Topics {
+	for i, topic := range mergedResult.Topics {
 		item := &models.BriefingItem{
 			BriefingID: briefing.ID,
 			Topic:      topic.Name,
@@ -246,9 +249,9 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 			}
 			ba := &models.BriefingArticle{
 				BriefingItemID: item.ID,
-				ArticleID:     ta.ID,
-				Title:         title,
-				Insight:       ta.Insight,
+				ArticleID:      ta.ID,
+				Title:          title,
+				Insight:        ta.Insight,
 			}
 			s.briefingRepo.CreateArticle(ba)
 		}
@@ -259,6 +262,36 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 	s.LastBriefingAt = time.Now()
 
 	return briefing, nil
+}
+
+// parseAIResult parses AI response into BriefingResult.
+// Returns nil if parsing fails.
+func (s *BriefingService) parseAIResult(result string) *models.BriefingResult {
+	var briefingResult models.BriefingResult
+	parseErr := json.Unmarshal([]byte(result), &briefingResult)
+	if parseErr == nil {
+		return &briefingResult
+	}
+
+	// Try to extract JSON from markdown code block
+	idx := strings.Index(result, "{")
+	if idx == -1 {
+		log.Printf("[briefing] parse failed: no JSON found in response")
+		return nil
+	}
+	jsonStr := strings.TrimSpace(result[idx:])
+	endIdx := strings.LastIndex(jsonStr, "}")
+	if endIdx == -1 {
+		log.Printf("[briefing] parse failed: no closing brace in response")
+		return nil
+	}
+	jsonStr = jsonStr[:endIdx+1]
+
+	if parseErr = json.Unmarshal([]byte(jsonStr), &briefingResult); parseErr != nil {
+		log.Printf("[briefing] parse failed: %v | raw: %s", parseErr, result)
+		return nil
+	}
+	return &briefingResult
 }
 
 func (s *BriefingService) buildArticlesInput(articles []models.Article) string {
@@ -280,7 +313,18 @@ func (s *BriefingService) buildArticlesInput(articles []models.Article) string {
 	return sb.String()
 }
 
-func (s *BriefingService) buildPrompt(articlesInput string) string {
+func (s *BriefingService) buildPrompt(articlesInput string, totalArticles, batchIndex, totalBatches int) string {
+	isSingleBatch := totalBatches == 1
+	topicLimit := 5
+	if !isSingleBatch {
+		topicLimit = 3 // 多批次时每批减少 topic 数
+	}
+
+	multiBatchNote := ""
+	if !isSingleBatch {
+		multiBatchNote = fmt.Sprintf("\n提示：这是第 %d/%d 批文章，请关注本批内容，合并时，会将各批结果去重合并。", batchIndex+1, totalBatches)
+	}
+
 	return fmt.Sprintf(`System: 你是一个专业的内容分析助手。给定一组文章，你需要：
 
 1. 将文章按主题分组（相似内容的文章分到同一组）
@@ -303,15 +347,15 @@ func (s *BriefingService) buildPrompt(articlesInput string) string {
 }
 
 规则：
-- 每个简报最多 5 个主题
+- 每个简报最多 %d 个主题
 - 每个主题最多 5 篇核心文章
 - 只包含真正有价值的文章，无关内容请忽略
 - 主题按文章数量排序（多的在前）
 - summary 要有深度，不是标题罗列，而是真正帮助读者快速了解这个领域
-- 如果文章太少或无价值，返回空的 topics 数组
+- 如果文章太少或无价值，返回空的 topics 数组%s
 
-User: 以下是今天的文章：
-%s`, articlesInput)
+User: 以下是今天的文章（共 %d 篇，第 %d/%d 批）：
+%s`, topicLimit, multiBatchNote, totalArticles, batchIndex+1, totalBatches, articlesInput)
 }
 
 // GetBriefingWithItems returns a briefing with all its items and articles
