@@ -145,6 +145,8 @@ func createTables() error {
 	_ = migrateAddColumn("feeds", "last_refresh_success", "INTEGER DEFAULT 0")
 	_ = migrateAddColumn("feeds", "last_refresh_error", "TEXT DEFAULT ''")
 	_ = migrateAddColumn("feeds", "last_refreshed", "TEXT")
+	// Migration: add unread_count column to feeds
+	_ = migrateAddColumn("feeds", "unread_count", "INTEGER NOT NULL DEFAULT 0")
 
 	// Create FTS5 virtual table for full-text search
 	_ = createFTSTable()
