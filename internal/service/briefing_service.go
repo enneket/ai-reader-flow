@@ -2,6 +2,7 @@ package service
 
 import (
 	"ai-rss-reader/internal/ai"
+	"ai-rss-reader/internal/config"
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/repository/sqlite"
 	"encoding/json"
@@ -11,20 +12,82 @@ import (
 	"time"
 )
 
+const (
+	DefaultContextWindow = 32768
+	DefaultOutputReserve = 2048
+	DefaultPromptOverhead = 500
+)
+
 type BriefingService struct {
 	briefingRepo   *sqlite.BriefingRepository
 	articleRepo    *sqlite.ArticleRepository
 	feedRepo       *sqlite.FeedRepository
 	LastRefreshAt  time.Time // 最后刷新时间
 	LastBriefingAt time.Time // 最后生成简报时间
+	aiConfig       *config.AIProviderConfig
 }
 
-func NewBriefingService() *BriefingService {
+func NewBriefingService(aiConfig *config.AIProviderConfig) *BriefingService {
 	return &BriefingService{
 		briefingRepo: sqlite.NewBriefingRepository(),
 		articleRepo:  sqlite.NewArticleRepository(),
 		feedRepo:     sqlite.NewFeedRepository(),
+		aiConfig:     aiConfig,
 	}
+}
+
+// computeBudget returns the max tokens available for article content per batch.
+// budget = contextWindow * 0.6 - promptOverhead - outputReserve
+func (s *BriefingService) computeBudget() int {
+	cw := DefaultContextWindow
+	or := DefaultOutputReserve
+	if s.aiConfig != nil {
+		if s.aiConfig.ContextWindow > 0 {
+			cw = s.aiConfig.ContextWindow
+		}
+		if s.aiConfig.OutputReserve > 0 {
+			or = s.aiConfig.OutputReserve
+		}
+	}
+	return cw*6/10 - DefaultPromptOverhead - or
+}
+
+// buildArticleStringForEstimate builds the article string for token estimation.
+func (s *BriefingService) buildArticleStringForEstimate(a models.Article) string {
+	content := a.Content
+	if content == "" {
+		content = a.Summary
+	}
+	return fmt.Sprintf("文章 ID: %d\n标题: %s\n内容:\n%s\n---\n", a.ID, a.Title, content)
+}
+
+// splitIntoBatches splits articles into token-budgeted batches.
+// Returns a slice of article slices, each within the token budget.
+func (s *BriefingService) splitIntoBatches(articles []models.Article) [][]models.Article {
+	budget := s.computeBudget()
+	var batches [][]models.Article
+	var currentBatch []models.Article
+	currentTokens := 0
+
+	for _, a := range articles {
+		articleStr := s.buildArticleStringForEstimate(a)
+		articleTokens := ai.Estimate(articleStr)
+
+		if currentTokens+articleTokens > budget && len(currentBatch) > 0 {
+			batches = append(batches, currentBatch)
+			currentBatch = nil
+			currentTokens = 0
+		}
+
+		currentBatch = append(currentBatch, a)
+		currentTokens += articleTokens
+	}
+
+	if len(currentBatch) > 0 {
+		batches = append(batches, currentBatch)
+	}
+
+	return batches
 }
 
 // GenerateBriefing creates a new briefing from recent articles
@@ -82,11 +145,28 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 		return nil, fmt.Errorf("AI generation: %w", err)
 	}
 
-	// 5. Parse AI result
+	// 5. Parse AI result — try direct JSON first, then extract from markdown code block
 	var briefingResult models.BriefingResult
-	if err := json.Unmarshal([]byte(result), &briefingResult); err != nil {
-		s.briefingRepo.UpdateStatus(briefing.ID, "failed", "invalid AI response")
-		return nil, fmt.Errorf("parse AI result: %w", err)
+	parseErr := json.Unmarshal([]byte(result), &briefingResult)
+	if parseErr == nil {
+		// Direct parse OK
+	} else {
+		// Try to extract JSON from markdown code block
+		idx := strings.Index(result, "{")
+		if idx != -1 {
+			jsonStr := strings.TrimSpace(result[idx:])
+			endIdx := strings.LastIndex(jsonStr, "}")
+			if endIdx != -1 {
+				jsonStr = jsonStr[:endIdx+1]
+				parseErr = json.Unmarshal([]byte(jsonStr), &briefingResult)
+			}
+		}
+		if parseErr != nil {
+			errMsg := fmt.Sprintf("parse failed: %v | raw: %s", parseErr, result)
+			s.briefingRepo.UpdateStatus(briefing.ID, "failed", errMsg)
+			log.Printf("[briefing] parse failed, raw response: %s", result)
+			return nil, fmt.Errorf("parse AI result: %w", parseErr)
+		}
 	}
 
 	// 6. Store briefing items

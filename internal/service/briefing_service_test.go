@@ -27,21 +27,21 @@ func TestBuildArticlesInput(t *testing.T) {
 			articles: []models.Article{
 				{ID: 1, Title: "Test Article", Summary: "This is a test summary."},
 			},
-			want: "文章 ID: 1\n标题: Test Article\n摘要: This is a test summary.\n---\n",
+			want: "文章 ID: 1\n标题: Test Article\n内容:\nThis is a test summary.\n---\n",
 		},
 		{
 			name: "single article without summary uses content",
 			articles: []models.Article{
 				{ID: 2, Title: "No Summary", Content: "This is the content."},
 			},
-			want: "文章 ID: 2\n标题: No Summary\n摘要: This is the content.\n---\n",
+			want: "文章 ID: 2\n标题: No Summary\n内容:\nThis is the content.\n---\n",
 		},
 		{
-			name: "content truncated at 200 chars",
+			name: "content truncated at 2000 chars",
 			articles: []models.Article{
-				{ID: 3, Title: "Long Content", Content: strings.Repeat("a", 250)},
+				{ID: 3, Title: "Long Content", Content: strings.Repeat("a", 2500)},
 			},
-			want: "文章 ID: 3\n标题: Long Content\n摘要: " + strings.Repeat("a", 200) + "...\n---\n",
+			want: "文章 ID: 3\n标题: Long Content\n内容:\n" + strings.Repeat("a", 2000) + "...\n---\n",
 		},
 		{
 			name: "multiple articles",
@@ -49,7 +49,7 @@ func TestBuildArticlesInput(t *testing.T) {
 				{ID: 10, Title: "First", Summary: "First summary"},
 				{ID: 20, Title: "Second", Summary: "Second summary"},
 			},
-			want: "文章 ID: 10\n标题: First\n摘要: First summary\n---\n文章 ID: 20\n标题: Second\n摘要: Second summary\n---\n",
+			want: "文章 ID: 10\n标题: First\n内容:\nFirst summary\n---\n文章 ID: 20\n标题: Second\n内容:\nSecond summary\n---\n",
 		},
 	}
 
@@ -66,7 +66,7 @@ func TestBuildArticlesInput(t *testing.T) {
 func TestBuildPrompt(t *testing.T) {
 	svc := &BriefingService{}
 
-	articlesInput := "文章 ID: 1\n标题: Test\n摘要: Summary\n---"
+	articlesInput := "文章 ID: 1\n标题: Test\n内容:\nSummary\n---"
 	prompt := svc.buildPrompt(articlesInput)
 
 	if !strings.Contains(prompt, "System:") {

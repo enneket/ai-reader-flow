@@ -66,7 +66,7 @@ func main() {
 	}
 
 	// Initialize briefing service
-	briefingService = service.NewBriefingService()
+	briefingService = service.NewBriefingService(&config.AppConfig_.AIProvider)
 
 	// Initialize AI provider
 	ai.InitProvider(cfg.AIProvider)
@@ -843,22 +843,26 @@ func handleGetAIConfig(w http.ResponseWriter, r *http.Request) {
 		cfg, _ = config.LoadConfig()
 	}
 	aiConfig := models.AIProviderConfig{
-		Provider:  cfg.AIProvider.Provider,
-		APIKey:    cfg.AIProvider.APIKey,
-		BaseURL:   cfg.AIProvider.BaseURL,
-		Model:     cfg.AIProvider.Model,
-		MaxTokens: cfg.AIProvider.MaxTokens,
+		Provider:      cfg.AIProvider.Provider,
+		APIKey:        cfg.AIProvider.APIKey,
+		BaseURL:       cfg.AIProvider.BaseURL,
+		Model:         cfg.AIProvider.Model,
+		MaxTokens:     cfg.AIProvider.MaxTokens,
+		ContextWindow: cfg.AIProvider.ContextWindow, // 新增
+		OutputReserve: cfg.AIProvider.OutputReserve, // 新增
 	}
 	writeJSON(w, http.StatusOK, aiConfig)
 }
 
 func handleSaveAIConfig(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Provider  string `json:"provider"`
-		APIKey   string `json:"api_key"`
-		BaseURL  string `json:"base_url"`
-		Model    string `json:"model"`
-		MaxTokens int    `json:"max_tokens"`
+		Provider      string `json:"provider"`
+		APIKey        string `json:"api_key"`
+		BaseURL       string `json:"base_url"`
+		Model         string `json:"model"`
+		MaxTokens     int    `json:"max_tokens"`
+		ContextWindow int    `json:"context_window"` // 新增
+		OutputReserve int    `json:"output_reserve"` // 新增
 	}
 	if !readJSON(w, r, &req) {
 		return
@@ -868,11 +872,13 @@ func handleSaveAIConfig(w http.ResponseWriter, r *http.Request) {
 		cfg, _ = config.LoadConfig()
 	}
 	cfg.AIProvider = config.AIProviderConfig{
-		Provider:  req.Provider,
-		APIKey:   req.APIKey,
-		BaseURL:  req.BaseURL,
-		Model:    req.Model,
-		MaxTokens: req.MaxTokens,
+		Provider:      req.Provider,
+		APIKey:        req.APIKey,
+		BaseURL:       req.BaseURL,
+		Model:         req.Model,
+		MaxTokens:     req.MaxTokens,
+		ContextWindow: req.ContextWindow, // 新增
+		OutputReserve: req.OutputReserve, // 新增
 	}
 	if err := config.SaveConfig(cfg); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
