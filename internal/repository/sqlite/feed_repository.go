@@ -87,8 +87,8 @@ func (r *FeedRepository) GetByID(id int64) (*models.Feed, error) {
 
 func (r *FeedRepository) Update(feed *models.Feed) error {
 	_, err := DB.Exec(
-		`UPDATE feeds SET title = ?, description = ?, icon_url = ?, last_fetched = ?, group_name = ? WHERE id = ?`,
-		feed.Title, feed.Description, feed.IconURL, feed.LastFetched.Format(time.RFC3339), feed.Group, feed.ID,
+		`UPDATE feeds SET title = ?, url = ?, description = ?, icon_url = ?, last_fetched = ?, group_name = ? WHERE id = ?`,
+		feed.Title, feed.URL, feed.Description, feed.IconURL, feed.LastFetched.Format(time.RFC3339), feed.Group, feed.ID,
 	)
 	return err
 }
