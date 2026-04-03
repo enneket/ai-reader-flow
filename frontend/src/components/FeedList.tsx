@@ -189,13 +189,14 @@ export function FeedList() {
   const handleRefreshAll = async () => {
     setError('')
     setRefreshing(true)
-    setProgressModal({open: true, title: '正在刷新订阅源', content: '准备中...', percent: 0})
+    setRefreshingMessage('开始刷新订阅源...')
+    setRefreshingPercent(0)
     try {
       await api.refreshAllFeeds()
-      // Polling will update the modal
     } catch (err: any) {
       setRefreshing(false)
-      setProgressModal({open: false, title: '', content: '', percent: 0})
+      setRefreshingMessage('')
+      setRefreshingPercent(0)
       if (err.message.includes('409')) {
         Modal.warning({title: '操作冲突', content: '正在刷新或生成中，请稍候'})
       } else {
