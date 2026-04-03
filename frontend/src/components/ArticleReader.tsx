@@ -75,8 +75,8 @@ export function ArticleReader({
         {/* Title */}
         <h1 className="article-reader-title">{article.title}</h1>
 
-        {/* Summary lead — shown prominently */}
-        {hasSummary && (
+        {/* Summary lead — only shown when no full content */}
+        {hasSummary && !hasContent && (
           <div
             className="article-reader-summary"
             dangerouslySetInnerHTML={{__html: cleanSummary}}
@@ -114,71 +114,6 @@ export function ArticleReader({
         )}
       </div>
 
-      {/* Sticky Action Bar */}
-      <div className="action-bar" style={{maxWidth: '680px', margin: '0 auto'}}>
-        <button
-          className="btn btn-primary"
-          disabled={article.status === 'accepted'}
-          onClick={() => onAccept(article.id)}
-        >
-          <Check size={14} />
-          Accept
-        </button>
-        <button
-          className="btn btn-danger"
-          disabled={article.status === 'rejected'}
-          onClick={() => onReject(article.id)}
-        >
-          <X size={14} />
-          Reject
-        </button>
-        <button
-          className="btn btn-secondary"
-          disabled={article.status === 'snoozed'}
-          onClick={() => onSnooze(article.id)}
-        >
-          <Clock size={14} />
-          Snooze
-        </button>
-        {!article.is_saved && (
-          <button
-            className="btn btn-secondary"
-            onClick={() => onSave(article.id)}
-          >
-            <Save size={14} />
-            Save as Note
-          </button>
-        )}
-        {!hasSummary && (
-          <button
-            className="btn btn-secondary"
-            disabled={isSummarizing}
-            onClick={() => onGenerateSummary(article.id)}
-          >
-            <Sparkles size={14} />
-            {isSummarizing ? 'Summarizing…' : 'Generate Summary'}
-          </button>
-        )}
-        {hasContent && article.content.length < 300 && (
-          <button
-            className="btn btn-secondary"
-            onClick={() => onRefresh(article.id)}
-          >
-            <RefreshCw size={14} />
-            Fetch Full Article
-          </button>
-        )}
-        <a
-          href={article.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-ghost"
-          style={{marginLeft: 'auto'}}
-        >
-          <ExternalLink size={14} />
-          Open Original
-        </a>
-      </div>
     </div>
   )
 }
