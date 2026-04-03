@@ -20,6 +20,8 @@ export function FeedList() {
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [refreshingFeedIds, setRefreshingFeedIds] = useState<Set<number>>(new Set())
+  const [refreshingMessage, setRefreshingMessage] = useState('')
+  const [refreshingPercent, setRefreshingPercent] = useState(0)
   const [isSummarizing, setIsSummarizing] = useState<number | null>(null)
   const [progressModal, setProgressModal] = useState<{open: boolean; title: string; content: string; percent: number}>({open: false, title: '', content: '', percent: 0})
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -57,6 +59,52 @@ export function FeedList() {
       return () => clearTimeout(timer)
     }
   }, [error])
+
+  // SSE for refresh progress
+  useEffect(() => {
+    const es = new EventSource('/api/events')
+
+    es.addEventListener('refresh:start', (e) => {
+      const data = JSON.parse(e.data)
+      setRefreshingMessage(`开始刷新 ${data.total || 0} 个订阅源...`)
+      setRefreshingPercent(0)
+      setRefreshing(true)
+    })
+
+    es.addEventListener('refresh:progress', (e) => {
+      const data = JSON.parse(e.data)
+      const completed = data.current
+      const total = data.total
+      const percent = total > 0 ? Math.round((completed / total) * 100) : 0
+      setRefreshingMessage(`正在刷新 ${data.feedTitle || ''} (${completed}/${total})`)
+      setRefreshingPercent(percent)
+    })
+
+    es.addEventListener('refresh:complete', () => {
+      setRefreshingMessage('刷新完成')
+      setRefreshingPercent(100)
+      setTimeout(() => {
+        setRefreshingFeedIds(new Set())
+        setRefreshing(false)
+        setRefreshingPercent(0)
+        setRefreshingMessage('')
+      }, 800)
+    })
+
+    es.addEventListener('refresh:error', (e) => {
+      const data = JSON.parse(e.data)
+      setRefreshingMessage(data.message || '刷新失败')
+      setRefreshingPercent(0)
+      setTimeout(() => {
+        setRefreshingFeedIds(new Set())
+        setRefreshing(false)
+        setRefreshingPercent(0)
+        setRefreshingMessage('')
+      }, 800)
+    })
+
+    return () => es.close()
+  }, [])
 
   // Polling for refresh progress - only active when refreshing
   useEffect(() => {
