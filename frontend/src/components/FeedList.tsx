@@ -19,6 +19,7 @@ export function FeedList() {
   const [articlesLoading, setArticlesLoading] = useState(false)
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshingFeedIds, setRefreshingFeedIds] = useState<Set<number>>(new Set())
   const [isSummarizing, setIsSummarizing] = useState<number | null>(null)
   const [progressModal, setProgressModal] = useState<{open: boolean; title: string; content: string; percent: number}>({open: false, title: '', content: '', percent: 0})
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -172,6 +173,7 @@ export function FeedList() {
   const handleRefreshOneFeed = async (feedId: number, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    setRefreshingFeedIds(prev => new Set([...prev, feedId]))
     try {
       await api.refreshFeed(feedId)
       await loadFeeds()
@@ -180,6 +182,12 @@ export function FeedList() {
       }
     } catch (err: any) {
       setError(err.message || '刷新失败')
+    } finally {
+      setRefreshingFeedIds(prev => {
+        const next = new Set(prev)
+        next.delete(feedId)
+        return next
+      })
     }
   }
 
@@ -472,8 +480,9 @@ export function FeedList() {
                       aria-label="Refresh feed"
                       title="刷新"
                       style={{padding: '0 4px'}}
+                      disabled={refreshingFeedIds.has(feed.id)}
                     >
-                      <RefreshCw size={11} />
+                      <RefreshCw size={11} className={refreshingFeedIds.has(feed.id) ? 'spinning' : ''} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteFeed(feed.id, e)}
