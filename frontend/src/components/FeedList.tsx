@@ -106,62 +106,6 @@ export function FeedList() {
     return () => es.close()
   }, [])
 
-  // Polling for refresh progress - only active when refreshing
-  useEffect(() => {
-    if (!refreshing) return
-
-    const pollInterval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/refresh/status')
-        const data = await res.json()
-        if (!data.inProgress) {
-          // Refresh completed
-          setRefreshing(false)
-          if (data.error) {
-            setProgressModal({open: false, title: '', content: '', percent: 0})
-            Modal.error({title: '刷新失败', content: data.error})
-          } else {
-            setProgressModal({open: true, title: '刷新完成', content: `成功刷新 ${data.success || 0} 个订阅源`, percent: 100})
-            setTimeout(() => setProgressModal({open: false, title: '', content: '', percent: 0}), 1500)
-          }
-          // Apply refresh results to local feed state
-          if (data.results && Array.isArray(data.results)) {
-            setFeeds(prevFeeds => prevFeeds.map(feed => {
-              const result = data.results.find((r: { feedId: number }) => r.feedId === feed.id)
-              if (result) {
-                return {
-                  ...feed,
-                  last_refresh_success: result.success ? result.newCount : -1,
-                  last_refresh_error: result.error || '',
-                  last_refreshed: new Date().toISOString(),
-                }
-              }
-              return feed
-            }))
-          }
-          if (data.success !== undefined) {
-            loadFeeds()
-            if (selectedFeed) loadArticles(selectedFeed.id)
-          }
-          return
-        }
-        // In progress
-        const completed = (data.success || 0) + (data.failed || 0)
-        const total = data.total || 0
-        const percent = total > 0 ? Math.round((completed / total) * 100) : 0
-        setProgressModal({
-          open: true,
-          title: '正在刷新订阅源',
-          content: `正在刷新 ${data.feedTitle || ''} (${completed}/${total})`,
-          percent,
-        })
-      } catch (e) {
-        console.error('Failed to poll refresh status:', e)
-      }
-    }, 1000)
-
-    return () => clearInterval(pollInterval)
-  }, [refreshing, selectedFeed])
 
   const loadArticles = async (feedId: number) => {
     setArticlesLoading(true)
@@ -348,28 +292,7 @@ export function FeedList() {
 
   return (
     <div className="app">
-      <Modal
-        open={progressModal.open}
-        title={progressModal.title}
-        footer={null}
-        closable={false}
-        maskClosable={false}
-      >
-        <div style={{padding: '8px 0'}}>
-          <p>{progressModal.content}</p>
-          <div style={{marginTop: 16}}>
-            <div style={{height: 8, background: 'var(--bg-secondary)', borderRadius: 4, overflow: 'hidden'}}>
-              <div style={{
-                height: '100%',
-                width: `${progressModal.percent}%`,
-                background: 'var(--accent)',
-                transition: 'width 0.3s ease',
-              }} />
-            </div>
-          </div>
-        </div>
-      </Modal>
-      <Modal
+            <Modal
         open={editModalOpen}
         title="订阅源设置"
         onOk={async () => {
@@ -422,9 +345,9 @@ export function FeedList() {
 
       {(refreshingFeedIds.size > 0 || refreshing) && (
         <div className="refresh-progress-bar">
-          <div className="refresh-progress-info">{progressModal.content}</div>
+          <div className="refresh-progress-info">{refreshingMessage}</div>
           <div className="refresh-progress-track">
-            <div className="refresh-progress-fill" style={{width: `${progressModal.percent}%`}} />
+            <div className="refresh-progress-fill" style={{width: `${refreshingPercent}%`}} />
           </div>
         </div>
       )}
