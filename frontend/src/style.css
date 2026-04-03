@@ -7,17 +7,17 @@
    CSS Variables - The Magazine Design System
    ============================================ */
 :root {
-  /* Colors — dark theme (default) */
-  --bg: #1B2637;
-  --surface: #243447;
-  --border: #2E4057;
-  --text-primary: #E8EDF3;
-  --text-secondary: #8899A8;
-  --accent: #F0A500;
-  --accent-hover: #FFB81C;
-  --success: #3ECF8E;
-  --danger: #EF4444;
-  --info: #60A5FA;
+  /* Colors — dark theme (warm brown + cream) */
+  --bg: #2C2416;
+  --surface: #3D3226;
+  --border: #4A3F33;
+  --text-primary: #F5EFE6;
+  --text-secondary: #C4B89A;
+  --accent: #D97706;
+  --accent-hover: #F59E0B;
+  --success: #65A30D;
+  --danger: #DC2626;
+  --info: #D97706;
 
   /* Typography */
   --font-serif: 'Merriweather', Georgia, serif;
@@ -629,32 +629,32 @@ body {
 }
 
 .badge-ai {
-  background: rgba(96, 165, 250, 0.2);
-  color: var(--info);
+  background: rgba(217, 119, 6, 0.15);
+  color: var(--accent);
 }
 
 .badge-accepted {
-  background: rgba(62, 207, 142, 0.2);
+  background: rgba(101, 163, 13, 0.15);
   color: var(--success);
 }
 
 .badge-rejected {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.15);
   color: var(--danger);
 }
 
 .badge-snoozed {
-  background: rgba(240, 165, 0, 0.2);
+  background: rgba(217, 119, 6, 0.15);
   color: var(--accent);
 }
 
 .badge-saved {
-  background: rgba(96, 165, 250, 0.2);
-  color: var(--info);
+  background: rgba(217, 119, 6, 0.15);
+  color: var(--accent);
 }
 
 .badge-filtered {
-  background: rgba(136, 153, 168, 0.2);
+  background: rgba(196, 184, 154, 0.2);
   color: var(--text-secondary);
 }
 
@@ -711,7 +711,7 @@ body {
 
 .btn-primary {
   background: var(--accent);
-  color: #1B2637;
+  color: #3D3226;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -785,8 +785,8 @@ body {
 
 .alert-error {
   background: rgba(224, 72, 72, 0.15);
-  color: var(--error);
-  border: 1px solid var(--error);
+  color: var(--danger);
+  border: 1px solid var(--danger);
 }
 
 .alert-close {
@@ -1127,18 +1127,18 @@ body {
   min-width: 150px;
 }
 
-/* Light theme */
+/* Light theme — warm cream palette */
 [data-theme="light"] {
-  --bg: #F8F9FA;
+  --bg: #FFFBEB;
   --surface: #FFFFFF;
-  --border: #E5E7EB;
-  --text-primary: #1F2937;
-  --text-secondary: #6B7280;
+  --border: #E8DCC8;
+  --text-primary: #3D3226;
+  --text-secondary: #8B7355;
   --accent: #D97706;
-  --accent-hover: #B45309;
-  --success: #10B981;
+  --accent-hover: #F59E0B;
+  --success: #65A30D;
   --danger: #DC2626;
-  --info: #3B82F6;
+  --info: #D97706;
 }
 
 /* ============================================
@@ -1326,9 +1326,9 @@ body {
   margin-left: auto;
 }
 
-.status-failed { color: #ef4444; cursor: help; }
-.status-new { color: #3b82f6; font-size: 0.75rem; }
-.status-ok { color: #22c55e; }
+.status-failed { color: var(--danger); cursor: help; }
+.status-new { color: var(--accent); font-size: 0.75rem; }
+.status-ok { color: var(--success); }
 
 /* ============================================
    Articles Layout (Three Column)
@@ -1485,8 +1485,8 @@ body {
 }
 
 .status-badge.status-generating {
-  background: rgba(230, 184, 0, 0.15);
-  color: #E6B800;
+  background: rgba(217, 119, 6, 0.15);
+  color: var(--accent);
 }
 
 .status-badge.status-completed {
@@ -1496,7 +1496,7 @@ body {
 
 .status-badge.status-failed {
   background: rgba(224, 72, 72, 0.15);
-  color: var(--error);
+  color: var(--danger);
 }
 
 .briefing-items {
@@ -1548,7 +1548,7 @@ body {
 
 .briefing-error {
   font-size: 0.85rem;
-  color: var(--error);
+  color: var(--danger);
   margin: var(--space-2) 0 0 0;
 }
 
