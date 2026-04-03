@@ -1642,6 +1642,7 @@ body {
   font-size: 0.8rem;
   color: var(--text-secondary);
   margin-bottom: 5px;
+  text-align: center;
 }
 .refresh-progress-track {
   height: 3px;
