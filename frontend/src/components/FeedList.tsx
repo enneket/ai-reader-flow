@@ -372,6 +372,15 @@ export function FeedList() {
         </div>
       </header>
 
+      {(refreshingFeedIds.size > 0 || refreshing) && (
+        <div className="refresh-progress-bar">
+          <div className="refresh-progress-info">{progressModal.content}</div>
+          <div className="refresh-progress-track">
+            <div className="refresh-progress-fill" style={{width: `${progressModal.percent}%`}} />
+          </div>
+        </div>
+      )}
+
       <div className="app-body">
         {/* Column 1: Sidebar Navigation */}
         <aside className="sidebar">

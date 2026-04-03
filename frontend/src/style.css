@@ -1623,3 +1623,41 @@ body {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ============================================
+   Slim Refresh Progress Bar
+   ============================================ */
+.refresh-progress-bar {
+  position: fixed;
+  top: var(--masthead-height);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px 6px;
+  transition: opacity 0.3s ease;
+}
+.refresh-progress-info {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+.refresh-progress-track {
+  height: 3px;
+  background: var(--bg-primary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.refresh-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.refresh-progress-bar.error .refresh-progress-fill {
+  background: var(--danger);
+}
+.refresh-progress-bar.complete {
+  opacity: 0;
+  pointer-events: none;
+}
