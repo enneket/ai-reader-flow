@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 )
@@ -88,6 +89,55 @@ func (s *BriefingService) splitIntoBatches(articles []models.Article) [][]models
 	}
 
 	return batches
+}
+
+// normalizeTopicName normalizes a topic name for merge matching.
+// Converts to lowercase and removes spaces.
+func normalizeTopicName(name string) string {
+	return strings.ToLower(strings.Replace(strings.Replace(name, " ", "", -1), "\t", "", -1))
+}
+
+// mergeBriefingResults merges multiple BriefingResult batches into one.
+// Topics with the same normalized name are merged (articles deduplicated by ID).
+// Topics are sorted by article count (descending).
+func mergeBriefingResults(batches []models.BriefingResult) models.BriefingResult {
+	topicMap := make(map[string]*models.BriefingTopic)
+
+	for _, batch := range batches {
+		for i := range batch.Topics {
+			topic := &batch.Topics[i]
+			key := normalizeTopicName(topic.Name)
+			existing, ok := topicMap[key]
+			if !ok {
+				// Clone the topic to avoid aliasing
+				cloned := *topic
+				topicMap[key] = &cloned
+				continue
+			}
+			// Merge: deduplicate articles by ID
+			seen := make(map[int64]bool)
+			for _, a := range existing.Articles {
+				seen[a.ID] = true
+			}
+			for _, a := range topic.Articles {
+				if !seen[a.ID] {
+					existing.Articles = append(existing.Articles, a)
+					seen[a.ID] = true
+				}
+			}
+		}
+	}
+
+	topics := make([]models.BriefingTopic, 0, len(topicMap))
+	for _, t := range topicMap {
+		topics = append(topics, *t)
+	}
+
+	sort.Slice(topics, func(i, j int) bool {
+		return len(topics[i].Articles) > len(topics[j].Articles)
+	})
+
+	return models.BriefingResult{Topics: topics}
 }
 
 // GenerateBriefing creates a new briefing from recent articles
