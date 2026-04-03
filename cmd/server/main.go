@@ -298,6 +298,8 @@ func handleUpdateFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
+		Title string `json:"title"`
+		URL   string `json:"url"`
 		Group string `json:"group"`
 	}
 	if !readJSON(w, r, &req) {
@@ -307,6 +309,12 @@ func handleUpdateFeed(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "feed not found", http.StatusNotFound)
 		return
+	}
+	if req.Title != "" {
+		feed.Title = req.Title
+	}
+	if req.URL != "" {
+		feed.URL = req.URL
 	}
 	feed.Group = req.Group
 	if err := rssService.UpdateFeed(feed); err != nil {
