@@ -137,3 +137,20 @@ func (r *FeedRepository) GetDeadFeeds() ([]models.Feed, error) {
 	}
 	return feeds, nil
 }
+
+// UpdateUnreadCount increments or decrements the unread count for a feed
+func (r *FeedRepository) UpdateUnreadCount(feedId int64, delta int) error {
+	_, err := DB.Exec(`UPDATE feeds SET unread_count = MAX(0, unread_count + ?) WHERE id = ?`, delta, feedId)
+	return err
+}
+
+// RecalcUnreadCount recalculates unread_count from article table
+func (r *FeedRepository) RecalcUnreadCount(feedId int64) error {
+	var count int
+	err := DB.QueryRow(`SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'unread'`, feedId).Scan(&count)
+	if err != nil {
+		return err
+	}
+	_, err = DB.Exec(`UPDATE feeds SET unread_count = ? WHERE id = ?`, count, feedId)
+	return err
+}
