@@ -31,7 +31,7 @@ describe('api', () => {
   describe('getFeeds', () => {
     it('returns feeds on success', async () => {
       const feeds: Feed[] = [
-        { id: 1, title: 'Test Feed', url: 'http://test.com/feed.xml', description: '', icon_url: '', last_fetched: null, is_dead: false, created_at: '', group: '', last_refresh_success: 0, last_refresh_error: '', last_refreshed: '' }
+        { id: 1, title: 'Test Feed', url: 'http://test.com/feed.xml', description: '', icon_url: '', last_fetched: null, is_dead: false, created_at: '', group: '', last_refresh_success: 0, last_refresh_error: '', last_refreshed: '', unread_count: 0 }
       ]
       mockFetch.mockResolvedValueOnce(createMockResponse(feeds))
 
@@ -55,7 +55,7 @@ describe('api', () => {
 
   describe('addFeed', () => {
     it('posts feed URL and returns created feed', async () => {
-      const feed: Feed = { id: 1, title: 'New Feed', url: 'http://new.com/feed.xml', description: '', icon_url: '', last_fetched: null, is_dead: false, created_at: '', group: '', last_refresh_success: 0, last_refresh_error: '', last_refreshed: '' }
+      const feed: Feed = { id: 1, title: 'New Feed', url: 'http://new.com/feed.xml', description: '', icon_url: '', last_fetched: null, is_dead: false, created_at: '', group: '', last_refresh_success: 0, last_refresh_error: '', last_refreshed: '', unread_count: 0 }
       mockFetch.mockResolvedValueOnce(createMockResponse(feed))
 
       const result = await api.addFeed('http://new.com/feed.xml')

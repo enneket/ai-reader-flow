@@ -35,6 +35,7 @@ export interface Feed {
   last_refresh_success: number  // -1=failed, 0=success no new articles, >0=success with new articles
   last_refresh_error: string
   last_refreshed: string
+  unread_count: number
 }
 
 export const api = {

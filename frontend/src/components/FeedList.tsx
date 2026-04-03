@@ -185,8 +185,21 @@ export function FeedList() {
     }
   }
 
-  const handleArticleClick = (article: Article) => {
+  const handleArticleClick = async (article: Article) => {
     setSelectedArticle(article)
+    // If article is unread, mark as read and update badge
+    if (article.status === 'unread') {
+      try {
+        await api.acceptArticle(article.id)
+        setFeeds(prev => prev.map(f =>
+          f.id === article.feed_id
+            ? {...f, unread_count: Math.max(0, f.unread_count - 1)}
+            : f
+        ))
+      } catch (err) {
+        console.error('Failed to accept article:', err)
+      }
+    }
   }
 
   const handleBack = () => {
@@ -389,8 +402,8 @@ export function FeedList() {
                     {feed.last_refresh_success === -1 && (
                       <span className="status-failed" title={feed.last_refresh_error}>❌</span>
                     )}
-                    {feed.last_refresh_success > 0 && (
-                      <span className="status-new">+{feed.last_refresh_success}</span>
+                    {feed.unread_count > 0 && (
+                      <span className="status-new">+{feed.unread_count}</span>
                     )}
                   </div>
                   <button
