@@ -465,28 +465,33 @@ export function FeedList() {
                       <span className="status-new">+{feed.unread_count}</span>
                     )}
                   </div>
-                  <button
-                    onClick={(e) => handleRefreshOneFeed(feed.id, e)}
-                    className="btn btn-ghost btn-sm btn-icon"
-                    aria-label="Refresh feed"
-                    title="刷新"
-                  >
-                    <RefreshCw size={12} />
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteFeed(feed.id, e)}
-                    className="btn btn-ghost btn-sm btn-icon"
-                    aria-label="Delete feed"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                  <button
-                    onClick={(e) => handleEditFeed(feed, e)}
-                    className="btn btn-ghost btn-sm btn-icon"
-                    aria-label="Edit feed"
-                  >
-                    <Settings size={12} />
-                  </button>
+                  <div style={{display: 'flex', gap: 2, alignItems: 'center'}}>
+                    <button
+                      onClick={(e) => handleRefreshOneFeed(feed.id, e)}
+                      className="btn btn-ghost btn-sm btn-icon"
+                      aria-label="Refresh feed"
+                      title="刷新"
+                      style={{padding: '0 4px'}}
+                    >
+                      <RefreshCw size={11} />
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteFeed(feed.id, e)}
+                      className="btn btn-ghost btn-sm btn-icon"
+                      aria-label="Delete feed"
+                      style={{padding: '0 4px'}}
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                    <button
+                      onClick={(e) => handleEditFeed(feed, e)}
+                      className="btn btn-ghost btn-sm btn-icon"
+                      aria-label="Edit feed"
+                      style={{padding: '0 4px'}}
+                    >
+                      <Settings size={11} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
