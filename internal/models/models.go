@@ -15,6 +15,7 @@ type Feed struct {
 	LastRefreshSuccess int       `json:"last_refresh_success"` // 新文章数，-1=失败
 	LastRefreshError   string    `json:"last_refresh_error"`   // 失败错误信息
 	LastRefreshed      time.Time `json:"last_refreshed"`       // 最后刷新时间
+	UnreadCount        int       `json:"unread_count"`         // 未读文章数
 }
 
 type Article struct {
