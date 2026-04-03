@@ -33,6 +33,10 @@ func (r *ArticleRepository) Create(article *models.Article) error {
 	article.ID = id
 	// Index in FTS for full-text search
 	_ = IndexArticle(article.ID, article.Title, article.Content)
+	// 同步更新 feed 的 unread_count
+	if status == "unread" {
+		DB.Exec(`UPDATE feeds SET unread_count = unread_count + 1 WHERE id = ?`, article.FeedID)
+	}
 	return nil
 }
 
@@ -163,8 +167,27 @@ func (r *ArticleRepository) SetSaved(id int64, saved bool) error {
 }
 
 func (r *ArticleRepository) SetStatus(id int64, status string) error {
-	_, err := DB.Exec(`UPDATE articles SET status = ? WHERE id = ?`, status, id)
-	return err
+	// 获取旧 status 和 feed_id，用于更新 unread_count
+	var oldStatus string
+	var feedId int64
+	err := DB.QueryRow(`SELECT status, feed_id FROM articles WHERE id = ?`, id).Scan(&oldStatus, &feedId)
+	if err != nil {
+		return err
+	}
+
+	_, err = DB.Exec(`UPDATE articles SET status = ? WHERE id = ?`, status, id)
+	if err != nil {
+		return err
+	}
+
+	// 同步更新 feed 的 unread_count
+	if oldStatus == "unread" && status != "unread" {
+		DB.Exec(`UPDATE feeds SET unread_count = MAX(0, unread_count - 1) WHERE id = ?`, feedId)
+	} else if oldStatus != "unread" && status == "unread" {
+		DB.Exec(`UPDATE feeds SET unread_count = unread_count + 1 WHERE id = ?`, feedId)
+	}
+
+	return nil
 }
 
 func (r *ArticleRepository) GetByStatus(status string) ([]models.Article, error) {
