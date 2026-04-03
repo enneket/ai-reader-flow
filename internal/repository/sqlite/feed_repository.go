@@ -29,7 +29,7 @@ func (r *FeedRepository) Create(feed *models.Feed) error {
 
 func (r *FeedRepository) GetAll() ([]models.Feed, error) {
 	rows, err := DB.Query(`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at, COALESCE(group_name, ''),
-	        last_refresh_success, COALESCE(last_refresh_error, ''), last_refreshed
+	        last_refresh_success, COALESCE(last_refresh_error, ''), last_refreshed, unread_count
 	 FROM feeds ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (r *FeedRepository) GetAll() ([]models.Feed, error) {
 		var f models.Feed
 		var lastFetched, createdAt, lastRefreshed sql.NullString
 		err := rows.Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt, &f.Group,
-			&f.LastRefreshSuccess, &f.LastRefreshError, &lastRefreshed)
+			&f.LastRefreshSuccess, &f.LastRefreshError, &lastRefreshed, &f.UnreadCount)
 		if err != nil {
 			log.Printf("scan feed error (row may be skipped): %v", err)
 			continue
@@ -65,11 +65,11 @@ func (r *FeedRepository) GetByID(id int64) (*models.Feed, error) {
 	var lastFetched, createdAt, lastRefreshed sql.NullString
 	err := DB.QueryRow(
 		`SELECT id, title, url, description, icon_url, last_fetched, is_dead, created_at, COALESCE(group_name, ''),
-	        last_refresh_success, COALESCE(last_refresh_error, ''), last_refreshed
+	        last_refresh_success, COALESCE(last_refresh_error, ''), last_refreshed, unread_count
 	 FROM feeds WHERE id = ?`,
 		id,
 	).Scan(&f.ID, &f.Title, &f.URL, &f.Description, &f.IconURL, &lastFetched, &f.IsDead, &createdAt, &f.Group,
-		&f.LastRefreshSuccess, &f.LastRefreshError, &lastRefreshed)
+		&f.LastRefreshSuccess, &f.LastRefreshError, &lastRefreshed, &f.UnreadCount)
 	if err != nil {
 		return nil, err
 	}
