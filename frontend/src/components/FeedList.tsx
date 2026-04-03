@@ -169,6 +169,20 @@ export function FeedList() {
     }
   }
 
+  const handleRefreshOneFeed = async (feedId: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      await api.refreshFeed(feedId)
+      await loadFeeds()
+      if (selectedFeed?.id === feedId) {
+        await loadArticles(feedId)
+      }
+    } catch (err: any) {
+      setError(err.message || '刷新失败')
+    }
+  }
+
   const handleRefreshAll = async () => {
     setError('')
     setRefreshing(true)
@@ -451,6 +465,14 @@ export function FeedList() {
                       <span className="status-new">+{feed.unread_count}</span>
                     )}
                   </div>
+                  <button
+                    onClick={(e) => handleRefreshOneFeed(feed.id, e)}
+                    className="btn btn-ghost btn-sm btn-icon"
+                    aria-label="Refresh feed"
+                    title="刷新"
+                  >
+                    <RefreshCw size={12} />
+                  </button>
                   <button
                     onClick={(e) => handleDeleteFeed(feed.id, e)}
                     className="btn btn-ghost btn-sm btn-icon"
