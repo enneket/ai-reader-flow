@@ -21,6 +21,8 @@ export function FeedList() {
   const [refreshing, setRefreshing] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState<number | null>(null)
   const [progressModal, setProgressModal] = useState<{open: boolean; title: string; content: string; percent: number}>({open: false, title: '', content: '', percent: 0})
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editFeed, setEditFeed] = useState<{id: number; title: string; url: string} | null>(null)
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -242,6 +244,13 @@ export function FeedList() {
     }
   }
 
+  const handleEditFeed = (feed: Feed, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setEditFeed({id: feed.id, title: feed.title || '', url: feed.url})
+    setEditModalOpen(true)
+  }
+
   const handleGenerateSummary = async (id: number) => {
     setIsSummarizing(id)
     try {
@@ -287,6 +296,42 @@ export function FeedList() {
                 transition: 'width 0.3s ease',
               }} />
             </div>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        open={editModalOpen}
+        title="订阅源设置"
+        onOk={async () => {
+          if (!editFeed) return
+          try {
+            await api.updateFeed(editFeed.id, {title: editFeed.title, url: editFeed.url, group: ''})
+            setEditModalOpen(false)
+            await loadFeeds()
+          } catch (err: any) {
+            setError(err.message || '更新失败')
+          }
+        }}
+        onCancel={() => setEditModalOpen(false)}
+        okText="保存"
+        cancelText="取消"
+      >
+        <div style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+          <div>
+            <label style={{fontSize: '0.85rem', marginBottom: 4, display: 'block'}}>标题</label>
+            <input
+              className="form-input"
+              value={editFeed?.title || ''}
+              onChange={e => setEditFeed(prev => prev ? {...prev, title: e.target.value} : null)}
+            />
+          </div>
+          <div>
+            <label style={{fontSize: '0.85rem', marginBottom: 4, display: 'block'}}>订阅源链接</label>
+            <input
+              className="form-input"
+              value={editFeed?.url || ''}
+              onChange={e => setEditFeed(prev => prev ? {...prev, url: e.target.value} : null)}
+            />
           </div>
         </div>
       </Modal>
@@ -412,6 +457,13 @@ export function FeedList() {
                     aria-label="Delete feed"
                   >
                     <Trash2 size={12} />
+                  </button>
+                  <button
+                    onClick={(e) => handleEditFeed(feed, e)}
+                    className="btn btn-ghost btn-sm btn-icon"
+                    aria-label="Edit feed"
+                  >
+                    <Settings size={12} />
                   </button>
                 </div>
               ))
