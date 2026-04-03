@@ -224,6 +224,7 @@ export interface BriefingArticle {
   briefing_item_id: number
   article_id: number
   title: string
+  insight?: string
 }
 
 export interface BriefingItem {

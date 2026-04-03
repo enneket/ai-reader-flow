@@ -261,7 +261,13 @@ export function BriefingDetail() {
                       <p className="briefing-summary">{item.summary}</p>
                       <ul className="briefing-articles">
                         {item.articles.map((article) => (
-                          <li key={article.id}>{article.title}</li>
+                          <li key={article.id}>
+                            {article.insight ? (
+                              <span className="article-insight">{article.insight}</span>
+                            ) : (
+                              article.title
+                            )}
+                          </li>
                         ))}
                       </ul>
                     </div>

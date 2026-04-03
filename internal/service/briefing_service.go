@@ -106,18 +106,19 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 		}
 
 		// Store article references
-		for _, articleID := range topic.ArticleIDs {
+		for _, ta := range topic.Articles {
 			title := ""
 			for _, a := range articles {
-				if a.ID == articleID {
+				if a.ID == ta.ID {
 					title = a.Title
 					break
 				}
 			}
 			ba := &models.BriefingArticle{
 				BriefingItemID: item.ID,
-				ArticleID:     articleID,
+				ArticleID:     ta.ID,
 				Title:         title,
+				Insight:       ta.Insight,
 			}
 			s.briefingRepo.CreateArticle(ba)
 		}
@@ -135,32 +136,38 @@ func (s *BriefingService) buildArticlesInput(articles []models.Article) string {
 	for _, a := range articles {
 		sb.WriteString(fmt.Sprintf("文章 ID: %d\n", a.ID))
 		sb.WriteString(fmt.Sprintf("标题: %s\n", a.Title))
-		summary := a.Summary
-		if summary == "" {
-			summary = a.Content
-			if len(summary) > 200 {
-				summary = summary[:200] + "..."
-			}
+		content := a.Content
+		if content == "" {
+			content = a.Summary
 		}
-		sb.WriteString(fmt.Sprintf("摘要: %s\n", summary))
+		// Feed up to 2000 chars so AI has enough context to write real analysis
+		if len(content) > 2000 {
+			content = content[:2000] + "..."
+		}
+		sb.WriteString(fmt.Sprintf("内容:\n%s\n", content))
 		sb.WriteString("---\n")
 	}
 	return sb.String()
 }
 
 func (s *BriefingService) buildPrompt(articlesInput string) string {
-	return fmt.Sprintf(`System: 你是一个内容策划助手。给定一组文章，你需要：
-1. 将文章按主题分组（相似内容的文章分到同一组）
-2. 为每个主题起一个简短的名字（如"AI"、"创业"、"科技"）
-3. 为每个主题提取核心观点（用简洁的 bullets，每条不超过 20 字）
+	return fmt.Sprintf(`System: 你是一个专业的内容分析助手。给定一组文章，你需要：
 
-输出格式（严格按 JSON 格式，不要有其他内容）：
+1. 将文章按主题分组（相似内容的文章分到同一组）
+2. 为每个主题起一个精准的名字（如"Claude 4 发布"、"RISC-V 市场动态"）
+3. 对每篇文章写出真正有价值的 insight：一句话核心发现 + 为什么重要（最多 2 句话）
+4. 对整个主题写一段深度分析：这段在讲什么整体趋势、为什么值得关注、和同组其他文章的异同
+
+输出格式（严格按 JSON，不要有其他内容）：
 {
   "topics": [
     {
       "name": "主题名称",
-      "article_ids": [101, 102],
-      "summary": "• 核心观点1\n• 核心观点2\n• 核心观点3"
+      "summary": "深度分析：这段在讲什么、为什么重要、和同组其他文章的异同（100-200字）",
+      "articles": [
+        {"id": 101, "insight": "核心发现是X，相比同类文章的特点是Y（1-2句话）"},
+        {"id": 102, "insight": "核心发现是X，相比同类文章的特点是Y（1-2句话）"}
+      ]
     }
   ]
 }
@@ -170,6 +177,7 @@ func (s *BriefingService) buildPrompt(articlesInput string) string {
 - 每个主题最多 5 篇核心文章
 - 只包含真正有价值的文章，无关内容请忽略
 - 主题按文章数量排序（多的在前）
+- summary 要有深度，不是标题罗列，而是真正帮助读者快速了解这个领域
 - 如果文章太少或无价值，返回空的 topics 数组
 
 User: 以下是今天的文章：

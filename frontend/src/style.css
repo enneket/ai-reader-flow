@@ -1568,6 +1568,14 @@ body {
   color: var(--accent);
 }
 
+.article-insight {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: var(--space-1);
+}
+
 .briefing-error {
   font-size: 0.85rem;
   color: var(--danger);

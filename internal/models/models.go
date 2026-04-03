@@ -102,13 +102,20 @@ type BriefingArticle struct {
 	BriefingItemID int64 `json:"briefing_item_id"`
 	ArticleID     int64  `json:"article_id"`
 	Title         string `json:"title"`
+	Insight       string `json:"insight,omitempty"`
+}
+
+// BriefingTopicArticle is the AI output format for an article within a topic
+type BriefingTopicArticle struct {
+	ID      int64  `json:"id"`
+	Insight string `json:"insight"`
 }
 
 // BriefingTopic is the AI output format for a topic
 type BriefingTopic struct {
-	Name       string   `json:"name"`
-	ArticleIDs []int64  `json:"article_ids"`
-	Summary    string   `json:"summary"`
+	Name     string             `json:"name"`
+	Articles []BriefingTopicArticle `json:"articles"`
+	Summary  string            `json:"summary"`
 }
 
 // BriefingResult is the AI output format
