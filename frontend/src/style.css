@@ -533,7 +533,7 @@ body {
   font-family: var(--font-serif);
   font-size: 28px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
   line-height: 1.3;
   margin-bottom: var(--space-6);
 }
@@ -541,7 +541,7 @@ body {
 .article-reader-summary {
   font-size: 16px;
   line-height: 1.7;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
   padding: var(--space-4) 0;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -551,7 +551,29 @@ body {
 .article-reader-content {
   font-size: 15px;
   line-height: 1.7;
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
+}
+
+.article-reader-content p,
+.article-reader-content span,
+.article-reader-content div,
+.article-reader-content li,
+.article-reader-content td,
+.article-reader-content th,
+.article-reader-content tr,
+.article-reader-content strong,
+.article-reader-content b,
+.article-reader-content i,
+.article-reader-content em,
+.article-reader-content u,
+.article-reader-content s,
+.article-reader-content h1,
+.article-reader-content h2,
+.article-reader-content h3,
+.article-reader-content h4,
+.article-reader-content h5,
+.article-reader-content h6 {
+  color: var(--text-primary) !important;
 }
 
 .article-reader-content p {
