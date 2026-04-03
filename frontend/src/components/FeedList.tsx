@@ -346,7 +346,7 @@ export function FeedList() {
         </div>
       </header>
 
-      {(refreshingFeedIds.size > 0 || refreshing) && (
+      {refreshing && (
         <div className="refresh-progress-bar">
           <div className="refresh-progress-info">{refreshingMessage}</div>
           <div className="refresh-progress-track">
