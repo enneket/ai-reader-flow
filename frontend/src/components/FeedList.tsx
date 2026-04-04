@@ -462,9 +462,6 @@ export function FeedList() {
                     <span className="feed-item-url">{feed.url}</span>
                   </div>
                   <div className="feed-item-status">
-                    {feed.last_refresh_success === -1 && (
-                      <span className="status-failed" title={feed.last_refresh_error}>❌</span>
-                    )}
                     {feed.unread_count > 0 && (
                       <span className="status-new">+{feed.unread_count}</span>
                     )}
