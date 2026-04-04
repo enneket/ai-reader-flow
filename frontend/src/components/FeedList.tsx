@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react'
+import {useState, useEffect, useRef} from 'react'
 import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
 import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid} from 'lucide-react'
@@ -60,51 +60,58 @@ export function FeedList() {
     }
   }, [error])
 
-  // SSE for refresh progress
+  // Polling for refresh progress (500ms interval)
+  const refreshPollInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+
   useEffect(() => {
-    const es = new EventSource('/api/events')
+    if (!refreshing) return
 
-    es.addEventListener('refresh:start', (e) => {
-      const data = JSON.parse(e.data)
-      setRefreshingMessage(`开始刷新 ${data.total || 0} 个订阅源...`)
-      setRefreshingPercent(0)
-      setRefreshing(true)
-    })
+    refreshPollInterval.current = setInterval(async () => {
+      try {
+        const res = await fetch('/api/refresh/status')
+        const data = await res.json()
 
-    es.addEventListener('refresh:progress', (e) => {
-      const data = JSON.parse(e.data)
-      const completed = data.current
-      const total = data.total
-      const percent = total > 0 ? Math.round((completed / total) * 100) : 0
-      setRefreshingMessage(`正在刷新 ${data.feedTitle || ''} (${completed}/${total})`)
-      setRefreshingPercent(percent)
-    })
+        if (!data.inProgress) {
+          // Refresh complete
+          setRefreshingMessage('刷新完成')
+          setRefreshingPercent(100)
+          if (refreshPollInterval.current) {
+            clearInterval(refreshPollInterval.current)
+            refreshPollInterval.current = null
+          }
+          setTimeout(() => {
+            setRefreshing(false)
+            setRefreshingPercent(0)
+            setRefreshingMessage('')
+          }, 800)
+          return
+        }
 
-    es.addEventListener('refresh:complete', () => {
-      setRefreshingMessage('刷新完成')
-      setRefreshingPercent(100)
-      setTimeout(() => {
-        setRefreshingFeedIds(new Set())
+        // Update progress
+        const completed = data.current || 0
+        const total = data.total || 0
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0
+        setRefreshingMessage(`正在刷新 ${data.feedTitle || ''} (${completed}/${total})`)
+        setRefreshingPercent(percent)
+      } catch {
+        // On error, stop polling
+        if (refreshPollInterval.current) {
+          clearInterval(refreshPollInterval.current)
+          refreshPollInterval.current = null
+        }
         setRefreshing(false)
         setRefreshingPercent(0)
         setRefreshingMessage('')
-      }, 800)
-    })
+      }
+    }, 500)
 
-    es.addEventListener('refresh:error', (e) => {
-      const data = JSON.parse(e.data)
-      setRefreshingMessage(data.message || '刷新失败')
-      setRefreshingPercent(0)
-      setTimeout(() => {
-        setRefreshingFeedIds(new Set())
-        setRefreshing(false)
-        setRefreshingPercent(0)
-        setRefreshingMessage('')
-      }, 800)
-    })
-
-    return () => es.close()
-  }, [])
+    return () => {
+      if (refreshPollInterval.current) {
+        clearInterval(refreshPollInterval.current)
+        refreshPollInterval.current = null
+      }
+    }
+  }, [refreshing])
 
 
   const loadArticles = async (feedId: number) => {
