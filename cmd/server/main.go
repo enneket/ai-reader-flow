@@ -464,32 +464,24 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Filter new articles
-		newArticleIDs, filterErr := filterService.FilterAllArticlesNew()
-		if filterErr != nil {
-			events.GlobalRefreshStatus.Mutex.Lock()
-			events.GlobalRefreshStatus.InProgress = false
-			events.GlobalRefreshStatus.Error = filterErr.Error()
-			events.GlobalRefreshStatus.Mutex.Unlock()
-			return
-		}
-
-		// Update status: complete
+		// Mark refresh complete immediately — feed fetch is done, filtering runs in background
 		events.GlobalRefreshStatus.Mutex.Lock()
 		events.GlobalRefreshStatus.InProgress = false
-		events.GlobalRefreshStatus.Success = len(newArticleIDs)
-		events.GlobalRefreshStatus.Failed = total - len(newArticleIDs)
+		// Success/Failed already set by callbacks
 		events.GlobalRefreshStatus.Mutex.Unlock()
 		events.GlobalBroadcaster.Broadcast(events.EventRefreshComplete, events.RefreshComplete{
-			Success: len(newArticleIDs),
-			Failed:  total - len(newArticleIDs),
+			Success: events.GlobalRefreshStatus.Success,
+			Failed: events.GlobalRefreshStatus.Failed,
 		})
 
-		// Broadcast new articles event so frontend can refresh list
-		events.GlobalBroadcaster.Broadcast(events.EventNewArticles, map[string]int{"count": len(newArticleIDs)})
-
-		// Launch background goroutine to generate summaries
+		// Filter + generate summaries in background
 		go func() {
+			newArticleIDs, filterErr := filterService.FilterAllArticlesNew()
+			if filterErr != nil {
+				log.Printf("filter error: %v", filterErr)
+				return
+			}
+			events.GlobalBroadcaster.Broadcast(events.EventNewArticles, map[string]int{"count": len(newArticleIDs)})
 			summaryService.BatchGenerateSummaries(newArticleIDs, 5)
 		}()
 	}()
