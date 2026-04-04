@@ -431,8 +431,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 			})
 
 			events.GlobalRefreshStatus.Mutex.Lock()
-			events.GlobalRefreshStatus.Current = idx
-			events.GlobalRefreshStatus.Total = total
 			events.GlobalRefreshStatus.FeedTitle = feedTitle
 
 			result := events.FeedRefreshResult{
@@ -452,6 +450,8 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 				events.GlobalRefreshStatus.Results[feedId] = result
 				feedRepo.UpdateRefreshResult(feedId, newCount, "")
 			}
+			// Use Success+Failed as current (atomic increment, always sequential)
+			events.GlobalRefreshStatus.Current = events.GlobalRefreshStatus.Success + events.GlobalRefreshStatus.Failed
 			events.GlobalRefreshStatus.Mutex.Unlock()
 		})
 
