@@ -65,24 +65,23 @@ export function FeedList() {
     }
   }, [error])
 
-  // Polling for refresh progress (500ms interval)
-  const refreshPollInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Polling for refresh progress (recursive setTimeout for immediate first fire)
+  const refreshPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!refreshing) return
 
-    refreshPollInterval.current = setInterval(async () => {
+    const poll = async () => {
       try {
         const res = await fetch('/api/refresh/status')
         const data = await res.json()
 
         if (!data.inProgress) {
-          // Refresh complete
           setRefreshingMessage('刷新完成')
           setRefreshingPercent(100)
-          if (refreshPollInterval.current) {
-            clearInterval(refreshPollInterval.current)
-            refreshPollInterval.current = null
+          if (refreshPollTimer.current) {
+            clearTimeout(refreshPollTimer.current)
+            refreshPollTimer.current = null
           }
           setTimeout(() => {
             setRefreshing(false)
@@ -92,28 +91,34 @@ export function FeedList() {
           return
         }
 
-        // Update progress
         const completed = data.current || 0
         const total = data.total || 0
         const percent = total > 0 ? Math.round((completed / total) * 100) : 0
         setRefreshingMessage(`正在刷新 ${data.feedTitle || ''} (${completed}/${total})`)
         setRefreshingPercent(percent)
+
+        // Schedule next poll immediately
+        if (refreshing) {
+          refreshPollTimer.current = setTimeout(poll, 200)
+        }
       } catch {
-        // On error, stop polling
-        if (refreshPollInterval.current) {
-          clearInterval(refreshPollInterval.current)
-          refreshPollInterval.current = null
+        if (refreshPollTimer.current) {
+          clearTimeout(refreshPollTimer.current)
+          refreshPollTimer.current = null
         }
         setRefreshing(false)
         setRefreshingPercent(0)
         setRefreshingMessage('')
       }
-    }, 200)
+    }
+
+    // Fire immediately on start
+    poll()
 
     return () => {
-      if (refreshPollInterval.current) {
-        clearInterval(refreshPollInterval.current)
-        refreshPollInterval.current = null
+      if (refreshPollTimer.current) {
+        clearTimeout(refreshPollTimer.current)
+        refreshPollTimer.current = null
       }
     }
   }, [refreshing])
@@ -203,18 +208,17 @@ export function FeedList() {
     setRefreshing(true)
     setRefreshingMessage('开始刷新订阅源...')
     setRefreshingPercent(0)
-    try {
-      await api.refreshAllFeeds()
-    } catch (err: any) {
-      setRefreshing(false)
-      setRefreshingMessage('')
-      setRefreshingPercent(0)
+    // Fire and forget — polling starts immediately, doesn't wait for POST response
+    api.refreshAllFeeds().catch((err: any) => {
       if (err.message.includes('409')) {
         setConflictModalOpen(true)
+        setRefreshing(false)
+        setRefreshingMessage('')
+        setRefreshingPercent(0)
       } else {
         setError(err.message || 'Failed to refresh feeds')
       }
-    }
+    })
   }
 
   const handleArticleClick = async (article: Article) => {
