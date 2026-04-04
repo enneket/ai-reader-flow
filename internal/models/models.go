@@ -33,15 +33,6 @@ type Article struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-type FilterRule struct {
-	ID        int64  `json:"id"`
-	Type      string `json:"type"` // keyword, source, ai_score
-	Value     string `json:"value"`
-	Action    string `json:"action"` // include, exclude
-	Enabled   bool   `json:"enabled"`
-	CreatedAt string `json:"created_at"`
-}
-
 type Note struct {
 	ID         int64  `json:"id"`
 	ArticleID  int64  `json:"article_id"`
@@ -70,7 +61,6 @@ type AIProviderConfig struct {
 type AppState struct {
 	Feeds         []Feed         `json:"feeds"`
 	Articles      []Article      `json:"articles"`
-	FilterRules   []FilterRule   `json:"filter_rules"`
 	Notes         []Note         `json:"notes"`
 	AIConfig      AIProviderConfig `json:"ai_config"`
 	FilterMode    string         `json:"filter_mode"` // all, filtered, saved

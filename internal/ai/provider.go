@@ -16,7 +16,6 @@ import (
 type AIServiceProvider interface {
 	GenerateSummary(content string) (string, error)
 	GenerateBriefing(prompt string) (string, error)
-	FilterArticle(content string, rules []string) (bool, error)
 }
 
 // OpenAIProvider implements AIServiceProvider using OpenAI API
@@ -213,69 +212,6 @@ func (p *OpenAIProvider) GenerateBriefing(prompt string) (string, error) {
 	return "", fmt.Errorf("unexpected response format")
 }
 
-func (p *OpenAIProvider) FilterArticle(content string, rules []string) (bool, error) {
-	systemPrompt := "You are a helpful assistant that filters articles based on user preferences. Answer only 'yes' or 'no'."
-	userPrompt := fmt.Sprintf("Should I read this article? Consider these preferences:\n%s\n\nArticle:\n%s", strings.Join(rules, "\n"), content)
-
-	reqBody := map[string]interface{}{
-		"model": p.Model,
-		"messages": []map[string]string{
-			{"role": "system", "content": systemPrompt},
-			{"role": "user", "content": userPrompt},
-		},
-		"max_tokens": 10,
-	}
-
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return false, err
-	}
-
-	req, err := http.NewRequest("POST", p.BaseURL+"/chat/completions", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return false, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+p.APIKey)
-
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy:           http.ProxyFromEnvironment,
-		},
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return false, err
-	}
-
-	if choices, ok := result["choices"].([]interface{}); ok && len(choices) > 0 {
-		if choice, ok := choices[0].(map[string]interface{}); ok {
-			if msg, ok := choice["message"].(map[string]interface{}); ok {
-				if content, ok := msg["content"].(string); ok {
-					lower := strings.ToLower(strings.TrimSpace(content))
-					return strings.HasPrefix(lower, "yes"), nil
-				}
-			}
-		}
-	}
-
-	return false, fmt.Errorf("unexpected response format")
-}
-
 func (p *ClaudeProvider) GenerateSummary(content string) (string, error) {
 	systemPrompt := "You are a helpful assistant that summarizes articles. Provide a concise summary in 2-3 sentences."
 	userPrompt := fmt.Sprintf("Summarize the following article:\n\n%s", content)
@@ -395,68 +331,6 @@ func (p *ClaudeProvider) GenerateBriefing(prompt string) (string, error) {
 	return "", fmt.Errorf("unexpected response format")
 }
 
-func (p *ClaudeProvider) FilterArticle(content string, rules []string) (bool, error) {
-	systemPrompt := "You are a helpful assistant that filters articles. Answer only 'yes' or 'no'."
-	userPrompt := fmt.Sprintf("Should I read this article?\nPreferences:\n%s\n\nArticle:\n%s", strings.Join(rules, "\n"), content)
-
-	reqBody := map[string]interface{}{
-		"model": p.Model,
-		"messages": []map[string]string{
-			{"role": "user", "content": userPrompt},
-		},
-		"system": systemPrompt,
-		"max_tokens": 10,
-	}
-
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return false, err
-	}
-
-	req, err := http.NewRequest("POST", p.BaseURL+"/v1/messages", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return false, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", p.APIKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy:           http.ProxyFromEnvironment,
-		},
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return false, err
-	}
-
-	if content, ok := result["content"].([]interface{}); ok && len(content) > 0 {
-		if block, ok := content[0].(map[string]interface{}); ok {
-			if text, ok := block["text"].(string); ok {
-				lower := strings.ToLower(strings.TrimSpace(text))
-				return strings.HasPrefix(lower, "yes"), nil
-			}
-		}
-	}
-
-	return false, fmt.Errorf("unexpected response format")
-}
-
 func (p *OllamaProvider) GenerateSummary(content string) (string, error) {
 	systemPrompt := "You are a helpful assistant that summarizes articles. Provide a concise summary in 2-3 sentences."
 	userPrompt := fmt.Sprintf("Summarize the following article:\n\n%s", content)
@@ -560,56 +434,3 @@ func (p *OllamaProvider) GenerateBriefing(prompt string) (string, error) {
 	return "", fmt.Errorf("unexpected response format")
 }
 
-func (p *OllamaProvider) FilterArticle(content string, rules []string) (bool, error) {
-	systemPrompt := "You are an article filter. Answer only 'yes' or 'no'."
-	userPrompt := fmt.Sprintf("Should I read this article?\nPreferences:\n%s\n\nArticle:\n%s", strings.Join(rules, "\n"), content)
-
-	reqBody := map[string]interface{}{
-		"model": p.Model,
-		"prompt": userPrompt,
-		"system": systemPrompt,
-		"stream": false,
-	}
-
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return false, err
-	}
-
-	req, err := http.NewRequest("POST", p.BaseURL+"/api/generate", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return false, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy:           http.ProxyFromEnvironment,
-		},
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return false, err
-	}
-
-	if response, ok := result["response"].(string); ok {
-		lower := strings.ToLower(strings.TrimSpace(response))
-		return strings.HasPrefix(lower, "yes"), nil
-	}
-
-	return false, fmt.Errorf("unexpected response format")
-}

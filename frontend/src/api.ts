@@ -97,22 +97,6 @@ export const api = {
       body: JSON.stringify({ summary }),
     }),
 
-  filterArticle: (id: number) =>
-    request<{ passed: boolean }>(`/articles/${id}/filter`, { method: 'POST' }),
-
-  // ─── Filter Rules ────────────────────────────────────────────────────────
-
-  getFilterRules: () => request<FilterRule[]>('/filter-rules'),
-
-  addFilterRule: (type: string, value: string, action: string) =>
-    request<void>('/filter-rules', {
-      method: 'POST',
-      body: JSON.stringify({ type, value, action }),
-    }),
-
-  deleteFilterRule: (id: number) =>
-    request<void>(`/filter-rules/${id}`, { method: 'DELETE' }),
-
   // ─── Notes ───────────────────────────────────────────────────────────────
 
   getNotes: () => request<Note[]>('/notes'),
@@ -199,15 +183,6 @@ export interface Note {
   article_id: number
   file_path: string
   title: string
-  created_at: string
-}
-
-export interface FilterRule {
-  id: number
-  type: string
-  value: string
-  action: string
-  enabled: boolean
   created_at: string
 }
 

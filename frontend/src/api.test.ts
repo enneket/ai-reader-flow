@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { api, type Feed, type Article, type Note, type FilterRule, type AIProviderConfig } from './api'
+import { api, type Feed, type Article, type Note, type AIProviderConfig } from './api'
 
 // Mock fetch
 const mockFetch = vi.fn()
@@ -127,18 +127,6 @@ describe('api', () => {
 
       const result = await api.generateSummary(1)
       expect(result).toEqual({ summary: 'AI summary text' })
-    })
-  })
-
-  describe('getFilterRules', () => {
-    it('returns filter rules', async () => {
-      const rules: FilterRule[] = [
-        { id: 1, type: 'keyword', value: 'golang', action: 'include', enabled: true, created_at: '' }
-      ]
-      mockFetch.mockResolvedValueOnce(createMockResponse(rules))
-
-      const result = await api.getFilterRules()
-      expect(result).toEqual(rules)
     })
   })
 

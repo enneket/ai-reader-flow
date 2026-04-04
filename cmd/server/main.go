@@ -95,12 +95,6 @@ func main() {
 	mux.HandleFunc("POST /api/articles/{id}/snooze", handleSnoozeArticle)
 	mux.HandleFunc("POST /api/articles/{id}/summary", handleGenerateSummary)
 	mux.HandleFunc("POST /api/articles/{id}/note", handleCreateNote)
-	mux.HandleFunc("POST /api/articles/{id}/filter", handleFilterArticle)
-
-	// Filter rules
-	mux.HandleFunc("GET /api/filter-rules", handleGetFilterRules)
-	mux.HandleFunc("POST /api/filter-rules", handleAddFilterRule)
-	mux.HandleFunc("DELETE /api/filter-rules/{id}", handleDeleteFilterRule)
 
 	// Notes
 	mux.HandleFunc("GET /api/notes", handleGetNotes)
@@ -611,61 +605,6 @@ func handleCreateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, note)
-}
-
-func handleFilterArticle(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseArticleID("/api/articles", r)
-	if !ok {
-		http.Error(w, "invalid article id", http.StatusBadRequest)
-		return
-	}
-	article, err := rssService.GetArticle(id)
-	if err != nil {
-		http.Error(w, "article not found", http.StatusNotFound)
-		return
-	}
-	passed, err := filterService.FilterArticle(article)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]bool{"passed": passed})
-}
-
-// ─── Filter Rule Handlers ─────────────────────────────────────────────────────
-
-func handleGetFilterRules(w http.ResponseWriter, r *http.Request) {
-	rules, _ := filterService.GetRules()
-	writeJSON(w, http.StatusOK, rules)
-}
-
-func handleAddFilterRule(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Type   string `json:"type"`
-		Value  string `json:"value"`
-		Action string `json:"action"`
-	}
-	if !readJSON(w, r, &req) {
-		return
-	}
-	if err := filterService.AddRule(req.Type, req.Value, req.Action); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusCreated)
-}
-
-func handleDeleteFilterRule(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID("/api/filter-rules", r)
-	if !ok {
-		http.Error(w, "invalid rule id", http.StatusBadRequest)
-		return
-	}
-	if err := filterService.DeleteRule(id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // ─── Note Handlers ────────────────────────────────────────────────────────────

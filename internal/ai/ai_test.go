@@ -50,70 +50,6 @@ func TestOpenAIProviderGenerateSummary(t *testing.T) {
 	}
 }
 
-func TestOpenAIProviderFilterArticle(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"choices": []map[string]interface{}{
-				{
-					"message": map[string]interface{}{
-						"content": "yes",
-					},
-				},
-			},
-		})
-	}))
-	defer server.Close()
-
-	provider := &OpenAIProvider{
-		APIKey:    "test-key",
-		BaseURL:   server.URL,
-		Model:     "gpt-4",
-		MaxTokens: 10,
-	}
-
-	passed, err := provider.FilterArticle("article content", []string{"keyword: golang"})
-	if err != nil {
-		t.Fatalf("FilterArticle() error = %v", err)
-	}
-
-	if !passed {
-		t.Errorf("FilterArticle() = false, want true")
-	}
-}
-
-func TestOpenAIProviderFilterArticleNo(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"choices": []map[string]interface{}{
-				{
-					"message": map[string]interface{}{
-						"content": "no",
-					},
-				},
-			},
-		})
-	}))
-	defer server.Close()
-
-	provider := &OpenAIProvider{
-		APIKey:    "test-key",
-		BaseURL:   server.URL,
-		Model:     "gpt-4",
-		MaxTokens: 10,
-	}
-
-	passed, err := provider.FilterArticle("article content", []string{"keyword: python"})
-	if err != nil {
-		t.Fatalf("FilterArticle() error = %v", err)
-	}
-
-	if passed {
-		t.Errorf("FilterArticle() = true, want false")
-	}
-}
-
 func TestClaudeProviderGenerateSummary(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/messages" {
@@ -170,30 +106,6 @@ func TestOllamaProviderGenerateSummary(t *testing.T) {
 
 	if summary != "Ollama summary output." {
 		t.Errorf("GenerateSummary() = %q, want %q", summary, "Ollama summary output.")
-	}
-}
-
-func TestOllamaProviderFilterArticle(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"response": "yes this is relevant",
-		})
-	}))
-	defer server.Close()
-
-	provider := &OllamaProvider{
-		BaseURL: server.URL,
-		Model:   "llama2",
-	}
-
-	passed, err := provider.FilterArticle("article content", []string{"keyword: golang"})
-	if err != nil {
-		t.Fatalf("FilterArticle() error = %v", err)
-	}
-
-	if !passed {
-		t.Errorf("FilterArticle() = false, want true")
 	}
 }
 
@@ -323,28 +235,6 @@ func TestOpenAIProviderGenerateSummaryUnexpectedResponse(t *testing.T) {
 	}
 }
 
-func TestClaudeProviderFilterArticleUnexpectedResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		// Return malformed response
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"content": []map[string]interface{}{},
-		})
-	}))
-	defer server.Close()
-
-	provider := &ClaudeProvider{
-		APIKey:  "test-key",
-		BaseURL: server.URL,
-		Model:   "claude-3",
-	}
-
-	_, err := provider.FilterArticle("content", []string{"rule"})
-	if err == nil {
-		t.Errorf("FilterArticle() expected error for unexpected response")
-	}
-}
-
 func TestOllamaProviderGenerateSummaryUnexpectedResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -363,28 +253,5 @@ func TestOllamaProviderGenerateSummaryUnexpectedResponse(t *testing.T) {
 	_, err := provider.GenerateSummary("content")
 	if err == nil {
 		t.Errorf("GenerateSummary() expected error for unexpected response")
-	}
-}
-
-func TestOpenAIProviderFilterArticleUnexpectedResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		// Return malformed response
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"choices": []map[string]interface{}{},
-		})
-	}))
-	defer server.Close()
-
-	provider := &OpenAIProvider{
-		APIKey:    "test-key",
-		BaseURL:   server.URL,
-		Model:     "gpt-4",
-		MaxTokens: 10,
-	}
-
-	_, err := provider.FilterArticle("content", []string{"rule"})
-	if err == nil {
-		t.Errorf("FilterArticle() expected error for unexpected response")
 	}
 }

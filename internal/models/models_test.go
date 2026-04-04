@@ -79,35 +79,6 @@ func TestArticleModel(t *testing.T) {
 	})
 }
 
-func TestFilterRuleModel(t *testing.T) {
-	t.Run("create filter rule", func(t *testing.T) {
-		rule := &FilterRule{
-			ID:      1,
-			Type:    "keyword",
-			Value:   "golang",
-			Action:  "exclude",
-			Enabled: true,
-		}
-
-		if rule.Type != "keyword" {
-			t.Errorf("Type = %s, want 'keyword'", rule.Type)
-		}
-		if rule.Action != "exclude" {
-			t.Errorf("Action = %s, want 'exclude'", rule.Action)
-		}
-	})
-
-	t.Run("filter rule types", func(t *testing.T) {
-		validTypes := []string{"keyword", "source", "ai_preference"}
-		for _, typ := range validTypes {
-			rule := &FilterRule{Type: typ}
-			if rule.Type != typ {
-				t.Errorf("Type = %s, want %s", rule.Type, typ)
-			}
-		}
-	})
-}
-
 func TestNoteModel(t *testing.T) {
 	t.Run("create note", func(t *testing.T) {
 		note := &Note{
