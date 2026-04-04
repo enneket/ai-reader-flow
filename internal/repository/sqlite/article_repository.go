@@ -3,7 +3,6 @@ package sqlite
 import (
 	"ai-rss-reader/internal/models"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -45,8 +44,7 @@ func (r *ArticleRepository) GetByFeedID(feedID int64, limit, offset int) ([]mode
 		limit = 100
 	}
 	rows, err := DB.Query(
-		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
-		FROM articles WHERE feed_id = ? ORDER BY published DESC LIMIT ? OFFSET ?`,
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at		FROM articles WHERE feed_id = ? ORDER BY published DESC LIMIT ? OFFSET ?`,
 		feedID, limit, offset,
 	)
 	if err != nil {
@@ -61,7 +59,7 @@ func (r *ArticleRepository) GetAll(filterMode string, limit, offset int) ([]mode
 	if limit <= 0 {
 		limit = 100
 	}
-	query := `SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0) FROM articles`
+	query := `SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, COALESCE(quality_score, 0) FROM articles`
 	switch filterMode {
 	case "filtered":
 		query += ` WHERE is_filtered = 1`
@@ -97,16 +95,13 @@ func (r *ArticleRepository) GetSaved() ([]models.Article, error) {
 
 func (r *ArticleRepository) GetByID(id int64) (*models.Article, error) {
 	row := DB.QueryRow(
-		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
-		FROM articles WHERE id = ?`,
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at		FROM articles WHERE id = ?`,
 		id,
 	)
 
 	var a models.Article
 	var published, createdAt sql.NullString
-	var embJSON sql.NullString
-	var qualityScore int
-	err := row.Scan(&a.ID, &a.FeedID, &a.Title, &a.Link, &a.Content, &a.Summary, &a.Author, &published, &a.IsFiltered, &a.IsSaved, &a.Status, &createdAt, &embJSON, &qualityScore)
+	err := row.Scan(&a.ID, &a.FeedID, &a.Title, &a.Link, &a.Content, &a.Summary, &a.Author, &published, &a.IsFiltered, &a.IsSaved, &a.Status, &createdAt)
 	if err != nil {
 		return nil, err
 	}
@@ -116,10 +111,6 @@ func (r *ArticleRepository) GetByID(id int64) (*models.Article, error) {
 	if createdAt.Valid {
 		a.CreatedAt, _ = time.Parse(time.RFC3339, createdAt.String)
 	}
-	if embJSON.Valid {
-		_ = json.Unmarshal([]byte(embJSON.String), &a.Embedding)
-	}
-	a.QualityScore = qualityScore
 	return &a, nil
 }
 
@@ -138,8 +129,7 @@ func (r *ArticleRepository) GetByIDs(ids []int64) ([]models.Article, error) {
 		args[i] = id
 	}
 	query := fmt.Sprintf(
-		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
-		FROM articles WHERE id IN (%s)`, placeholders)
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at		FROM articles WHERE id IN (%s)`, placeholders)
 	rows, err := DB.Query(query, args...)
 	if err != nil {
 		return nil, err
@@ -206,8 +196,7 @@ func (r *ArticleRepository) Delete(id int64) error {
 // GetRecentForBriefing returns recent unread articles
 func (r *ArticleRepository) GetRecentForBriefing() ([]models.Article, error) {
 	rows, err := DB.Query(
-		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
-         FROM articles
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at         FROM articles
          WHERE status = 'unread'
          ORDER BY created_at DESC
          LIMIT 100`,
@@ -222,8 +211,7 @@ func (r *ArticleRepository) GetRecentForBriefing() ([]models.Article, error) {
 // GetArticlesAfter returns articles created after the given time
 func (r *ArticleRepository) GetArticlesAfter(startTime time.Time) ([]models.Article, error) {
 	rows, err := DB.Query(
-		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
-         FROM articles
+		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at         FROM articles
          WHERE created_at > ?
          ORDER BY created_at DESC
          LIMIT 100`,
@@ -234,36 +222,6 @@ func (r *ArticleRepository) GetArticlesAfter(startTime time.Time) ([]models.Arti
 	}
 	defer rows.Close()
 	return r.scanArticles(rows)
-}
-
-// GetUnreadWithoutEmbedding returns unread articles that haven't been embedding-scored yet.
-func (r *ArticleRepository) GetUnreadWithoutEmbedding() ([]models.Article, error) {
-	rows, err := DB.Query(
-		`SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, embedding, COALESCE(quality_score, 0)
-		FROM articles WHERE status = 'unread' AND embedding IS NULL ORDER BY published DESC`,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return r.scanArticles(rows)
-}
-
-// SaveEmbedding stores the embedding vector for an article (JSON-encoded).
-func (r *ArticleRepository) SaveEmbedding(id int64, embedding []float32) error {
-	embJSON, err := json.Marshal(embedding)
-	if err != nil {
-		return err
-	}
-	_, err = DB.Exec(`UPDATE articles SET embedding = ? WHERE id = ?`, string(embJSON), id)
-	return err
-}
-
-// UpdateQualityScore sets the quality score for an article.
-func (r *ArticleRepository) UpdateQualityScore(id int64, score int) error {
-	_, err := DB.Exec(`UPDATE articles SET quality_score = ? WHERE id = ?`, score, id)
-	return err
 }
 
 func (r *ArticleRepository) LinkExists(link string) (bool, error) {
@@ -279,7 +237,7 @@ func (r *ArticleRepository) Search(query string, limit int) ([]models.Article, e
 	// FTS5 search on title + content, return matching article IDs
 	rows, err := DB.Query(`
 		SELECT a.id, a.feed_id, a.title, a.link, a.content, a.summary, a.author, a.published,
-		       a.is_filtered, a.is_saved, a.status, a.created_at, a.embedding, COALESCE(a.quality_score, 0)
+		       a.is_filtered, a.is_saved, a.status, a.created_at, COALESCE(a.quality_score, 0)
 		FROM articles a
 		JOIN articles_fts fts ON a.id = fts.article_id
 		WHERE articles_fts MATCH ?
@@ -297,9 +255,7 @@ func (r *ArticleRepository) scanArticles(rows *sql.Rows) ([]models.Article, erro
 	for rows.Next() {
 		var a models.Article
 		var published, createdAt sql.NullString
-		var embJSON sql.NullString
-		var qualityScore int
-		err := rows.Scan(&a.ID, &a.FeedID, &a.Title, &a.Link, &a.Content, &a.Summary, &a.Author, &published, &a.IsFiltered, &a.IsSaved, &a.Status, &createdAt, &embJSON, &qualityScore)
+		err := rows.Scan(&a.ID, &a.FeedID, &a.Title, &a.Link, &a.Content, &a.Summary, &a.Author, &published, &a.IsFiltered, &a.IsSaved, &a.Status, &createdAt)
 		if err != nil {
 			log.Printf("scan article error (row may be skipped): %v", err)
 			continue
@@ -313,10 +269,6 @@ func (r *ArticleRepository) scanArticles(rows *sql.Rows) ([]models.Article, erro
 		if a.Status == "" {
 			a.Status = "unread"
 		}
-		if embJSON.Valid {
-			_ = json.Unmarshal([]byte(embJSON.String), &a.Embedding)
-		}
-		a.QualityScore = qualityScore
 		articles = append(articles, a)
 	}
 	return articles, nil

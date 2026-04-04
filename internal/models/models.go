@@ -31,8 +31,6 @@ type Article struct {
 	IsSaved      bool      `json:"is_saved"`
 	Status       string    `json:"status"` // "unread", "accepted", "rejected", "snoozed"
 	CreatedAt    time.Time `json:"created_at"`
-	Embedding    []float32 `json:"-"` // not exposed to JSON API
-	QualityScore int       `json:"quality_score"`
 }
 
 type FilterRule struct {

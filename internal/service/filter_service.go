@@ -4,20 +4,13 @@ import (
 	"ai-rss-reader/internal/ai"
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/repository/sqlite"
-	"fmt"
-	"log"
 	"math"
 	"strings"
-
-	"golang.org/x/sync/errgroup"
 )
 
 // ArticleRepo defines the repository methods needed by FilterService.
 type ArticleRepo interface {
 	GetAll(filterMode string, limit, offset int) ([]models.Article, error)
-	GetUnreadWithoutEmbedding() ([]models.Article, error)
-	SaveEmbedding(id int64, embedding []float32) error
-	UpdateQualityScore(id int64, score int) error
 	SetFiltered(id int64, filtered bool) error
 }
 
@@ -223,125 +216,3 @@ func scoreLength(content string) int {
 	return 15
 }
 
-// semanticDedupBatch marks articles for filtering that are semantically duplicate
-// within the same batch. Returns a map of articleID -> true if should be filtered.
-// When two articles have cosine similarity > 0.85, the one with lower quality score
-// is marked for filtering.
-func (s *FilterService) semanticDedupBatch(articles []models.Article, embeddings map[int64][]float32) map[int64]bool {
-	toFilter := make(map[int64]bool)
-
-	for i := 0; i < len(articles); i++ {
-		for j := i + 1; j < len(articles); j++ {
-			a, b := &articles[i], &articles[j]
-			embA, embB := embeddings[a.ID], embeddings[b.ID]
-			if embA == nil || embB == nil {
-				continue
-			}
-
-			sim := CosineSimilarity(embA, embB)
-			if sim > 0.85 {
-				scoreA := s.QualityScore(a)
-				scoreB := s.QualityScore(b)
-				// lower score gets filtered
-				if scoreA >= scoreB {
-					toFilter[b.ID] = true
-				} else {
-					toFilter[a.ID] = true
-				}
-			}
-		}
-	}
-	return toFilter
-}
-
-// FilterAllArticlesNew is the new Plan B implementation that computes embeddings,
-// deduplicates semantically within the batch, and scores quality.
-// Returns the IDs of articles that passed filtering (new + not filtered).
-func (s *FilterService) FilterAllArticlesNew() ([]int64, error) {
-	newArticles, err := s.articleRepo.GetUnreadWithoutEmbedding()
-	if err != nil {
-		return nil, err
-	}
-	if len(newArticles) == 0 {
-		return nil, nil
-	}
-
-	// Step 1: compute embeddings in parallel
-	provider := ai.GetProvider()
-	type result struct {
-		id    int64
-		emb   []float32
-		err   error
-	}
-	results := make(chan result, len(newArticles))
-	sem := make(chan struct{}, 10)
-	var wg errgroup.Group
-
-	for i := range newArticles {
-		wg.Go(func() error {
-			a := &newArticles[i]
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			text := a.Title + "\n\n" + a.Summary
-			if len(text) > 50000 {
-				text = text[:50000]
-			}
-			emb, err := provider.GetEmbedding(text)
-			results <- result{id: a.ID, emb: emb, err: err}
-			return nil
-		})
-	}
-	wg.Wait()
-	close(results)
-
-	// collect errors and embeddings
-	var errs []error
-	embeddings := make(map[int64][]float32)
-	for res := range results {
-		if res.err != nil {
-			errs = append(errs, fmt.Errorf("embedding article %d: %w", res.id, res.err))
-		} else {
-			embeddings[res.id] = res.emb
-		}
-	}
-	if len(errs) > 0 && len(embeddings) == 0 {
-		// All embeddings failed - log warning but don't fail the whole operation
-		// Just return no new articles to process
-		log.Printf("Warning: all embeddings failed, skipping filter: %v", errs)
-		return nil, nil
-	}
-	if len(errs) > 0 {
-		log.Printf("Warning: some embeddings failed (%d/%d), continuing with available ones",
-			len(embeddings), len(newArticles))
-	}
-
-	// save embeddings to DB
-	for id, emb := range embeddings {
-		if err := s.articleRepo.SaveEmbedding(id, emb); err != nil {
-			return nil, fmt.Errorf("save embedding %d: %w", id, err)
-		}
-	}
-
-	// Step 2: semantic dedup within batch
-	toFilter := s.semanticDedupBatch(newArticles, embeddings)
-
-	// Step 3: quality score and mark filtered; collect passing IDs
-	var passedIDs []int64
-	for i := range newArticles {
-		a := &newArticles[i]
-		if toFilter[a.ID] {
-			s.articleRepo.SetFiltered(a.ID, true)
-			continue
-		}
-		score := s.QualityScore(a)
-		s.articleRepo.UpdateQualityScore(a.ID, score)
-		if score < 30 {
-			s.articleRepo.SetFiltered(a.ID, true)
-		} else {
-			passedIDs = append(passedIDs, a.ID)
-		}
-	}
-
-	return passedIDs, nil
-}

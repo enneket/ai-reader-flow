@@ -148,6 +148,9 @@ func createTables() error {
 	// Migration: add unread_count column to feeds
 	_ = migrateAddColumn("feeds", "unread_count", "INTEGER NOT NULL DEFAULT 0")
 	_ = migrateAddColumn("briefing_articles", "insight", "TEXT DEFAULT ''")
+	// Migration: drop embedding and quality_score columns (embedding feature removed)
+	_ = migrateDropColumn("articles", "embedding")
+	_ = migrateDropColumn("articles", "quality_score")
 
 	// Create FTS5 virtual table for full-text search
 	_ = createFTSTable()
@@ -166,6 +169,20 @@ func migrateAddColumn(table, column, definition string) error {
 		return nil // column already exists
 	}
 	_, err = DB.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, definition))
+	return err
+}
+
+func migrateDropColumn(table, column string) error {
+	// Check if column exists
+	var count int
+	err := DB.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM pragma_table_info('%s') WHERE name = '%s'", table, column)).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return nil // column doesn't exist
+	}
+	_, err = DB.Exec(fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s", table, column))
 	return err
 }
 

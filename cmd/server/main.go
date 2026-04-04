@@ -474,16 +474,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 			Failed: events.GlobalRefreshStatus.Failed,
 		})
 
-		// Filter + generate summaries in background
-		go func() {
-			newArticleIDs, filterErr := filterService.FilterAllArticlesNew()
-			if filterErr != nil {
-				log.Printf("filter error: %v", filterErr)
-				return
-			}
-			events.GlobalBroadcaster.Broadcast(events.EventNewArticles, map[string]int{"count": len(newArticleIDs)})
-			summaryService.BatchGenerateSummaries(newArticleIDs, 5)
-		}()
 	}()
 }
 

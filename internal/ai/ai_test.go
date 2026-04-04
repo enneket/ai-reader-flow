@@ -114,42 +114,6 @@ func TestOpenAIProviderFilterArticleNo(t *testing.T) {
 	}
 }
 
-func TestOpenAIProviderGetEmbedding(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/embeddings" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"data": []map[string]interface{}{
-				{
-					"embedding": []float32{0.1, 0.2, 0.3},
-				},
-			},
-		})
-	}))
-	defer server.Close()
-
-	provider := &OpenAIProvider{
-		APIKey:  "test-key",
-		BaseURL: server.URL,
-		Model:   "text-embedding-3-small",
-	}
-
-	embedding, err := provider.GetEmbedding("test text")
-	if err != nil {
-		t.Fatalf("GetEmbedding() error = %v", err)
-	}
-
-	if len(embedding) != 3 {
-		t.Errorf("GetEmbedding() returned %d dimensions, want 3", len(embedding))
-	}
-	if embedding[0] != 0.1 || embedding[1] != 0.2 || embedding[2] != 0.3 {
-		t.Errorf("GetEmbedding() = %v, want [0.1, 0.2, 0.3]", embedding)
-	}
-}
-
 func TestClaudeProviderGenerateSummary(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/messages" {
@@ -178,39 +142,6 @@ func TestClaudeProviderGenerateSummary(t *testing.T) {
 
 	if summary != "Claude summary here." {
 		t.Errorf("GenerateSummary() = %q, want %q", summary, "Claude summary here.")
-	}
-}
-
-func TestClaudeProviderGetEmbedding(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/embeddings" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"data": []map[string]interface{}{
-				{
-					"embedding": []float32{0.5, 0.6, 0.7},
-				},
-			},
-		})
-	}))
-	defer server.Close()
-
-	provider := &ClaudeProvider{
-		APIKey:  "test-key",
-		BaseURL: server.URL,
-		Model:   "claude-embedding-3",
-	}
-
-	embedding, err := provider.GetEmbedding("test text")
-	if err != nil {
-		t.Fatalf("GetEmbedding() error = %v", err)
-	}
-
-	if len(embedding) != 3 {
-		t.Errorf("GetEmbedding() returned %d dimensions, want 3", len(embedding))
 	}
 }
 
@@ -263,36 +194,6 @@ func TestOllamaProviderFilterArticle(t *testing.T) {
 
 	if !passed {
 		t.Errorf("FilterArticle() = false, want true")
-	}
-}
-
-func TestOllamaProviderGetEmbedding(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/embed" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"embeddings": [][]float32{
-				{0.8, 0.9, 1.0},
-			},
-		})
-	}))
-	defer server.Close()
-
-	provider := &OllamaProvider{
-		BaseURL: server.URL,
-		Model:   "llama2",
-	}
-
-	embedding, err := provider.GetEmbedding("test text")
-	if err != nil {
-		t.Fatalf("GetEmbedding() error = %v", err)
-	}
-
-	if len(embedding) != 3 {
-		t.Errorf("GetEmbedding() returned %d dimensions, want 3", len(embedding))
 	}
 }
 
@@ -422,27 +323,6 @@ func TestOpenAIProviderGenerateSummaryUnexpectedResponse(t *testing.T) {
 	}
 }
 
-func TestOpenAIProviderGetEmbeddingNoData(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"data": []map[string]interface{}{},
-		})
-	}))
-	defer server.Close()
-
-	provider := &OpenAIProvider{
-		APIKey:  "test-key",
-		BaseURL: server.URL,
-		Model:   "text-embedding-3-small",
-	}
-
-	_, err := provider.GetEmbedding("test")
-	if err == nil {
-		t.Errorf("GetEmbedding() expected error for empty data")
-	}
-}
-
 func TestClaudeProviderFilterArticleUnexpectedResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -483,26 +363,6 @@ func TestOllamaProviderGenerateSummaryUnexpectedResponse(t *testing.T) {
 	_, err := provider.GenerateSummary("content")
 	if err == nil {
 		t.Errorf("GenerateSummary() expected error for unexpected response")
-	}
-}
-
-func TestOllamaProviderGetEmbeddingEmpty(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"embeddings": [][]float32{},
-		})
-	}))
-	defer server.Close()
-
-	provider := &OllamaProvider{
-		BaseURL: server.URL,
-		Model:   "llama2",
-	}
-
-	_, err := provider.GetEmbedding("test")
-	if err == nil {
-		t.Errorf("GetEmbedding() expected error for empty embeddings")
 	}
 }
 
