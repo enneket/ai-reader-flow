@@ -88,7 +88,7 @@ export function FeedList() {
             setRefreshing(false)
             setRefreshingPercent(0)
             setRefreshingMessage('')
-          }, 800)
+          }, 100)
           return
         }
 
