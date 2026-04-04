@@ -1653,7 +1653,7 @@ body {
 .refresh-progress-fill {
   height: 100%;
   background: var(--accent);
-  transition: width 0.3s ease;
+  transition: width 0.15s ease;
 }
 .refresh-progress-bar.error .refresh-progress-fill {
   background: var(--danger);

@@ -108,7 +108,7 @@ export function FeedList() {
         setRefreshingPercent(0)
         setRefreshingMessage('')
       }
-    }, 500)
+    }, 200)
 
     return () => {
       if (refreshPollInterval.current) {
