@@ -454,7 +454,7 @@ export function FeedList() {
               feeds.map((feed) => (
                 <div
                   key={feed.id}
-                  className={`feed-item ${selectedFeed?.id === feed.id ? 'selected' : ''}`}
+                  className={`feed-item ${selectedFeed?.id === feed.id ? 'selected' : ''} ${feed.last_refresh_success === -1 ? 'is-dead' : ''}`}
                   onClick={() => handleSelectFeed(feed)}
                 >
                   <div className="feed-item-info">
