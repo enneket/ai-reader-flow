@@ -1,8 +1,8 @@
 import {useState, useEffect} from 'react'
 import {Link, useLocation, useNavigate} from 'react-router-dom'
 import {FileText, RefreshCw, Settings, LayoutGrid, ChevronLeft, ChevronRight} from 'lucide-react'
-import {Modal} from 'antd'
 import {api, Briefing as BriefingType} from '../api'
+import {AppModal, injectAppModalStyles} from './AppModal'
 
 const PAGE_SIZE = 20
 
@@ -22,6 +22,9 @@ export function Briefing() {
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
   const [progress, setProgress] = useState<ProgressState>({type: 'idle', message: ''})
+  const [modal, setModal] = useState<{type: 'warning'|'error'; title: string; content: string} | null>(null)
+
+  injectAppModalStyles()
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -67,7 +70,7 @@ export function Briefing() {
       const data = JSON.parse(e.data)
       setProgress({type: 'idle', message: ''})
       setGenerating(false)
-      Modal.error({title: '刷新失败', content: data.message || '刷新订阅源失败'})
+      setModal({type: 'error', title: '刷新失败', content: data.message || '刷新订阅源失败'})
     })
 
     es.addEventListener('briefing:start', () => {
@@ -96,7 +99,7 @@ export function Briefing() {
       const data = JSON.parse(e.data)
       setProgress({type: 'idle', message: ''})
       setGenerating(false)
-      Modal.error({title: '生成失败', content: data.message || '生成简报失败'})
+      setModal({type: 'error', title: '生成失败', content: data.message || '生成简报失败'})
     })
 
     return () => es.close()
@@ -125,9 +128,9 @@ export function Briefing() {
       const result = await api.generateBriefing()
       if (!result.success) {
         if (result.code === 'OPERATION_IN_PROGRESS') {
-          Modal.warning({title: '操作冲突', content: result.error || '正在执行其他操作，请稍候'})
+          setModal({type: 'warning', title: '操作冲突', content: result.error || '正在执行其他操作，请稍候'})
         } else {
-          Modal.error({title: '错误', content: result.error || '生成失败'})
+          setModal({type: 'error', title: '错误', content: result.error || '生成失败'})
         }
         return
       }
@@ -136,7 +139,7 @@ export function Briefing() {
       setGenerating(true)
     } catch (err: any) {
       if (err.message.includes('409')) {
-        Modal.warning({title: '操作冲突', content: '正在刷新或生成中，请稍候'})
+        setModal({type: 'warning', title: '操作冲突', content: '正在刷新或生成中，请稍候'})
       } else {
         console.error('Failed to generate briefing:', err)
       }
@@ -336,6 +339,15 @@ export function Briefing() {
           </div>
         </main>
       </div>
+
+      {modal && (
+        <AppModal
+          type={modal.type}
+          title={modal.title}
+          content={modal.content}
+          onOk={() => setModal(null)}
+        />
+      )}
     </div>
   )
 }

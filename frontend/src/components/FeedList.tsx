@@ -6,6 +6,7 @@ import {Modal} from 'antd'
 import {api, Feed, Article} from '../api'
 import {ArticleCard} from './ArticleCard'
 import {ArticleReader} from './ArticleReader'
+import {AppModal, injectAppModalStyles} from './AppModal'
 
 export function FeedList() {
   const {t} = useTranslation()
@@ -26,6 +27,10 @@ export function FeedList() {
   const [progressModal, setProgressModal] = useState<{open: boolean; title: string; content: string; percent: number}>({open: false, title: '', content: '', percent: 0})
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editFeed, setEditFeed] = useState<{id: number; title: string; url: string} | null>(null)
+  const [conflictModalOpen, setConflictModalOpen] = useState(false)
+
+  // Inject AppModal styles once
+  injectAppModalStyles()
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -205,7 +210,7 @@ export function FeedList() {
       setRefreshingMessage('')
       setRefreshingPercent(0)
       if (err.message.includes('409')) {
-        Modal.warning({title: '操作冲突', content: '正在刷新或生成中，请稍候'})
+        setConflictModalOpen(true)
       } else {
         setError(err.message || 'Failed to refresh feeds')
       }
@@ -562,6 +567,15 @@ export function FeedList() {
           )}
         </div>
       </div>
+
+      {conflictModalOpen && (
+        <AppModal
+          type="warning"
+          title="操作冲突"
+          content="正在刷新或生成中，请稍候"
+          onOk={() => setConflictModalOpen(false)}
+        />
+      )}
     </div>
   )
 }
