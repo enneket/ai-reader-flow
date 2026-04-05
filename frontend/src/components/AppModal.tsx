@@ -60,10 +60,10 @@ export function AppModal({ type, title, content, onOk, autoClose }: AppModalProp
 
   // Auto close
   useEffect(() => {
-    if (!autoClose || !onOk) return
-    const timer = setTimeout(() => onOk?.(), autoClose)
+    if (!autoClose) return
+    const timer = setTimeout(close, autoClose)
     return () => clearTimeout(timer)
-  }, [autoClose, onOk])
+  }, [autoClose, close])
 
   // Focus trap + initial focus
   useEffect(() => {
