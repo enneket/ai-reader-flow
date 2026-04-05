@@ -40,9 +40,14 @@ func NewRSSService() *RSSService {
 	}
 }
 
-func (s *RSSService) AddFeed(url string) (*models.Feed, error) {
+func (s *RSSService) AddFeed(url string, title string) (*models.Feed, error) {
 	// Just save the feed URL without validation - refresh will fetch actual data later
+	feedTitle := title
+	if feedTitle == "" {
+		feedTitle = "Untitled Feed"
+	}
 	newFeed := &models.Feed{
+		Title:     feedTitle,
 		URL:       url,
 		CreatedAt: time.Now(),
 	}

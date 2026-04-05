@@ -168,8 +168,8 @@ func TestImport(t *testing.T) {
 				return
 			}
 			for i, want := range tt.wantURLs {
-				if urls[i] != want {
-					t.Errorf("Import()[%d] = %q, want %q", i, urls[i], want)
+				if urls[i].URL != want {
+					t.Errorf("Import()[%d].URL = %q, want %q", i, urls[i].URL, want)
 				}
 			}
 		})

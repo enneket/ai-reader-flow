@@ -63,9 +63,15 @@ func Export(feeds []models.Feed) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Import parses an OPML document and returns a list of feed URLs to add.
+// FeedInfo holds URL and optional title from OPML
+type FeedInfo struct {
+	URL   string
+	Title string
+}
+
+// Import parses an OPML document and returns a list of feeds with their titles.
 // Only returns feeds that have an xmlUrl attribute set.
-func Import(r io.Reader) ([]string, error) {
+func Import(r io.Reader) ([]FeedInfo, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, fmt.Errorf("read opml data: %w", err)
@@ -91,7 +97,6 @@ func Import(r io.Reader) ([]string, error) {
 		Body    body   `xml:"body"`
 	}
 
-	// Try lowercase attribute names (some exporters use xmlurl lowercase)
 	decoder := xml.NewDecoder(bytes.NewReader(data))
 	decoder.Strict = false
 
@@ -100,12 +105,19 @@ func Import(r io.Reader) ([]string, error) {
 		return nil, fmt.Errorf("decode opml: %w", err)
 	}
 
-	var urls []string
+	var feeds []FeedInfo
 	var collect func([]outline)
 	collect = func(outlines []outline) {
 		for _, o := range outlines {
 			if o.XMLURL != "" {
-				urls = append(urls, strings.TrimSpace(o.XMLURL))
+				title := o.Text
+				if title == "" {
+					title = o.Title
+				}
+				feeds = append(feeds, FeedInfo{
+					URL:   strings.TrimSpace(o.XMLURL),
+					Title: title,
+				})
 			}
 			if len(o.Outline) > 0 {
 				collect(o.Outline)
@@ -114,5 +126,5 @@ func Import(r io.Reader) ([]string, error) {
 	}
 	collect(doc.Body.Outline)
 
-	return urls, nil
+	return feeds, nil
 }

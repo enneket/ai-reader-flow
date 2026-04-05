@@ -281,7 +281,7 @@ func handleAddFeed(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &req) {
 		return
 	}
-	feed, err := rssService.AddFeed(req.URL)
+	feed, err := rssService.AddFeed(req.URL, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -933,12 +933,12 @@ func handleImportOPML(w http.ResponseWriter, r *http.Request) {
 	}
 	defer importOperationMu.Unlock()
 
-	urls, err := opml.Import(r.Body)
+	feeds, err := opml.Import(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if len(urls) == 0 {
+	if len(feeds) == 0 {
 		writeJSON(w, http.StatusOK, map[string]any{"imported": 0, "message": "no feeds found in OPML"})
 		return
 	}
@@ -946,7 +946,7 @@ func handleImportOPML(w http.ResponseWriter, r *http.Request) {
 	// Create job and return immediately
 	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
 	job := &importJob{
-		Total:     len(urls),
+		Total:     len(feeds),
 		Current:   0,
 		FeedName:  "",
 		Success:   0,
@@ -963,18 +963,16 @@ func handleImportOPML(w http.ResponseWriter, r *http.Request) {
 
 	// Run import in goroutine
 	go func() {
-		for i, url := range urls {
+		for i, feed := range feeds {
 			importJobsMu.Lock()
 			job.Current = i + 1
+			job.FeedName = feed.Title
 			importJobsMu.Unlock()
 
-			feed, err := rssService.AddFeed(url)
+			_, err := rssService.AddFeed(feed.URL, feed.Title)
 			importJobsMu.Lock()
 			if err == nil {
 				job.Success++
-				if feed != nil {
-					job.FeedName = feed.Title
-				}
 			} else {
 				job.Failed++
 			}

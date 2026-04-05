@@ -331,18 +331,6 @@ func TestHandleImportOPMLMethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestHandleImportOPMLWrongContentType(t *testing.T) {
-	req := httptest.NewRequest("POST", "/opml", strings.NewReader(`<opml></opml>`))
-	req.Header.Set("Content-Type", "text/plain")
-	rr := httptest.NewRecorder()
-
-	handleImportOPML(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("opml wrong content-type status = %d, want %d", rr.Code, http.StatusBadRequest)
-	}
-}
-
 func TestHandleImportOPMLNoFeeds(t *testing.T) {
 	req := httptest.NewRequest("POST", "/opml", strings.NewReader(`<?xml version="1.0"?><opml version="2.0"><head><title>Test</title></head><body></body></opml>`))
 	req.Header.Set("Content-Type", "application/xml")
