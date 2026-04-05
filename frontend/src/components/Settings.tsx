@@ -461,6 +461,7 @@ export function Settings() {
             title="导入成功"
             content={`成功: ${importResult.success}，失败: ${importResult.failed}`}
             autoClose={3000}
+            onOk={() => setShowImportSuccess(false)}
           />
         )}
       </main>
