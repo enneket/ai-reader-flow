@@ -5,6 +5,7 @@ import {useTranslation} from 'react-i18next'
 import {changeLanguage} from '../i18n'
 import i18n from '../i18n'
 import {CustomSelect} from './CustomSelect'
+import {AppModal, injectAppModalStyles} from './AppModal'
 import {api, AIProviderConfig} from '../api'
 
 export function Settings() {
@@ -41,6 +42,9 @@ export function Settings() {
   } | null>(null)
   const [showImportSuccess, setShowImportSuccess] = useState(false)
   const [importResult, setImportResult] = useState({ success: 0, failed: 0 })
+
+  // Inject modal styles on mount
+  useEffect(() => { injectAppModalStyles() }, [])
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
   })
@@ -164,7 +168,6 @@ export function Settings() {
             setImportProgress(null)
             setImportResult({ success: progress.success, failed: progress.failed })
             setShowImportSuccess(true)
-            setTimeout(() => setShowImportSuccess(false), 3000)
           }
         } catch {
           clearInterval(poll)
@@ -453,35 +456,12 @@ export function Settings() {
 
         {/* Import Success Modal */}
         {showImportSuccess && (
-          <>
-            <div style={{
-              position: 'fixed',
-              inset: 0,
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              zIndex: 999,
-            }} />
-            <div style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'var(--bg-secondary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '8px',
-              padding: '24px 32px',
-              zIndex: 1000,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-              textAlign: 'center',
-            }}>
-              <div style={{fontSize: '2rem', marginBottom: '8px'}}>✓</div>
-              <div style={{fontSize: '1.25rem', fontWeight: 500, marginBottom: '8px'}}>
-                导入成功
-              </div>
-              <div style={{color: 'var(--text-secondary)'}}>
-              成功: {importResult.success}，失败: {importResult.failed}
-            </div>
-            </div>
-          </>
+          <AppModal
+            type="success"
+            title="导入成功"
+            content={`成功: ${importResult.success}，失败: ${importResult.failed}`}
+            autoClose={3000}
+          />
         )}
       </main>
     </div>

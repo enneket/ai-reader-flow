@@ -1,12 +1,13 @@
 import { useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, XCircle } from 'lucide-react'
+import { AlertTriangle, XCircle, CheckCircle } from 'lucide-react'
 
 interface AppModalProps {
-  type: 'warning' | 'error'
+  type: 'warning' | 'error' | 'success'
   title: string
   content: string
-  onOk: () => void
+  onOk?: () => void
+  autoClose?: number
 }
 
 const style = `
@@ -22,10 +23,12 @@ const style = `
   }
   .app-modal-box--warning { border: 1px solid var(--accent); }
   .app-modal-box--error { border: 1px solid var(--danger); }
+  .app-modal-box--success { border: 1px solid var(--success); }
   .app-modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
   .app-modal-icon { flex-shrink: 0; }
   .app-modal-box--warning .app-modal-icon { color: var(--accent); }
   .app-modal-box--error .app-modal-icon { color: var(--danger); }
+  .app-modal-box--success .app-modal-icon { color: var(--success); }
   .app-modal-title { color: var(--text-primary); font-size: 16px; font-weight: 600; }
   .app-modal-content { color: var(--text-secondary); font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
   .app-modal-footer { display: flex; justify-content: flex-end; }
@@ -38,12 +41,12 @@ const style = `
   .app-modal-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 ` as const
 
-export function AppModal({ type, title, content, onOk }: AppModalProps): ReactNode {
+export function AppModal({ type, title, content, onOk, autoClose }: AppModalProps): ReactNode {
   const overlayRef = useRef<HTMLDivElement>(null)
   const okButtonRef = useRef<HTMLButtonElement>(null)
 
   const close = useCallback(() => {
-    onOk()
+    onOk?.()
   }, [onOk])
 
   // Close on ESC
@@ -54,6 +57,13 @@ export function AppModal({ type, title, content, onOk }: AppModalProps): ReactNo
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [close])
+
+  // Auto close
+  useEffect(() => {
+    if (!autoClose || !onOk) return
+    const timer = setTimeout(() => onOk?.(), autoClose)
+    return () => clearTimeout(timer)
+  }, [autoClose, onOk])
 
   // Focus trap + initial focus
   useEffect(() => {
@@ -78,7 +88,7 @@ export function AppModal({ type, title, content, onOk }: AppModalProps): ReactNo
     return () => document.removeEventListener('keydown', handleTab)
   }, [])
 
-  const Icon = type === 'warning' ? AlertTriangle : XCircle
+  const Icon = type === 'warning' ? AlertTriangle : type === 'error' ? XCircle : CheckCircle
 
   const modal = (
     <div
@@ -92,9 +102,11 @@ export function AppModal({ type, title, content, onOk }: AppModalProps): ReactNo
           <span id="app-modal-title" className="app-modal-title">{title}</span>
         </div>
         <p className="app-modal-content">{content}</p>
-        <div className="app-modal-footer">
-          <button className="app-modal-ok" ref={okButtonRef} onClick={close}>确定</button>
-        </div>
+        {onOk && (
+          <div className="app-modal-footer">
+            <button className="app-modal-ok" ref={okButtonRef} onClick={close}>确定</button>
+          </div>
+        )}
       </div>
     </div>
   )
