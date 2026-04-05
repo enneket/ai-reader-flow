@@ -24,12 +24,11 @@ type RSSService struct {
 }
 
 func NewRSSService() *RSSService {
-	// Create HTTP client that skips TLS verification and uses system proxy
+	// Create HTTP client that skips TLS verification
 	httpTransport := &http.Transport{
-		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
-		Proxy:             http.ProxyFromEnvironment,
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	httpClient := &http.Client{Transport: httpTransport}
+	httpClient := &http.Client{Transport: httpTransport, Timeout: 30 * time.Second}
 	parser := gofeed.NewParser()
 	parser.Client = httpClient
 

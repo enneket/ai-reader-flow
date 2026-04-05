@@ -131,8 +131,7 @@ export const api = {
   },
 
   importOPML: (blob: Blob) => {
-    const base = ''
-    return fetch(`${base}/opml`, {
+    return fetch('/api/opml', {
       method: 'POST',
       headers: { 'Content-Type': 'application/xml' },
       body: blob,

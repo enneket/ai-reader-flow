@@ -10,10 +10,8 @@ services:
     environment:
       - DB_PATH=/data/reader.db
       - PORT=5562
-      - HTTP_PROXY=http://192.168.0.112:7897
-      - HTTPS_PROXY=http://192.168.0.112:7897
-      - http_proxy=http://192.168.0.112:7897
-      - https_proxy=http://192.168.0.112:7897
+    extra_hosts:
+      - "news.ycombinator.com:140.82.114.34"
     restart: unless-stopped
 
   web:
