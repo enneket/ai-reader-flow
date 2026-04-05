@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -35,6 +36,21 @@ var (
 	briefingService *service.BriefingService
 	dataDir         string
 )
+
+// Import job types for OPML import progress tracking
+type importJob struct {
+	Total     int
+	Current   int
+	FeedName  string
+	Success   int
+	Failed    int
+	Done      bool
+	CreatedAt time.Time
+}
+
+var importJobs = make(map[string]*importJob)
+var importJobsMu sync.Mutex
+var importOperationMu sync.Mutex
 
 func main() {
 	// Determine data directory - use fixed path for development
@@ -118,7 +134,8 @@ func main() {
 
 	// OPML
 	mux.HandleFunc("GET /opml", handleExportOPML)
-	mux.HandleFunc("POST /opml", handleImportOPML)
+	mux.HandleFunc("GET /api/opml/import/{jobId}", handleGetImportProgress)
+	mux.HandleFunc("POST /api/opml", handleImportOPML)
 
 	// Stats
 	mux.HandleFunc("GET /api/stats", handleStats)
@@ -883,6 +900,25 @@ func handleExportOPML(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+func handleGetImportProgress(w http.ResponseWriter, r *http.Request) {
+	jobID := strings.TrimPrefix(r.URL.Path, "/api/opml/import/")
+	importJobsMu.Lock()
+	job, ok := importJobs[jobID]
+	importJobsMu.Unlock()
+	if !ok {
+		http.Error(w, "job not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"current":  job.Current,
+		"total":    job.Total,
+		"feedName": job.FeedName,
+		"success":  job.Success,
+		"failed":   job.Failed,
+		"done":     job.Done,
+	})
+}
+
 func handleImportOPML(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -892,6 +928,14 @@ func handleImportOPML(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Content-Type must be application/xml", http.StatusBadRequest)
 		return
 	}
+
+	// Try to acquire lock - if another import is running, return 409
+	if !importOperationMu.TryLock() {
+		http.Error(w, "another import is in progress", http.StatusConflict)
+		return
+	}
+	defer importOperationMu.Unlock()
+
 	urls, err := opml.Import(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -901,14 +945,56 @@ func handleImportOPML(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"imported": 0, "message": "no feeds found in OPML"})
 		return
 	}
-	added := 0
-	for _, url := range urls {
-		_, err := rssService.AddFeed(url)
-		if err == nil {
-			added++
-		}
+
+	// Create job and return immediately
+	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
+	job := &importJob{
+		Total:     len(urls),
+		Current:   0,
+		FeedName:  "",
+		Success:   0,
+		Failed:    0,
+		Done:      false,
+		CreatedAt: time.Now(),
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"imported": added, "total": len(urls)})
+	importJobsMu.Lock()
+	importJobs[jobID] = job
+	importJobsMu.Unlock()
+
+	// Return 202 Accepted with job ID
+	writeJSON(w, http.StatusAccepted, map[string]any{"jobId": jobID})
+
+	// Run import in goroutine
+	go func() {
+		for i, url := range urls {
+			importJobsMu.Lock()
+			job.Current = i + 1
+			importJobsMu.Unlock()
+
+			feed, err := rssService.AddFeed(url)
+			importJobsMu.Lock()
+			if err == nil {
+				job.Success++
+				if feed != nil {
+					job.FeedName = feed.Title
+				}
+			} else {
+				job.Failed++
+			}
+			importJobsMu.Unlock()
+		}
+
+		// Mark done and cleanup after 1 hour
+		importJobsMu.Lock()
+		job.Done = true
+		importJobsMu.Unlock()
+
+		time.AfterFunc(time.Hour, func() {
+			importJobsMu.Lock()
+			delete(importJobs, jobID)
+			importJobsMu.Unlock()
+		})
+	}()
 }
 
 // ─── Stats ───────────────────────────────────────────────────────────────────
