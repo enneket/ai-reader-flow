@@ -925,10 +925,6 @@ func handleImportOPML(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if r.Header.Get("Content-Type") != "application/xml" && r.Header.Get("Content-Type") != "text/xml" {
-		http.Error(w, "Content-Type must be application/xml", http.StatusBadRequest)
-		return
-	}
 
 	// Try to acquire lock - if another import is running, return 409
 	if !importOperationMu.TryLock() {
