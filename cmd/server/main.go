@@ -49,7 +49,7 @@ type importJob struct {
 }
 
 var importJobs = make(map[string]*importJob)
-var importJobsMu sync.Mutex
+var importJobsMu sync.RWMutex
 var importOperationMu sync.Mutex
 
 func main() {
@@ -902,10 +902,10 @@ func handleExportOPML(w http.ResponseWriter, r *http.Request) {
 
 func handleGetImportProgress(w http.ResponseWriter, r *http.Request) {
 	jobID := strings.TrimPrefix(r.URL.Path, "/api/opml/import/")
-	importJobsMu.Lock()
+	importJobsMu.RLock()
 	job, ok := importJobs[jobID]
-	importJobsMu.Unlock()
 	if !ok {
+		importJobsMu.RUnlock()
 		http.Error(w, "job not found", http.StatusNotFound)
 		return
 	}
@@ -917,6 +917,7 @@ func handleGetImportProgress(w http.ResponseWriter, r *http.Request) {
 		"failed":   job.Failed,
 		"done":     job.Done,
 	})
+	importJobsMu.RUnlock()
 }
 
 func handleImportOPML(w http.ResponseWriter, r *http.Request) {
