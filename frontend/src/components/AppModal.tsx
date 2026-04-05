@@ -12,7 +12,7 @@ interface AppModalProps {
 
 const style = `
   .app-modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    position: fixed; inset: 0; background: transparent;
     display: flex; align-items: center; justify-content: center;
     z-index: 9999; font-family: var(--font-sans);
   }
