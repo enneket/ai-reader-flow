@@ -32,6 +32,13 @@ export function Settings() {
   // OPML import
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState<{
+    current: number
+    total: number
+    feedName: string
+    success: number
+    failed: number
+  } | null>(null)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
   })
@@ -133,20 +140,39 @@ export function Settings() {
     const file = e.target.files?.[0]
     if (!file) return
     setImporting(true)
+    setImportProgress({ current: 0, total: 0, feedName: '', success: 0, failed: 0 })
     setError('')
     setSuccess('')
     try {
-      const result = await api.importOPML(file) as { imported: number; total: number; message?: string }
-      if (result.imported === 0 && result.message) {
-        setSuccess(result.message)
-      } else {
-        setSuccess(`Imported ${result.imported} of ${result.total} feeds`)
-      }
-      setTimeout(() => setSuccess(''), 5000)
+      const result = await api.importOPML(file) as { jobId: string }
+      // Poll for progress
+      const poll = setInterval(async () => {
+        try {
+          const progress = await api.getImportProgress(result.jobId)
+          setImportProgress({
+            current: progress.current,
+            total: progress.total,
+            feedName: progress.feedName,
+            success: progress.success,
+            failed: progress.failed,
+          })
+          if (progress.done) {
+            clearInterval(poll)
+            setImporting(false)
+            setImportProgress(null)
+            setSuccess(`Imported ${progress.success} of ${progress.total} feeds`)
+          }
+        } catch {
+          clearInterval(poll)
+          setImporting(false)
+          setImportProgress(null)
+        }
+      }, 200)
     } catch (err: any) {
+      setImporting(false)
+      setImportProgress(null)
       setError(err.message || 'Failed to import OPML')
     } finally {
-      setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
@@ -392,6 +418,15 @@ export function Settings() {
               onChange={handleImportOPML}
             />
           </div>
+          {importProgress && (
+            <div style={{fontSize: '0.85rem', marginTop: '4px'}}>
+              导入 {importProgress.current}/{importProgress.total}
+              {importProgress.feedName && `: ${importProgress.feedName}`}
+              {importProgress.total > 0 && (
+                <> — 成功: {importProgress.success}, 失败: {importProgress.failed}</>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="settings-section">

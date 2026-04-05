@@ -139,6 +139,17 @@ export const api = {
     }).then(res => res.json())
   },
 
+  getImportProgress: (jobId: string) => {
+    return request<{
+      current: number
+      total: number
+      feedName: string
+      success: number
+      failed: number
+      done: boolean
+    }>(`/opml/import/${jobId}`)
+  },
+
   // ─── Export ────────────────────────────────────────────────────────────────
 
   exportSavedArticles: (format: 'json' | 'markdown' = 'json') => {
