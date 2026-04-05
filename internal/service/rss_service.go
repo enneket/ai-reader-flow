@@ -41,24 +41,10 @@ func NewRSSService() *RSSService {
 }
 
 func (s *RSSService) AddFeed(url string) (*models.Feed, error) {
-	feed, err := s.parser.ParseURL(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse RSS feed: %w", err)
-	}
-
-	iconURL := ""
-	if feed.Image != nil {
-		iconURL = feed.Image.URL
-	}
-
+	// Just save the feed URL without validation - refresh will fetch actual data later
 	newFeed := &models.Feed{
-		Title:       feed.Title,
-		URL:         url,
-		Description: feed.Description,
-		IconURL:     iconURL,
-		LastFetched: time.Now(),
-		IsDead:      false,
-		CreatedAt:   time.Now(),
+		URL:       url,
+		CreatedAt: time.Now(),
 	}
 
 	if err := s.feedRepo.Create(newFeed); err != nil {
@@ -66,11 +52,6 @@ func (s *RSSService) AddFeed(url string) (*models.Feed, error) {
 			return nil, errors.New("this feed has already been added")
 		}
 		return nil, fmt.Errorf("failed to save feed: %w", err)
-	}
-
-	// Fetch and store articles
-	if _, err := s.fetchArticles(newFeed); err != nil {
-		fmt.Printf("Warning: failed to fetch articles for feed %s: %v\n", newFeed.Title, err)
 	}
 
 	return newFeed, nil
