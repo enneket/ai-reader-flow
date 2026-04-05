@@ -388,11 +388,11 @@ export function Settings() {
               />
             </div>
 
-            <button type="button" onClick={handleTestConnection} disabled={testingConnection || loading} className="btn btn-outline-accent">
+            <button type="button" onClick={handleTestConnection} disabled={testingConnection || loading} className="btn btn-secondary">
               <Save size={16} />
               {testingConnection ? t('settings.testing') : t('settings.testConnection')}
             </button>
-            <button type="submit" disabled={loading} className="btn btn-primary">
+            <button type="submit" disabled={loading} className="btn btn-secondary">
               <Save size={16} />
               {loading ? t('common.loading') : t('settings.saveAIConfig')}
             </button>
