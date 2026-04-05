@@ -23,7 +23,6 @@ export function FeedList() {
   const [refreshingFeedIds, setRefreshingFeedIds] = useState<Set<number>>(new Set())
   const [refreshingMessage, setRefreshingMessage] = useState('')
   const [refreshingPercent, setRefreshingPercent] = useState(0)
-  const [isSummarizing, setIsSummarizing] = useState<number | null>(null)
   const [progressModal, setProgressModal] = useState<{open: boolean; title: string; content: string; percent: number}>({open: false, title: '', content: '', percent: 0})
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editFeed, setEditFeed] = useState<{id: number; title: string; url: string} | null>(null)
@@ -286,14 +285,11 @@ export function FeedList() {
   }
 
   const handleGenerateSummary = async (id: number) => {
-    setIsSummarizing(id)
     try {
       await api.generateSummary(id)
       if (selectedFeed) await loadArticles(selectedFeed.id)
     } catch (err: any) {
       console.error('Failed to generate summary:', err)
-    } finally {
-      setIsSummarizing(null)
     }
   }
 
@@ -536,7 +532,6 @@ export function FeedList() {
                   feedName={selectedFeed?.title || ''}
                   isSelected={selectedArticle?.id === article.id}
                   isLead={index === 0}
-                  isSummarizing={isSummarizing === article.id}
                   onClick={() => handleArticleClick(article)}
                 />
               ))
@@ -550,7 +545,6 @@ export function FeedList() {
             <ArticleReader
               article={selectedArticle}
               feedName={selectedFeed?.title || ''}
-              isSummarizing={isSummarizing === selectedArticle?.id}
               onAccept={handleAccept}
               onReject={handleReject}
               onSnooze={handleSnooze}

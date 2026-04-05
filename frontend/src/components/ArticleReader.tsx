@@ -1,12 +1,10 @@
 import DOMPurify from 'dompurify'
 import {ExternalLink, Check, X, Clock, Save, Sparkles, FileText, RefreshCw} from 'lucide-react'
 import {Article} from '../api'
-import {StatusBadge} from './StatusBadge'
 
 interface ArticleReaderProps {
   article: Article | null
   feedName: string
-  isSummarizing: boolean
   onAccept: (id: number) => void
   onReject: (id: number) => void
   onSnooze: (id: number) => void
@@ -31,7 +29,6 @@ function formatDate(dateStr: string | null): string {
 export function ArticleReader({
   article,
   feedName,
-  isSummarizing,
   onAccept,
   onReject,
   onSnooze,
@@ -69,7 +66,6 @@ export function ArticleReader({
           <span>{feedName}</span>
           {article.author && <span>{article.author}</span>}
           <span>{formatDate(article.published)}</span>
-          {isSummarizing && <span className="summarizing-dot" title="Generating summary…" />}
         </div>
 
         {/* Title */}
@@ -106,12 +102,6 @@ export function ArticleReader({
           </div>
         )}
 
-        {/* Status indicator */}
-        {article.status && article.status !== 'unread' && (
-          <div style={{marginTop: '24px', display: 'flex', alignItems: 'center', gap: '8px'}}>
-            <StatusBadge status={article.status} />
-          </div>
-        )}
       </div>
 
     </div>

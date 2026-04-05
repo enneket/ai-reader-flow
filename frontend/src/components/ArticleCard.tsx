@@ -1,13 +1,10 @@
 import {Article} from '../api'
-import {QualityPill} from './QualityPill'
-import {StatusBadge} from './StatusBadge'
 
 interface ArticleCardProps {
   article: Article
   feedName: string
   isSelected: boolean
   isLead: boolean
-  isSummarizing: boolean
   onClick: () => void
 }
 
@@ -53,11 +50,9 @@ export function ArticleCard({
   feedName,
   isSelected,
   isLead,
-  isSummarizing,
   onClick,
 }: ArticleCardProps) {
-  const hasSummary = article.summary && article.summary.length > 0
-  const deck = hasSummary
+  const deck = article.summary && article.summary.length > 0
     ? truncate(article.summary, 120)
     : truncate(article.content || '', 120)
 
@@ -74,28 +69,6 @@ export function ArticleCard({
       <div className="article-card-title">{article.title}</div>
 
       {deck && <div className="article-card-deck">{deck}</div>}
-
-      <div className="article-card-footer">
-        {isSummarizing ? (
-          <span className="summarizing-dot" title="AI is generating a summary…" />
-        ) : hasSummary ? (
-          <span className="badge badge-ai">AI</span>
-        ) : null}
-
-        {article.status && article.status !== 'unread' && (
-          <StatusBadge status={article.status} />
-        )}
-
-        {article.is_filtered && (
-          <span className="badge badge-filtered">Filtered</span>
-        )}
-
-        {article.is_saved && (
-          <span className="badge badge-saved">Saved</span>
-        )}
-
-        <QualityPill score={article.quality_score || 0} />
-      </div>
     </div>
   )
 }
