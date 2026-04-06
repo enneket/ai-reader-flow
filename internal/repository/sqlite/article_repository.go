@@ -188,6 +188,35 @@ func (r *ArticleRepository) SetStatus(id int64, status string) error {
 	return nil
 }
 
+// SetAllArticlesStatus updates the status of all articles matching a condition.
+// If setting to "unread", clears filter. If setting FROM "unread", decrements feed unread_count.
+func (r *ArticleRepository) SetAllArticlesStatus(fromStatus string, toStatus string) error {
+	if fromStatus == "unread" && toStatus != "unread" {
+		// Decrement unread_count on all feeds that have unread articles
+		DB.Exec(`
+			UPDATE feeds SET unread_count = MAX(0, unread_count - (
+				SELECT COUNT(*) FROM articles WHERE feed_id = feeds.id AND status = 'unread'
+			))
+		`)
+	}
+	_, err := DB.Exec(`UPDATE articles SET status = ? WHERE status = ?`, toStatus, fromStatus)
+	return err
+}
+
+// SetFeedArticlesStatus updates the status of all articles for a specific feed.
+func (r *ArticleRepository) SetFeedArticlesStatus(feedId int64, toStatus string) error {
+	// Decrement unread_count for this feed
+	if toStatus != "unread" {
+		DB.Exec(`
+			UPDATE feeds SET unread_count = MAX(0, unread_count - (
+				SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'unread'
+			)) WHERE id = ?
+		`, feedId, feedId)
+	}
+	_, err := DB.Exec(`UPDATE articles SET status = ? WHERE feed_id = ? AND status = 'unread'`, toStatus, feedId)
+	return err
+}
+
 func (r *ArticleRepository) GetByStatus(status string) ([]models.Article, error) {
 	return r.GetAll(status, 0, 0)
 }

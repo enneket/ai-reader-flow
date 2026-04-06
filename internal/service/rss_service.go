@@ -239,6 +239,14 @@ func (s *RSSService) SetArticleStatus(id int64, status string) error {
 	return s.articleRepo.SetStatus(id, status)
 }
 
+func (s *RSSService) MarkFeedAsRead(feedId int64) error {
+	return s.articleRepo.SetFeedArticlesStatus(feedId, "accepted")
+}
+
+func (s *RSSService) MarkAllAsRead() error {
+	return s.articleRepo.SetAllArticlesStatus("unread", "accepted")
+}
+
 func (s *RSSService) GetArticles(feedID int64, filterMode string, limit, offset int) ([]models.Article, error) {
 	if feedID > 0 {
 		return s.articleRepo.GetByFeedID(feedID, limit, offset)
