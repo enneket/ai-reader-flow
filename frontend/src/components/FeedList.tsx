@@ -200,7 +200,12 @@ export function FeedList() {
                      err.message?.includes('not found') ||
                      err.message?.includes('dead') ||
                      err.message?.includes('EOF')
-      if (isDead) {
+      const isRateLimit = err.message?.includes('429') ||
+                          err.message?.includes('rate limit') ||
+                          err.message?.includes('Too Many Requests')
+      if (isRateLimit) {
+        setError('请求过于频繁，请稍后重试')
+      } else if (isDead) {
         setDeadFeedAlert({
           open: true,
           feedName: feeds.find(f => f.id === feedId)?.title || 'Unknown',
