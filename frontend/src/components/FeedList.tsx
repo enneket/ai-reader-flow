@@ -30,6 +30,7 @@ export function FeedList() {
   const [deadFeedAlert, setDeadFeedAlert] = useState<{
     open: boolean
     feedName: string
+    feedUrl: string
     feedId: number
   } | null>(null)
 
@@ -202,6 +203,7 @@ export function FeedList() {
         setDeadFeedAlert({
           open: true,
           feedName: feeds.find(f => f.id === feedId)?.title || 'Unknown',
+          feedUrl: feeds.find(f => f.id === feedId)?.url || '',
           feedId
         })
         await loadFeeds()
