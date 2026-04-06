@@ -113,6 +113,8 @@ func main() {
 	mux.HandleFunc("POST /api/articles/{id}/snooze", handleSnoozeArticle)
 	mux.HandleFunc("POST /api/articles/{id}/summary", handleGenerateSummary)
 	mux.HandleFunc("POST /api/articles/{id}/note", handleCreateNote)
+	mux.HandleFunc("POST /api/feeds/{id}/mark-read", handleMarkFeedRead)
+	mux.HandleFunc("POST /api/articles/mark-all-read", handleMarkAllRead)
 
 	// Notes
 	mux.HandleFunc("GET /api/notes", handleGetNotes)
@@ -595,6 +597,30 @@ func handleSnoozeArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func handleMarkFeedRead(w http.ResponseWriter, r *http.Request) {
+	// Path: /api/feeds/{id}/mark-read
+	path := strings.TrimPrefix(r.URL.Path, "/api/feeds/")
+	path = strings.TrimSuffix(path, "/mark-read")
+	id, err := strconv.ParseInt(path, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid feed id", http.StatusBadRequest)
+		return
+	}
+	if err := rssService.MarkFeedAsRead(id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func handleMarkAllRead(w http.ResponseWriter, r *http.Request) {
+	if err := rssService.MarkAllAsRead(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func handleGenerateSummary(w http.ResponseWriter, r *http.Request) {
