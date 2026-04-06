@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react'
+import {useState, useEffect, useRef} from 'react'
 import {Link, useLocation, useNavigate} from 'react-router-dom'
 import {FileText, RefreshCw, Settings, LayoutGrid, ChevronLeft, ChevronRight} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
@@ -26,6 +26,7 @@ export function Briefing() {
   const [hasMore, setHasMore] = useState(true)
   const [progress, setProgress] = useState<ProgressState>({type: 'idle', message: ''})
   const [modal, setModal] = useState<{type: 'warning'|'error'; title: string; content: string} | null>(null)
+  const briefingPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   injectAppModalStyles()
 
@@ -52,7 +53,6 @@ export function Briefing() {
     es.addEventListener('refresh:start', (e) => {
       const data = JSON.parse(e.data)
       setProgress({type: 'refreshing', message: `开始刷新 ${data.total || 0} 个订阅源...`, total: data.total})
-      setGenerating(true)
     })
 
     es.addEventListener('refresh:progress', (e) => {
@@ -76,11 +76,7 @@ export function Briefing() {
       setModal({type: 'error', title: '刷新失败', content: data.message || '刷新订阅源失败'})
     })
 
-    es.addEventListener('briefing:start', () => {
-      setProgress({type: 'briefing', message: '开始生成简报...'})
-      setGenerating(true)
-    })
-
+    // Briefing progress via SSE (non-critical — polling is primary completion detection)
     es.addEventListener('briefing:progress', (e) => {
       const data = JSON.parse(e.data)
       const stageMessages: Record<string, string> = {
@@ -92,21 +88,70 @@ export function Briefing() {
       setProgress({type: 'briefing', message: stageMessages[data.stage] || data.detail || '生成中...'})
     })
 
-    es.addEventListener('briefing:complete', () => {
-      setProgress({type: 'idle', message: ''})
-      setGenerating(false)
-      loadBriefings(0)
-    })
-
-    es.addEventListener('briefing:error', (e) => {
-      const data = JSON.parse(e.data)
-      setProgress({type: 'idle', message: ''})
-      setGenerating(false)
-      setModal({type: 'error', title: '生成失败', content: data.message || '生成简报失败'})
-    })
-
     return () => es.close()
   }, [])
+
+  // Polling for briefing generation status (SSE fallback + primary completion detection)
+  useEffect(() => {
+    if (!generating) return
+
+    const stageMessages: Record<string, string> = {
+      checking: '检查生成状态...',
+      fetching: '正在获取文章...',
+      analyzing: '正在分析文章主题...',
+      generating: '正在生成简报...',
+    }
+
+    const poll = async () => {
+      try {
+        const data = await api.getBriefings(1, 0)
+        if (!data || data.length === 0) return
+
+        const latest = data[0]
+        if (latest.status === 'completed') {
+          setProgress({type: 'idle', message: ''})
+          setGenerating(false)
+          if (briefingPollTimer.current) {
+            clearTimeout(briefingPollTimer.current)
+            briefingPollTimer.current = null
+          }
+          loadBriefings(0)
+          return
+        }
+        if (latest.status === 'failed') {
+          setProgress({type: 'idle', message: ''})
+          setGenerating(false)
+          if (briefingPollTimer.current) {
+            clearTimeout(briefingPollTimer.current)
+            briefingPollTimer.current = null
+          }
+          setModal({type: 'error', title: '生成失败', content: latest.error || '生成简报失败'})
+          return
+        }
+        // Still generating - keep polling
+        if (generating) {
+          briefingPollTimer.current = setTimeout(poll, 1000)
+        }
+      } catch {
+        // On error, stop polling and reset
+        if (briefingPollTimer.current) {
+          clearTimeout(briefingPollTimer.current)
+          briefingPollTimer.current = null
+        }
+        setGenerating(false)
+        setProgress({type: 'idle', message: ''})
+      }
+    }
+
+    poll()
+
+    return () => {
+      if (briefingPollTimer.current) {
+        clearTimeout(briefingPollTimer.current)
+        briefingPollTimer.current = null
+      }
+    }
+  }, [generating])
 
   const loadBriefings = async (pageNum: number) => {
     setLoading(true)
