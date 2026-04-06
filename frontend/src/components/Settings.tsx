@@ -1,12 +1,12 @@
 import {useState, useEffect, useRef} from 'react'
 import {Link, useLocation} from 'react-router-dom'
-import {Save, Upload, Download, Sun, Moon, Rss, FileText, LayoutGrid, Settings as SettingsIcon} from 'lucide-react'
+import {Save, Upload, Download, Sun, Moon, Rss, FileText, LayoutGrid, Settings as SettingsIcon, Edit3, Check, X} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
 import {changeLanguage} from '../i18n'
 import i18n from '../i18n'
 import {CustomSelect} from './CustomSelect'
 import {AppModal, injectAppModalStyles} from './AppModal'
-import {api, AIProviderConfig} from '../api'
+import {api, AIProviderConfig, PromptConfig} from '../api'
 
 export function Settings() {
   const {t} = useTranslation()
@@ -22,6 +22,12 @@ export function Settings() {
   const [testingConnection, setTestingConnection] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Prompts state
+  const [prompts, setPrompts] = useState<PromptConfig[]>([])
+  const [editingPrompt, setEditingPrompt] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState({name: '', prompt: '', system: '', max_tokens: 500, is_default: false})
+  const [promptSaveLoading, setPromptSaveLoading] = useState(false)
 
   // AI Config form state
   const [provider, setProvider] = useState('openai')
@@ -56,7 +62,17 @@ export function Settings() {
 
   useEffect(() => {
     loadAIConfig()
+    loadPrompts()
   }, [])
+
+  const loadPrompts = async () => {
+    try {
+      const data = await api.getPrompts()
+      setPrompts(data)
+    } catch (err: any) {
+      console.error('Failed to load prompts:', err)
+    }
+  }
 
   useEffect(() => {
     if (error) {
@@ -125,6 +141,38 @@ export function Settings() {
       setError(err.message || 'Failed to test AI connection')
     } finally {
       setTestingConnection(false)
+    }
+  }
+
+  const handleEditPrompt = (prompt: PromptConfig) => {
+    setEditingPrompt(prompt.id)
+    setEditForm({
+      name: prompt.name,
+      prompt: prompt.prompt,
+      system: prompt.system,
+      max_tokens: prompt.max_tokens,
+      is_default: prompt.is_default,
+    })
+  }
+
+  const handleCancelEdit = () => {
+    setEditingPrompt(null)
+    setEditForm({name: '', prompt: '', system: '', max_tokens: 500, is_default: false})
+  }
+
+  const handleSavePrompt = async (id: number) => {
+    setPromptSaveLoading(true)
+    try {
+      await api.updatePrompt(id, editForm)
+      await loadPrompts()
+      setEditingPrompt(null)
+      setEditForm({name: '', prompt: '', system: '', max_tokens: 500, is_default: false})
+      setSuccess('Prompt saved successfully!')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err: any) {
+      setError(err.message || 'Failed to save prompt')
+    } finally {
+      setPromptSaveLoading(false)
     }
   }
 
@@ -397,6 +445,98 @@ export function Settings() {
               {loading ? t('common.loading') : t('settings.saveAIConfig')}
             </button>
           </form>
+        </section>
+
+        <section className="settings-section">
+          <h3>提示词配置</h3>
+          <p style={{color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', fontSize: '0.875rem'}}>
+            自定义 AI 提示词模板
+          </p>
+          <div className="prompt-list">
+            {prompts.map((prompt) => (
+              <div key={prompt.id} className="prompt-item">
+                {editingPrompt === prompt.id ? (
+                  <div className="prompt-edit-form">
+                    <div className="form-group">
+                      <label className="form-label">名称</label>
+                      <input
+                        type="text"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">系统提示词</label>
+                      <textarea
+                        value={editForm.system}
+                        onChange={(e) => setEditForm({...editForm, system: e.target.value})}
+                        className="form-input form-textarea"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">用户提示词（可用 {"{content}"} 作为文章内容占位符）</label>
+                      <textarea
+                        value={editForm.prompt}
+                        onChange={(e) => setEditForm({...editForm, prompt: e.target.value})}
+                        className="form-input form-textarea"
+                        rows={6}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">最大 Token 数</label>
+                      <input
+                        type="number"
+                        value={editForm.max_tokens}
+                        onChange={(e) => setEditForm({...editForm, max_tokens: parseInt(e.target.value)})}
+                        className="form-input"
+                        min={100}
+                        max={20000}
+                      />
+                    </div>
+                    <div className="form-row">
+                      <button
+                        onClick={() => handleSavePrompt(prompt.id)}
+                        disabled={promptSaveLoading}
+                        className="btn btn-secondary"
+                      >
+                        <Check size={16} />
+                        {promptSaveLoading ? '保存中...' : '保存'}
+                      </button>
+                      <button onClick={handleCancelEdit} className="btn btn-secondary">
+                        <X size={16} />
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="prompt-view">
+                    <div className="prompt-header">
+                      <span className="prompt-name">{prompt.name}</span>
+                      <span className="prompt-type">({prompt.type})</span>
+                    </div>
+                    <div className="prompt-preview">
+                      <div className="prompt-preview-label">系统提示词：</div>
+                      <div className="prompt-preview-content">{prompt.system || '(无)'}</div>
+                    </div>
+                    <div className="prompt-preview">
+                      <div className="prompt-preview-label">用户提示词：</div>
+                      <div className="prompt-preview-content">{prompt.prompt.substring(0, 100)}...</div>
+                    </div>
+                    <button
+                      onClick={() => handleEditPrompt(prompt)}
+                      className="btn btn-secondary"
+                      style={{marginTop: '8px'}}
+                    >
+                      <Edit3 size={16} />
+                      编辑
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="settings-section">

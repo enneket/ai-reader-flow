@@ -168,6 +168,16 @@ export const api = {
 
   deleteBriefing: (id: number) =>
     request<void>(`/briefings/${id}`, { method: 'DELETE' }),
+
+  // ─── Prompts ────────────────────────────────────────────────────────────
+
+  getPrompts: () => request<PromptConfig[]>('/prompts'),
+
+  updatePrompt: (id: number, prompt: Partial<PromptConfig>) =>
+    request<PromptConfig>(`/prompts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(prompt),
+    }),
 }
 
 // ─── Models (plain interfaces, match Go backend) ─────────────────────────
@@ -247,4 +257,14 @@ export interface RefreshStatusResponse {
   failed: number
   error: string
   results?: FeedRefreshResult[]
+}
+
+export interface PromptConfig {
+  id: number
+  type: string
+  name: string
+  prompt: string
+  system: string
+  max_tokens: number
+  is_default: boolean
 }
