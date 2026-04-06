@@ -198,7 +198,8 @@ export function FeedList() {
       const isDead = err.message?.includes('404') ||
                      err.message?.includes('410') ||
                      err.message?.includes('not found') ||
-                     err.message?.includes('dead')
+                     err.message?.includes('dead') ||
+                     err.message?.includes('EOF')
       if (isDead) {
         setDeadFeedAlert({
           open: true,
