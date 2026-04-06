@@ -16,6 +16,8 @@ export const en = {
     empty: "No feeds yet. Add your first RSS feed to get started.",
     deadWarning: "{{count}} feed(s) no longer available (404/410)",
     viewDead: "View",
+    deadFeedTitle: "Feed Unavailable",
+    deadFeedMessage: "Feed \"{{name}}\" is no longer accessible (404/410) and has been marked as dead.",
   },
   articles: {
     title: "Articles",

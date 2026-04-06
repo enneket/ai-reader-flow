@@ -27,6 +27,11 @@ export function FeedList() {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editFeed, setEditFeed] = useState<{id: number; title: string; url: string} | null>(null)
   const [conflictModalOpen, setConflictModalOpen] = useState(false)
+  const [deadFeedAlert, setDeadFeedAlert] = useState<{
+    open: boolean
+    feedName: string
+    feedId: number
+  } | null>(null)
 
   // Inject AppModal styles once
   injectAppModalStyles()
@@ -189,7 +194,20 @@ export function FeedList() {
         await loadArticles(feedId)
       }
     } catch (err: any) {
-      setError(err.message || '刷新失败')
+      const isDead = err.message?.includes('404') ||
+                     err.message?.includes('410') ||
+                     err.message?.includes('not found') ||
+                     err.message?.includes('dead')
+      if (isDead) {
+        setDeadFeedAlert({
+          open: true,
+          feedName: feeds.find(f => f.id === feedId)?.title || 'Unknown',
+          feedId
+        })
+        await loadFeeds()
+      } else {
+        setError(err.message || '刷新失败')
+      }
     } finally {
       // Delay clearing so user can see the disabled+spinner state (API is fast)
       setTimeout(() => {
@@ -569,6 +587,16 @@ export function FeedList() {
           title="操作冲突"
           content="正在刷新或生成中，请稍候"
           onOk={() => setConflictModalOpen(false)}
+        />
+      )}
+
+      {deadFeedAlert?.open && (
+        <AppModal
+          type="warning"
+          title={t('feeds.deadFeedTitle')}
+          content={t('feeds.deadFeedMessage', { name: deadFeedAlert.feedName })}
+          autoClose={5000}
+          onOk={() => setDeadFeedAlert(null)}
         />
       )}
     </div>

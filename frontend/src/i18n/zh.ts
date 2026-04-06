@@ -16,6 +16,8 @@ export const zh = {
     empty: "暂无订阅源。添加第一个 RSS 订阅源开始使用。",
     deadWarning: "{{count}} 个订阅源已失效（404/410）",
     viewDead: "查看",
+    deadFeedTitle: "订阅源已失效",
+    deadFeedMessage: "订阅源 \"{{name}}\" 无法访问（404/410），已标记为失效，不再自动刷新。",
   },
   articles: {
     title: "文章",
