@@ -1,3 +1,4 @@
+import i18n from '../i18n'
 import {Article} from '../api'
 
 interface ArticleCardProps {
@@ -11,7 +12,7 @@ interface ArticleCardProps {
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', {
     month: 'short',
     day: 'numeric',
   })

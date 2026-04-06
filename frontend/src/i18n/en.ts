@@ -46,6 +46,7 @@ export const en = {
     openOriginal: "Open original article",
     selectFeed: "Select a feed to view articles",
     noArticles: "No articles yet",
+    articleCount: "{{count}} article{{count !== 1 ? 's' : ''}}",
     accept: "Accept",
     reject: "Reject",
     snooze: "Snooze",

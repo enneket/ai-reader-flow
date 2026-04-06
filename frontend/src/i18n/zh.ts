@@ -46,6 +46,7 @@ export const zh = {
     openOriginal: "打开原文",
     selectFeed: "选择一个订阅源",
     noArticles: "暂无文章",
+    articleCount: "{{count}} 篇文章",
     accept: "接受",
     reject: "拒绝",
     snooze: "稍后读",

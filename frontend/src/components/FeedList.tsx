@@ -1,6 +1,7 @@
 import {useState, useEffect, useRef} from 'react'
 import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
+import i18n from '../i18n'
 import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid, CheckCheck} from 'lucide-react'
 import {Modal} from 'antd'
 import {api, Feed, Article} from '../api'
@@ -38,7 +39,7 @@ export function FeedList() {
   injectAppModalStyles()
 
   const today = new Date()
-  const dateStr = today.toLocaleDateString('en-US', {
+  const dateStr = today.toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -545,7 +546,7 @@ export function FeedList() {
         <div className="articles-list-col">
           <div className="articles-list-header">
             <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>
-              {articles.length} article{articles.length !== 1 ? 's' : ''}
+              {t('articles.articleCount', { count: articles.length })}
             </span>
             <button
               onClick={async () => {
@@ -612,7 +613,7 @@ export function FeedList() {
           ) : (
             <div className="articles-empty-reader">
               <FileText size={48} />
-              <p>Select an article to read</p>
+              <p>{t('articles.selectToView')}</p>
             </div>
           )}
         </div>

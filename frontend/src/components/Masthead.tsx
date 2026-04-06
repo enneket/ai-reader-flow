@@ -1,6 +1,7 @@
 import {useState} from 'react'
 import {RefreshCw, Settings, Search, X} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
+import i18n from '../i18n'
 import {api, Article} from '../api'
 
 interface MastheadProps {
@@ -14,7 +15,7 @@ interface MastheadProps {
 export function Masthead({isRefreshing, onRefresh, onSettings, onSearchResults, onClearSearch}: MastheadProps) {
   const {t} = useTranslation()
   const today = new Date()
-  const dateStr = today.toLocaleDateString('en-US', {
+  const dateStr = today.toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

@@ -270,7 +270,7 @@ export function Settings() {
   }
 
   const today = new Date()
-  const dateStr = today.toLocaleDateString('en-US', {
+  const dateStr = today.toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

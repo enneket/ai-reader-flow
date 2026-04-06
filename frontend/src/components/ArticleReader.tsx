@@ -2,6 +2,7 @@ import {useState, useEffect} from 'react'
 import DOMPurify from 'dompurify'
 import {ExternalLink, Check, X, Clock, Save, Sparkles, FileText, RefreshCw} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
+import i18n from '../i18n'
 import {api, Article} from '../api'
 
 interface ArticleReaderProps {
@@ -20,7 +21,7 @@ interface ArticleReaderProps {
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

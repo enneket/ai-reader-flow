@@ -2,6 +2,7 @@ import {useState, useEffect} from 'react'
 import {useParams, Link, useNavigate} from 'react-router-dom'
 import {FileText, RefreshCw, Settings, LayoutGrid, ArrowLeft} from 'lucide-react'
 import {useTranslation} from 'react-i18next'
+import i18n from '../i18n'
 import {api, Briefing as BriefingType} from '../api'
 
 export function BriefingDetail() {
@@ -12,7 +13,7 @@ export function BriefingDetail() {
   const [loading, setLoading] = useState(true)
 
   const today = new Date()
-  const dateStr = today.toLocaleDateString('en-US', {
+  const dateStr = today.toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
