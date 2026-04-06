@@ -17,7 +17,7 @@ export const en = {
     deadWarning: "{{count}} feed(s) no longer available (404/410)",
     viewDead: "View",
     deadFeedTitle: "Feed Unavailable",
-    deadFeedMessage: "\"{{name}}\" returned 404/410 — this feed has been marked dead and will stop auto-refreshing. Please remove or update it in Settings.",
+    deadFeedMessage: "\"{{name}}\" is unavailable.",
   },
   articles: {
     title: "Articles",

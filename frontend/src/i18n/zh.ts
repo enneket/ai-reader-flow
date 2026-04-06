@@ -17,7 +17,7 @@ export const zh = {
     deadWarning: "{{count}} 个订阅源已失效（404/410）",
     viewDead: "查看",
     deadFeedTitle: "订阅源已失效",
-    deadFeedMessage: "「{{name}}」无法访问（404/410），已停止自动刷新。请在设置中删除或更新该订阅源。",
+    deadFeedMessage: "「{{name}}」无法访问。",
   },
   articles: {
     title: "文章",
