@@ -209,14 +209,12 @@ export function FeedList() {
         setError(err.message || '刷新失败')
       }
     } finally {
-      // Delay clearing so user can see the disabled+spinner state (API is fast)
-      setTimeout(() => {
-        setRefreshingFeedIds(prev => {
-          const next = new Set(prev)
-          next.delete(feedId)
-          return next
-        })
-      }, 600)
+      // Clear spinner only after data has actually loaded
+      setRefreshingFeedIds(prev => {
+        const next = new Set(prev)
+        next.delete(feedId)
+        return next
+      })
     }
   }
 
