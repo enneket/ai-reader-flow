@@ -30,7 +30,9 @@ type Article struct {
 	IsFiltered   bool      `json:"is_filtered"`
 	IsSaved      bool      `json:"is_saved"`
 	Status       string    `json:"status"` // "unread", "accepted", "rejected", "snoozed"
-	CreatedAt    time.Time `json:"created_at"`
+	CreatedAt         time.Time `json:"created_at"`
+	IsTranslated      bool      `json:"is_translated"`
+	TranslatedContent string    `json:"translated_content"`
 }
 
 type Note struct {
