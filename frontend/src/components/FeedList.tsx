@@ -2,7 +2,7 @@ import {useState, useEffect, useRef} from 'react'
 import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
 import i18n from '../i18n'
-import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid, CheckCheck} from 'lucide-react'
+import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid, CheckCheck, Search, X} from 'lucide-react'
 import {Modal} from 'antd'
 import {api, Feed, Article} from '../api'
 import {ArticleCard} from './ArticleCard'
@@ -24,6 +24,7 @@ export function FeedList() {
   const [refreshingFeedIds, setRefreshingFeedIds] = useState<Set<number>>(new Set())
   const [refreshingMessage, setRefreshingMessage] = useState('')
   const [refreshingPercent, setRefreshingPercent] = useState(0)
+  const [feedSearchQuery, setFeedSearchQuery] = useState('')
   const [progressModal, setProgressModal] = useState<{open: boolean; title: string; content: string; percent: number}>({open: false, title: '', content: '', percent: 0})
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editFeed, setEditFeed] = useState<{id: number; title: string; url: string} | null>(null)
@@ -331,6 +332,10 @@ export function FeedList() {
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
+  const filteredFeeds = feedSearchQuery
+    ? feeds.filter(f => (f.title || '').toLowerCase().includes(feedSearchQuery.toLowerCase()))
+    : feeds
+
   return (
     <div className="app">
             <Modal
@@ -378,6 +383,34 @@ export function FeedList() {
         </div>
         <div className="masthead-center">{dateStr}</div>
         <div className="masthead-right">
+          {feedSearchQuery && (
+            <button
+              onClick={() => setFeedSearchQuery('')}
+              className="masthead-btn"
+              title="Clear search"
+              style={{padding: '4px'}}
+            >
+              <X size={16} />
+            </button>
+          )}
+          <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
+            <Search size={14} style={{position: 'absolute', left: 8, color: 'var(--text-secondary)', pointerEvents: 'none'}} />
+            <input
+              type="text"
+              value={feedSearchQuery}
+              onChange={(e) => setFeedSearchQuery(e.target.value)}
+              placeholder={t('feeds.searchPlaceholder')}
+              style={{
+                padding: '4px 8px 4px 28px',
+                fontSize: '0.75rem',
+                border: '1px solid var(--border-color)',
+                borderRadius: '4px',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)',
+                width: '140px',
+              }}
+            />
+          </div>
           <Link to="/settings" className="masthead-btn" title={t('common.settings')}>
             <Settings size={18} />
           </Link>
@@ -487,13 +520,17 @@ export function FeedList() {
 
 
           <div className="feeds-list">
-            {feeds.length === 0 ? (
+            {filteredFeeds.length === 0 && feedSearchQuery ? (
+              <div style={{padding: 'var(--space-3)', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem'}}>
+                {t('feeds.noFeedsMatch')}
+              </div>
+            ) : filteredFeeds.length === 0 ? (
               <div className="empty-state" style={{padding: 'var(--space-4)', textAlign: 'center', color: 'var(--text-secondary)'}}>
                 <Rss size={24} />
                 <p style={{fontSize: '0.8rem', marginTop: 'var(--space-2)'}}>{t('feeds.empty')}</p>
               </div>
             ) : (
-              feeds.map((feed) => (
+              filteredFeeds.map((feed) => (
                 <div
                   key={feed.id}
                   className={`feed-item ${selectedFeed?.id === feed.id ? 'selected' : ''} ${feed.last_refresh_success === -1 ? 'is-dead' : ''}`}

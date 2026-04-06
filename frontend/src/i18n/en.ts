@@ -25,6 +25,8 @@ export const en = {
     refreshFeed: "Refresh feed",
     deleteFeed: "Delete feed",
     editFeed: "Edit feed",
+    searchPlaceholder: "Search feeds...",
+    noFeedsMatch: "No feeds match",
   },
   articles: {
     title: "Articles",

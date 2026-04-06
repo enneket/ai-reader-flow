@@ -25,6 +25,8 @@ export const zh = {
     refreshFeed: "刷新订阅源",
     deleteFeed: "删除订阅源",
     editFeed: "编辑订阅源",
+    searchPlaceholder: "搜索订阅源...",
+    noFeedsMatch: "没有匹配的订阅源",
   },
   articles: {
     title: "文章",
