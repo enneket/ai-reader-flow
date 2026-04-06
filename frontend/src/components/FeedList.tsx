@@ -436,7 +436,7 @@ export function FeedList() {
         {/* Column 2: Feed List */}
         <div className="feeds-list-col">
           <div className="feeds-list-header">
-            <span style={{fontSize: '0.9rem', fontWeight: 600}}>{t('feeds.title')}</span>
+            <span style={{fontSize: '0.9rem', fontWeight: 600}}>{selectedFeed?.title || t('feeds.title')}</span>
             <div style={{display: 'flex', gap: 4}}>
               <button
                 onClick={async () => {
