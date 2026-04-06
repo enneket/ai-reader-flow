@@ -105,9 +105,10 @@ type BriefingTopicArticle struct {
 
 // BriefingTopic is the AI output format for a topic
 type BriefingTopic struct {
-	Name     string             `json:"name"`
-	Articles []BriefingTopicArticle `json:"articles"`
-	Summary  string            `json:"summary"`
+	Name       string                `json:"name"`
+	Summary    string                `json:"summary"`
+	Articles   []BriefingTopicArticle `json:"articles"`
+	Conclusion string                `json:"conclusion"`
 }
 
 // BriefingResult is the AI output format
