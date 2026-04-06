@@ -549,10 +549,11 @@ export function FeedList() {
             </span>
             <button
               onClick={async () => {
+                if (!selectedFeed?.id) return
                 try {
-                  await api.markFeedRead(selectedFeed?.id)
+                  await api.markFeedRead(selectedFeed.id)
                   await loadFeeds()
-                  if (selectedFeed) await loadArticles(selectedFeed.id)
+                  await loadArticles(selectedFeed.id)
                 } catch (err: any) {
                   setError(err.message || '标记失败')
                 }
