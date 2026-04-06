@@ -59,7 +59,7 @@ func (r *ArticleRepository) GetAll(filterMode string, limit, offset int) ([]mode
 	if limit <= 0 {
 		limit = 100
 	}
-	query := `SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, is_translated, translated_content, COALESCE(quality_score, 0) FROM articles`
+	query := `SELECT id, feed_id, title, link, content, summary, author, published, is_filtered, is_saved, status, created_at, is_translated, translated_content FROM articles`
 	switch filterMode {
 	case "filtered":
 		query += ` WHERE is_filtered = 1`
@@ -245,7 +245,7 @@ func (r *ArticleRepository) Search(query string, limit int) ([]models.Article, e
 	// FTS5 search on title + content, return matching article IDs
 	rows, err := DB.Query(`
 		SELECT a.id, a.feed_id, a.title, a.link, a.content, a.summary, a.author, a.published,
-		       a.is_filtered, a.is_saved, a.status, a.created_at, a.is_translated, a.translated_content, COALESCE(a.quality_score, 0)
+		       a.is_filtered, a.is_saved, a.status, a.created_at, a.is_translated, a.translated_content
 		FROM articles a
 		JOIN articles_fts fts ON a.id = fts.article_id
 		WHERE articles_fts MATCH ?
