@@ -54,6 +54,7 @@ export function Settings() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark'
   })
+  const [showOriginalLanguage, setShowOriginalLanguage] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -63,6 +64,9 @@ export function Settings() {
   useEffect(() => {
     loadAIConfig()
     loadPrompts()
+    api.getShowOriginalLanguage().then(data => {
+      setShowOriginalLanguage(data.show_original_language)
+    }).catch(console.error)
   }, [])
 
   const loadPrompts = async () => {
@@ -372,6 +376,27 @@ export function Settings() {
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
               {theme === 'dark' ? t('settings.switchLight') : t('settings.switchDark')}
             </button>
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <h3>文章显示</h3>
+          <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+            <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
+              <input
+                type="checkbox"
+                checked={showOriginalLanguage}
+                onChange={(e) => {
+                  const newVal = e.target.checked
+                  setShowOriginalLanguage(newVal)
+                  api.setShowOriginalLanguage(newVal).catch(err => {
+                    setError(err.message || 'Failed to save')
+                    setShowOriginalLanguage(!newVal)
+                  })
+                }}
+              />
+              英文文章显示原文（默认显示中文翻译）
+            </label>
           </div>
         </section>
 

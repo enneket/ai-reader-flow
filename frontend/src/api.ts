@@ -173,6 +173,17 @@ export const api = {
 
   getPrompts: () => request<PromptConfig[]>('/prompts'),
 
+  // ─── Settings ────────────────────────────────────────────────────────────
+
+  getShowOriginalLanguage: () =>
+    request<{show_original_language: boolean}>('/settings/show_original'),
+
+  setShowOriginalLanguage: (showOriginal: boolean) =>
+    request<{show_original_language: boolean}>('/settings/show_original', {
+      method: 'PUT',
+      body: JSON.stringify({show_original_language: showOriginal}),
+    }),
+
   updatePrompt: (id: number, prompt: Partial<PromptConfig>) =>
     request<PromptConfig>(`/prompts/${id}`, {
       method: 'PUT',

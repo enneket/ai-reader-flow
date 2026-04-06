@@ -131,6 +131,10 @@ func main() {
 	mux.HandleFunc("PUT /api/ai-config", handleSaveAIConfig)
 	mux.HandleFunc("POST /api/ai-config/test", handleTestAIConfig)
 
+	// Settings: Show Original Language
+	mux.HandleFunc("GET /api/settings/show_original", handleGetShowOriginalLanguage)
+	mux.HandleFunc("PUT /api/settings/show_original", handleSetShowOriginalLanguage)
+
 	// Prompt Configs
 	mux.HandleFunc("GET /api/prompts", handleGetPrompts)
 	mux.HandleFunc("PUT /api/prompts/{id}", handleUpdatePrompt)
@@ -799,6 +803,34 @@ func handleGetBriefingStatus(w http.ResponseWriter, r *http.Request) {
 		"error":      briefing.Error,
 		"created_at": briefing.CreatedAt,
 	})
+}
+
+// ─── Show Original Language Handlers ─────────────────────────────────────────
+
+func handleGetShowOriginalLanguage(w http.ResponseWriter, r *http.Request) {
+	settingsRepo := sqlite.NewSettingsRepository()
+	value, _ := settingsRepo.Get("show_original_language")
+	if value == "" {
+		value = "false"
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"show_original_language": value == "true"})
+}
+
+func handleSetShowOriginalLanguage(w http.ResponseWriter, r *http.Request) {
+	var req map[string]bool
+	if !readJSON(w, r, &req) {
+		return
+	}
+	settingsRepo := sqlite.NewSettingsRepository()
+	val := "false"
+	if req["show_original_language"] {
+		val = "true"
+	}
+	if err := settingsRepo.Set("show_original_language", val); err != nil {
+		http.Error(w, "failed to save setting", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"show_original_language": val == "true"})
 }
 
 // ─── AI Config Handlers ───────────────────────────────────────────────────────
