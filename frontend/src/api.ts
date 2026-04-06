@@ -207,6 +207,8 @@ export interface Article {
   status: string
   created_at: string
   quality_score?: number
+  is_translated?: boolean
+  translated_content?: string
 }
 
 export interface Note {

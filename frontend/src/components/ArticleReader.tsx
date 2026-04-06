@@ -1,6 +1,7 @@
+import {useState, useEffect} from 'react'
 import DOMPurify from 'dompurify'
 import {ExternalLink, Check, X, Clock, Save, Sparkles, FileText, RefreshCw} from 'lucide-react'
-import {Article} from '../api'
+import {api, Article} from '../api'
 
 interface ArticleReaderProps {
   article: Article | null
@@ -38,6 +39,14 @@ export function ArticleReader({
   onOpenExternal,
   onBack,
 }: ArticleReaderProps) {
+  const [showOriginal, setShowOriginal] = useState(false)
+
+  useEffect(() => {
+    api.getShowOriginalLanguage().then(data => {
+      setShowOriginal(data.show_original_language)
+    }).catch(console.error)
+  }, [])
+
   if (!article) {
     return (
       <div className="article-reader-col">
@@ -50,13 +59,12 @@ export function ArticleReader({
   }
 
   const hasSummary = article.summary && article.summary.length > 0
-  const hasContent = article.content && article.content.length > 0
   const cleanSummary = hasSummary
     ? DOMPurify.sanitize(article.summary)
     : ''
-  const cleanContent = hasContent
-    ? DOMPurify.sanitize(article.content)
-    : ''
+  const isTranslated = article.is_translated && !!article.translated_content
+  const displayContent = (showOriginal || !isTranslated) ? article.content : article.translated_content
+  const hasDisplayContent = !!displayContent && displayContent.length > 0
 
   return (
     <div className="article-reader-col">
@@ -69,10 +77,21 @@ export function ArticleReader({
         </div>
 
         {/* Title */}
-        <h1 className="article-reader-title">{article.title}</h1>
+        <div style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px'}}>
+          <h1 className="article-reader-title">{article.title}</h1>
+          {isTranslated && (
+            <button
+              onClick={() => setShowOriginal(!showOriginal)}
+              className="lang-toggle-btn"
+              title={showOriginal ? '显示中文翻译' : '显示英文原文'}
+            >
+              {showOriginal ? '中' : 'EN'}
+            </button>
+          )}
+        </div>
 
         {/* Summary lead — only shown when no full content */}
-        {hasSummary && !hasContent && (
+        {hasSummary && !hasDisplayContent && (
           <div
             className="article-reader-summary"
             dangerouslySetInnerHTML={{__html: cleanSummary}}
@@ -80,10 +99,10 @@ export function ArticleReader({
         )}
 
         {/* Content */}
-        {hasContent ? (
+        {hasDisplayContent ? (
           <div
             className="article-reader-content"
-            dangerouslySetInnerHTML={{__html: cleanContent}}
+            dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(displayContent)}}
           />
         ) : (
           <div style={{color: 'var(--text-secondary)', fontSize: '14px'}}>
