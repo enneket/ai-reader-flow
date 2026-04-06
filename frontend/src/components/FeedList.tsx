@@ -544,9 +544,6 @@ export function FeedList() {
         {/* Column 3: Articles List */}
         <div className="articles-list-col">
           <div className="articles-list-header">
-            <span style={{fontSize: '0.9rem', fontWeight: 600}}>
-              {selectedFeed?.title || ''}
-            </span>
             <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>
               {articles.length} article{articles.length !== 1 ? 's' : ''}
             </span>
@@ -563,7 +560,6 @@ export function FeedList() {
                 }}
                 className="btn btn-ghost btn-sm"
                 title="标为已读"
-                style={{marginLeft: 'auto'}}
               >
                 <CheckCheck size={14} />
               </button>
