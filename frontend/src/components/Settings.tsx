@@ -288,7 +288,7 @@ export function Settings() {
         </div>
         <div className="masthead-center">{dateStr}</div>
         <div className="masthead-right">
-          <Link to="/settings" className="masthead-btn" title="Settings">
+          <Link to="/settings" className="masthead-btn" title={t('common.settings')}>
             <SettingsIcon size={18} />
           </Link>
         </div>
@@ -422,7 +422,7 @@ export function Settings() {
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter API key"
+                placeholder={t('settings.enterApiKey')}
                 className="form-input"
               />
             </div>
@@ -433,7 +433,7 @@ export function Settings() {
                 type="url"
                 value={baseURL}
                 onChange={(e) => setBaseURL(e.target.value)}
-                placeholder="https://api.openai.com/v1"
+                placeholder={t('settings.baseUrlPlaceholder')}
                 className="form-input"
               />
             </div>
@@ -444,7 +444,7 @@ export function Settings() {
                 type="text"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                placeholder="gpt-3.5-turbo"
+                placeholder={t('settings.modelPlaceholder')}
                 className="form-input"
               />
             </div>

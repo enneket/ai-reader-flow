@@ -60,7 +60,7 @@ export function Masthead({isRefreshing, onRefresh, onSettings, onSearchResults, 
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search articles..."
+            placeholder={t('common.searchPlaceholder')}
             className="masthead-search-input"
           />
           {searchQuery && (
@@ -80,7 +80,7 @@ export function Masthead({isRefreshing, onRefresh, onSettings, onSearchResults, 
         <button
           className="masthead-btn"
           onClick={onSettings}
-          title="Settings"
+          title={t('common.settings')}
         >
           <Settings size={18} />
         </button>

@@ -1,6 +1,7 @@
 import {useState, useEffect} from 'react'
 import {Link, useLocation, useNavigate} from 'react-router-dom'
 import {FileText, RefreshCw, Settings, LayoutGrid, ChevronLeft, ChevronRight} from 'lucide-react'
+import {useTranslation} from 'react-i18next'
 import {api, Briefing as BriefingType} from '../api'
 import {AppModal, injectAppModalStyles} from './AppModal'
 
@@ -14,6 +15,7 @@ type ProgressState = {
 }
 
 export function Briefing() {
+  const {t} = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const [briefings, setBriefings] = useState<BriefingType[]>([])
@@ -193,7 +195,7 @@ export function Briefing() {
         </div>
         <div className="masthead-center">{dateStr}</div>
         <div className="masthead-right">
-          <Link to="/settings" className="masthead-btn" title="Settings">
+          <Link to="/settings" className="masthead-btn" title={t('common.settings')}>
             <Settings size={18} />
           </Link>
         </div>
@@ -204,7 +206,7 @@ export function Briefing() {
           <div className="sidebar-header">
             <div className="sidebar-logo">
               <FileText size={24} />
-              <span>AI RSS</span>
+              <span>{t('nav.aiRss')}</span>
             </div>
           </div>
 
@@ -214,21 +216,21 @@ export function Briefing() {
               className={`nav-item ${isActive('/feeds') ? 'active' : ''}`}
             >
               <LayoutGrid />
-              <span>订阅源</span>
+              <span>{t('nav.feeds')}</span>
             </Link>
             <Link
               to="/briefing"
               className={`nav-item ${isActive('/briefing') ? 'active' : ''}`}
             >
               <FileText />
-              <span>简报</span>
+              <span>{t('nav.briefing')}</span>
             </Link>
             <Link
               to="/settings"
               className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
             >
               <Settings />
-              <span>设置</span>
+              <span>{t('nav.settings')}</span>
             </Link>
           </nav>
 
@@ -248,7 +250,7 @@ export function Briefing() {
                 className="btn btn-primary"
               >
                 <RefreshCw size={16} className={generating ? 'spinning' : ''} />
-                {generating ? '生成中...' : '立即生成简报'}
+                {generating ? t('common.loading') : t('briefing.generateBriefing')}
               </button>
             </div>
 
@@ -291,7 +293,7 @@ export function Briefing() {
             {!loading && briefings.length === 0 && (
               <div className="empty-state">
                 <FileText size={48} />
-                <p>暂无简报</p>
+                <p>{t('briefing.noBriefings')}</p>
                 <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>
                   点击上方按钮立即生成
                 </p>
@@ -332,7 +334,7 @@ export function Briefing() {
                   className="btn btn-secondary"
                 >
                   <ChevronRight size={16} />
-                  加载更多
+                  {t('briefing.loadMore')}
                 </button>
               </div>
             )}

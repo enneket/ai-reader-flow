@@ -1,9 +1,11 @@
 import {useState, useEffect} from 'react'
 import {useParams, Link, useNavigate} from 'react-router-dom'
 import {FileText, RefreshCw, Settings, LayoutGrid, ArrowLeft} from 'lucide-react'
+import {useTranslation} from 'react-i18next'
 import {api, Briefing as BriefingType} from '../api'
 
 export function BriefingDetail() {
+  const {t} = useTranslation()
   const {id} = useParams<{id: string}>()
   const navigate = useNavigate()
   const [briefing, setBriefing] = useState<BriefingType | null>(null)
@@ -101,7 +103,7 @@ export function BriefingDetail() {
           </div>
           <div className="masthead-center">{dateStr}</div>
           <div className="masthead-right">
-            <Link to="/settings" className="masthead-btn" title="Settings">
+            <Link to="/settings" className="masthead-btn" title={t('common.settings')}>
               <Settings size={18} />
             </Link>
           </div>
@@ -111,27 +113,27 @@ export function BriefingDetail() {
             <div className="sidebar-header">
               <div className="sidebar-logo">
                 <FileText size={24} />
-                <span>AI RSS</span>
+                <span>{t('nav.aiRss')}</span>
               </div>
             </div>
             <nav className="sidebar-nav">
               <Link to="/feeds" className="nav-item">
                 <LayoutGrid />
-                <span>订阅源</span>
+                <span>{t('nav.feeds')}</span>
               </Link>
               <Link to="/briefing" className="nav-item active">
                 <FileText />
-                <span>简报</span>
+                <span>{t('nav.briefing')}</span>
               </Link>
               <Link to="/settings" className="nav-item">
                 <Settings />
-                <span>设置</span>
+                <span>{t('nav.settings')}</span>
               </Link>
             </nav>
           </aside>
           <main className="app-main">
             <div className="page-content">
-              <div className="loading">加载中...</div>
+              <div className="loading">{t('common.loading')}</div>
             </div>
           </main>
         </div>
@@ -148,7 +150,7 @@ export function BriefingDetail() {
           </div>
           <div className="masthead-center">{dateStr}</div>
           <div className="masthead-right">
-            <Link to="/settings" className="masthead-btn" title="Settings">
+            <Link to="/settings" className="masthead-btn" title={t('common.settings')}>
               <Settings size={18} />
             </Link>
           </div>
@@ -158,21 +160,21 @@ export function BriefingDetail() {
             <div className="sidebar-header">
               <div className="sidebar-logo">
                 <FileText size={24} />
-                <span>AI RSS</span>
+                <span>{t('nav.aiRss')}</span>
               </div>
             </div>
             <nav className="sidebar-nav">
               <Link to="/feeds" className="nav-item">
                 <LayoutGrid />
-                <span>订阅源</span>
+                <span>{t('nav.feeds')}</span>
               </Link>
               <Link to="/briefing" className="nav-item active">
                 <FileText />
-                <span>简报</span>
+                <span>{t('nav.briefing')}</span>
               </Link>
               <Link to="/settings" className="nav-item">
                 <Settings />
-                <span>设置</span>
+                <span>{t('nav.settings')}</span>
               </Link>
             </nav>
           </aside>
@@ -180,8 +182,8 @@ export function BriefingDetail() {
             <div className="page-content">
               <div className="empty-state">
                 <FileText size={48} />
-                <p>简报不存在</p>
-                <Link to="/briefing" className="btn btn-primary">返回简报列表</Link>
+                <p>{t('briefing.notFound')}</p>
+                <Link to="/briefing" className="btn btn-primary">{t('briefing.backToList')}</Link>
               </div>
             </div>
           </main>
@@ -198,7 +200,7 @@ export function BriefingDetail() {
         </div>
         <div className="masthead-center">{dateStr}</div>
         <div className="masthead-right">
-          <Link to="/settings" className="masthead-btn" title="Settings">
+          <Link to="/settings" className="masthead-btn" title={t('common.settings')}>
             <Settings size={18} />
           </Link>
         </div>
@@ -209,22 +211,22 @@ export function BriefingDetail() {
           <div className="sidebar-header">
             <div className="sidebar-logo">
               <FileText size={24} />
-              <span>AI RSS</span>
+              <span>{t('nav.aiRss')}</span>
             </div>
           </div>
 
           <nav className="sidebar-nav">
             <Link to="/feeds" className="nav-item">
               <LayoutGrid />
-              <span>订阅源</span>
+              <span>{t('nav.feeds')}</span>
             </Link>
             <Link to="/briefing" className="nav-item active">
               <FileText />
-              <span>简报</span>
+              <span>{t('nav.briefing')}</span>
             </Link>
             <Link to="/settings" className="nav-item">
               <Settings />
-              <span>设置</span>
+              <span>{t('nav.settings')}</span>
             </Link>
           </nav>
 
@@ -240,7 +242,7 @@ export function BriefingDetail() {
                 <Link to="/briefing" className="btn btn-ghost" style={{padding: '8px'}}>
                   <ArrowLeft size={18} />
                 </Link>
-                <h1>{briefing?.created_at ? formatBriefingTitle(briefing.created_at) : '简报详情'}</h1>
+                <h1>{briefing?.created_at ? formatBriefingTitle(briefing.created_at) : t('briefing.title')}</h1>
               </div>
             </div>
 
@@ -249,7 +251,7 @@ export function BriefingDetail() {
                 <span className="briefing-date">{formatDate(briefing.created_at)}</span>
                 <span className="briefing-time">{formatTime(briefing.created_at)}</span>
                 <span className={`status-badge status-${briefing.status}`}>
-                  {briefing.status === 'completed' ? '已完成' : briefing.status === 'failed' ? '失败' : '生成中'}
+                  {briefing.status === 'completed' ? t('briefing.completed') : briefing.status === 'failed' ? t('briefing.failed') : t('briefing.generating')}
                 </span>
               </div>
 
@@ -257,7 +259,7 @@ export function BriefingDetail() {
                 <div className="briefing-items">
                   {briefing.items.map((item) => (
                     <div key={item.id} className="briefing-item">
-                      <h3>{item.topic} ({item.articles.length}篇)</h3>
+                      <h3>{item.topic} ({item.articles.length}{t('briefing.articles')})</h3>
                       <p className="briefing-summary">{item.summary}</p>
                       <ul className="briefing-articles">
                         {item.articles.map((article) => (
@@ -277,7 +279,7 @@ export function BriefingDetail() {
 
               {briefing.status === 'failed' && briefing.error && (
                 <div className="alert alert-error">
-                  <p>错误: {briefing.error}</p>
+                  <p>{t('briefing.errorPrefix')} {briefing.error}</p>
                 </div>
               )}
             </div>

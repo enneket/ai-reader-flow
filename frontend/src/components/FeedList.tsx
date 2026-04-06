@@ -377,7 +377,7 @@ export function FeedList() {
         </div>
         <div className="masthead-center">{dateStr}</div>
         <div className="masthead-right">
-          <Link to="/settings" className="masthead-btn" title="Settings">
+          <Link to="/settings" className="masthead-btn" title={t('common.settings')}>
             <Settings size={18} />
           </Link>
         </div>
@@ -511,7 +511,7 @@ export function FeedList() {
                     <button
                       onClick={(e) => handleRefreshOneFeed(feed.id, e)}
                       className="btn btn-ghost btn-sm btn-icon"
-                      aria-label="Refresh feed"
+                      aria-label={t('feeds.refreshFeed')}
                       title="刷新"
                       style={{padding: '0 4px'}}
                       disabled={refreshingFeedIds.has(feed.id)}
@@ -521,7 +521,7 @@ export function FeedList() {
                     <button
                       onClick={(e) => handleDeleteFeed(feed.id, e)}
                       className="btn btn-ghost btn-sm btn-icon"
-                      aria-label="Delete feed"
+                      aria-label={t('feeds.deleteFeed')}
                       style={{padding: '0 4px'}}
                     >
                       <Trash2 size={11} />
@@ -529,7 +529,7 @@ export function FeedList() {
                     <button
                       onClick={(e) => handleEditFeed(feed, e)}
                       className="btn btn-ghost btn-sm btn-icon"
-                      aria-label="Edit feed"
+                      aria-label={t('feeds.editFeed')}
                       style={{padding: '0 4px'}}
                     >
                       <Settings size={11} />
@@ -559,7 +559,7 @@ export function FeedList() {
                 }
               }}
               className="btn btn-ghost btn-sm"
-              title="标为已读"
+              title={t('feeds.markFeedRead')}
               style={{visibility: selectedFeed ? 'visible' : 'hidden', pointerEvents: selectedFeed ? 'auto' : 'none'}}
             >
               <CheckCheck size={14} />
@@ -570,14 +570,14 @@ export function FeedList() {
             {!selectedFeed ? (
               <div className="empty-state" style={{padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-secondary)'}}>
                 <FileText size={32} />
-                <p style={{fontSize: '0.85rem', marginTop: 'var(--space-2)'}}>Select a feed to view articles</p>
+                <p style={{fontSize: '0.85rem', marginTop: 'var(--space-2)'}}>{t('articles.selectFeed')}</p>
               </div>
             ) : articlesLoading ? (
-              <div className="loading" style={{padding: 'var(--space-4)'}}>Loading...</div>
+              <div className="loading" style={{padding: 'var(--space-4)'}}>{t('common.loading')}</div>
             ) : articles.length === 0 ? (
               <div className="empty-state" style={{padding: 'var(--space-8)', textAlign: 'center', color: 'var(--text-secondary)'}}>
                 <FileText size={32} />
-                <p style={{fontSize: '0.85rem', marginTop: 'var(--space-2)'}}>No articles yet</p>
+                <p style={{fontSize: '0.85rem', marginTop: 'var(--space-2)'}}>{t('articles.noArticles')}</p>
               </div>
             ) : (
               articles.map((article, index) => (

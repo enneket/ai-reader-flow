@@ -1,6 +1,7 @@
 import {useState, useEffect} from 'react'
 import DOMPurify from 'dompurify'
 import {ExternalLink, Check, X, Clock, Save, Sparkles, FileText, RefreshCw} from 'lucide-react'
+import {useTranslation} from 'react-i18next'
 import {api, Article} from '../api'
 
 interface ArticleReaderProps {
@@ -39,6 +40,7 @@ export function ArticleReader({
   onOpenExternal,
   onBack,
 }: ArticleReaderProps) {
+  const {t} = useTranslation()
   const [showOriginal, setShowOriginal] = useState(false)
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export function ArticleReader({
       <div className="article-reader-col">
         <div className="article-reader-empty">
           <FileText />
-          <p>Select an article to read</p>
+          <p>{t('articles.selectToView')}</p>
         </div>
       </div>
     )
@@ -106,7 +108,7 @@ export function ArticleReader({
           />
         ) : (
           <div style={{color: 'var(--text-secondary)', fontSize: '14px'}}>
-            <p>This article has no content.</p>
+            <p>{t('articles.noContent')}</p>
             {article.link && (
               <a
                 href={article.link}
@@ -115,7 +117,7 @@ export function ArticleReader({
                 style={{color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px'}}
               >
                 <ExternalLink size={14} />
-                Open original article
+                {t('articles.openOriginal')}
               </a>
             )}
           </div>
