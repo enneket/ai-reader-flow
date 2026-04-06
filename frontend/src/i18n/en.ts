@@ -47,6 +47,7 @@ export const en = {
     selectFeed: "Select a feed to view articles",
     noArticles: "No articles yet",
     articleCount: "{{count}} article{{count !== 1 ? 's' : ''}}",
+    qualityScore: "Quality score: {{score}}/40",
     accept: "Accept",
     reject: "Reject",
     snooze: "Snooze",
@@ -106,6 +107,7 @@ export const en = {
     searchPlaceholder: "Search articles...",
     settings: "Settings",
     loadingArticles: "Loading articles...",
+    select: "Select...",
   },
   briefing: {
     title: "Briefing Detail",

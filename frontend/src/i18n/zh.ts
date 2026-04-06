@@ -47,6 +47,7 @@ export const zh = {
     selectFeed: "选择一个订阅源",
     noArticles: "暂无文章",
     articleCount: "{{count}} 篇文章",
+    qualityScore: "质量评分: {{score}}/40",
     accept: "接受",
     reject: "拒绝",
     snooze: "稍后读",
@@ -106,6 +107,7 @@ export const zh = {
     searchPlaceholder: "搜索文章...",
     settings: "设置",
     loadingArticles: "加载文章中...",
+    select: "请选择...",
   },
   briefing: {
     title: "简报详情",

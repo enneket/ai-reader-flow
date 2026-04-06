@@ -1,5 +1,6 @@
 import {useState, useRef, useEffect} from 'react'
 import {ChevronDown} from 'lucide-react'
+import {useTranslation} from 'react-i18next'
 
 interface Option {
   value: string
@@ -14,6 +15,7 @@ interface CustomSelectProps {
 }
 
 export function CustomSelect({options, value, onChange, className = ''}: CustomSelectProps) {
+  const {t} = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -37,7 +39,7 @@ export function CustomSelect({options, value, onChange, className = ''}: CustomS
         className="custom-select-trigger"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span>{selectedOption?.label || 'Select...'}</span>
+        <span>{selectedOption?.label || t('common.select')}</span>
         <ChevronDown size={16} className={`custom-select-icon ${isOpen ? 'open' : ''}`} />
       </button>
 
