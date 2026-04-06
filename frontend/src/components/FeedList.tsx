@@ -1,7 +1,7 @@
 import {useState, useEffect, useRef} from 'react'
 import {Link, useLocation} from 'react-router-dom'
 import {useTranslation} from 'react-i18next'
-import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid} from 'lucide-react'
+import {Plus, RefreshCw, Trash2, Rss, FileText, Settings, LayoutGrid, CheckCheck} from 'lucide-react'
 import {Modal} from 'antd'
 import {api, Feed, Article} from '../api'
 import {ArticleCard} from './ArticleCard'
@@ -438,6 +438,21 @@ export function FeedList() {
           <div className="feeds-list-header">
             <span style={{fontSize: '0.9rem', fontWeight: 600}}>{t('feeds.title')}</span>
             <button
+              onClick={async () => {
+                try {
+                  await api.markAllRead()
+                  await loadFeeds()
+                  if (selectedFeed) await loadArticles(selectedFeed.id)
+                } catch (err: any) {
+                  setError(err.message || '标记失败')
+                }
+              }}
+              className="btn btn-ghost btn-sm"
+              title="全部标为已读"
+            >
+              <CheckCheck size={14} />
+            </button>
+            <button
               onClick={handleRefreshAll}
               disabled={refreshing}
               className="btn btn-ghost btn-sm"
@@ -533,6 +548,24 @@ export function FeedList() {
             <span style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>
               {articles.length} article{articles.length !== 1 ? 's' : ''}
             </span>
+            {selectedFeed && (
+              <button
+                onClick={async () => {
+                  try {
+                    await api.markFeedRead(selectedFeed.id)
+                    await loadFeeds()
+                    await loadArticles(selectedFeed.id)
+                  } catch (err: any) {
+                    setError(err.message || '标记失败')
+                  }
+                }}
+                className="btn btn-ghost btn-sm"
+                title="标为已读"
+                style={{marginLeft: 'auto'}}
+              >
+                <CheckCheck size={14} />
+              </button>
+            )}
           </div>
 
           <div className="articles-list">
