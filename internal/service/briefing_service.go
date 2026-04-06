@@ -323,11 +323,12 @@ func (s *BriefingService) buildPrompt(articlesInput string, totalArticles, batch
 			// Replace placeholders in the template
 			prompt := promptConfig.Prompt
 			prompt = strings.ReplaceAll(prompt, "{articles}", articlesInput)
+			prompt = strings.ReplaceAll(prompt, "{content}", articlesInput)
 			prompt = strings.ReplaceAll(prompt, "{totalArticles}", fmt.Sprintf("%d", totalArticles))
 			prompt = strings.ReplaceAll(prompt, "{batchIndex}", fmt.Sprintf("%d", batchIndex+1))
 			prompt = strings.ReplaceAll(prompt, "{totalBatches}", fmt.Sprintf("%d", totalBatches))
 			prompt = strings.ReplaceAll(prompt, "{topicLimit}", fmt.Sprintf("%d", 5))
-			return promptConfig.System + "\n" + prompt
+			return promptConfig.System + "\n" + prompt + "\n\n输出格式（严格按 JSON，不要有其他内容）：\n{\n  \"topics\": [\n    {\n      \"name\": \"主题名称\",\n      \"summary\": \"一段话\",\n      \"articles\": [\n        {\"id\": 1, \"insight\": \"一句话描述\"}\n      ]\n    }\n  ]\n}"
 		}
 	}
 
