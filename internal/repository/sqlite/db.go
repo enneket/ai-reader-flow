@@ -161,6 +161,9 @@ func createTables() error {
 	// Migration: drop embedding and quality_score columns (embedding feature removed)
 	_ = migrateDropColumn("articles", "embedding")
 	_ = migrateDropColumn("articles", "quality_score")
+	// Migration: add translation columns for English article translation feature
+	_ = migrateAddColumn("articles", "is_translated", "INTEGER DEFAULT 0")
+	_ = migrateAddColumn("articles", "translated_content", "TEXT")
 
 	// Seed default prompts if table is empty
 	_ = seedDefaultPrompts()
