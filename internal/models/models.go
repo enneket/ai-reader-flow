@@ -112,3 +112,14 @@ type BriefingTopic struct {
 type BriefingResult struct {
 	Topics []BriefingTopic `json:"topics"`
 }
+
+// PromptConfig holds prompt template configuration
+type PromptConfig struct {
+	ID        int64  `json:"id"`
+	Type     string `json:"type"`      // summary, briefing, translation
+	Name     string `json:"name"`      // display name
+	Prompt   string `json:"prompt"`    // user prompt template
+	System   string `json:"system"`    // system prompt
+	MaxTokens int    `json:"max_tokens"`
+	IsDefault bool   `json:"is_default"`
+}

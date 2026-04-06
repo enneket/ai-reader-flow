@@ -13,11 +13,13 @@ import (
 
 type SummaryService struct {
 	articleRepo *sqlite.ArticleRepository
+	promptRepo  *sqlite.PromptRepository
 }
 
 func NewSummaryService() *SummaryService {
 	return &SummaryService{
 		articleRepo: sqlite.NewArticleRepository(),
+		promptRepo:  sqlite.NewPromptRepository(),
 	}
 }
 
@@ -27,6 +29,19 @@ func (s *SummaryService) GenerateSummary(article *models.Article) (string, error
 	content := article.Content
 	if len(content) > 10000 {
 		content = content[:10000]
+	}
+
+	// Try to get configurable prompt first, fallback to default
+	promptConfig, err := s.promptRepo.GetDefault("summary")
+	if err == nil && promptConfig != nil && promptConfig.Prompt != "" {
+		summary, err := provider.GenerateSummaryWithPrompt(content, promptConfig.System, promptConfig.Prompt)
+		if err == nil {
+			article.Summary = summary
+			s.articleRepo.Update(article)
+			return summary, nil
+		}
+		// If custom prompt fails, log and fallback to default
+		log.Printf("Custom prompt failed, falling back to default: %v", err)
 	}
 
 	summary, err := provider.GenerateSummary(content)

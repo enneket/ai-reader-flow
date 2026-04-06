@@ -92,6 +92,16 @@ func createTables() error {
 		value TEXT
 	);
 
+	CREATE TABLE IF NOT EXISTS prompt_configs (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		type TEXT NOT NULL UNIQUE,
+		name TEXT NOT NULL,
+		prompt TEXT NOT NULL,
+		system TEXT NOT NULL DEFAULT '',
+		max_tokens INTEGER NOT NULL DEFAULT 500,
+		is_default INTEGER NOT NULL DEFAULT 0
+	);
+
 	CREATE TABLE IF NOT EXISTS briefings (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		status TEXT DEFAULT 'pending',
@@ -151,6 +161,9 @@ func createTables() error {
 	// Migration: drop embedding and quality_score columns (embedding feature removed)
 	_ = migrateDropColumn("articles", "embedding")
 	_ = migrateDropColumn("articles", "quality_score")
+
+	// Seed default prompts if table is empty
+	_ = seedDefaultPrompts()
 
 	// Create FTS5 virtual table for full-text search
 	_ = createFTSTable()
@@ -228,4 +241,82 @@ func IndexArticle(articleID int64, title, content string) error {
 func RemoveArticleFTS(articleID int64) error {
 	_, err := DB.Exec(`DELETE FROM articles_fts WHERE article_id = ?`, articleID)
 	return err
+}
+
+func seedDefaultPrompts() error {
+	var count int
+	err := DB.QueryRow("SELECT COUNT(*) FROM prompt_configs").Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+
+	defaultPrompts := []struct {
+		promptType  string
+		name       string
+		prompt     string
+		system     string
+		maxTokens  int
+		isDefault  int
+	}{
+		{
+			promptType: "summary",
+			name:       "快读摘要",
+			prompt: `为提供的文本创作一份"快读摘要"，旨在让读者在30秒内掌握核心情报。
+
+要求：
+1) 极简主义：剔除背景铺垫、案例细节、营销话术及修饰性词汇，直奔主题。
+2) 内容密度：必须包含核心主体、关键动作/事件、最终影响/结论。
+3) 篇幅：严格控制在50-150字之间。
+
+待摘要内容：
+{content}`,
+			system:    `你是一名资深内容分析师，擅长用最极简的语言精准捕捉文章灵魂。输出必须为中文、客观、单段长句（可用逗号、句号，禁止分段/换行），禁止任何列表符号，禁止出现"这篇文章讲了/摘要如下"等前置废话。`,
+			maxTokens: 400,
+			isDefault: 1,
+		},
+		{
+			promptType: "briefing",
+			name:       "简报生成",
+			prompt: `你是一个内容策划助手。请根据以下文章内容，生成一份简报。
+
+要求：
+1) 将文章按主题分组
+2) 每个主题给出简短总结
+3) 标注文章来源
+
+{content}`,
+			system:    `你是一个内容策划助手。`,
+			maxTokens: 16384,
+			isDefault: 1,
+		},
+		{
+			promptType: "translation",
+			name:       "中英翻译",
+			prompt: `将以下英文文章翻译成中文。
+
+要求：
+1) 严格保留原始Markdown格式
+2) 专业术语使用业界通用中文表达
+3) 语言风格地道、通顺
+
+{content}`,
+			system:    `你是一位精通中英文互译的专业翻译官。必须仅输出中文译文，禁止任何额外话语。`,
+			maxTokens: 14000,
+			isDefault: 1,
+		},
+	}
+
+	for _, p := range defaultPrompts {
+		_, err := DB.Exec(
+			`INSERT INTO prompt_configs (type, name, prompt, system, max_tokens, is_default) VALUES (?, ?, ?, ?, ?, ?)`,
+			p.promptType, p.name, p.prompt, p.system, p.maxTokens, p.isDefault,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

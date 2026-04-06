@@ -34,6 +34,7 @@ var (
 	summaryService  *service.SummaryService
 	noteService     *service.NoteService
 	briefingService *service.BriefingService
+	promptRepo      *sqlite.PromptRepository
 	dataDir         string
 )
 
@@ -73,6 +74,7 @@ func main() {
 	rssService = service.NewRSSService()
 	feedRepo = sqlite.NewFeedRepository()
 	filterService = service.NewFilterService()
+	promptRepo = sqlite.NewPromptRepository()
 	summaryService = service.NewSummaryService()
 
 	notesDir := filepath.Join(dataDir, "notes")
@@ -128,6 +130,10 @@ func main() {
 	mux.HandleFunc("GET /api/ai-config", handleGetAIConfig)
 	mux.HandleFunc("PUT /api/ai-config", handleSaveAIConfig)
 	mux.HandleFunc("POST /api/ai-config/test", handleTestAIConfig)
+
+	// Prompt Configs
+	mux.HandleFunc("GET /api/prompts", handleGetPrompts)
+	mux.HandleFunc("PUT /api/prompts/{id}", handleUpdatePrompt)
 
 	// Health check
 	mux.HandleFunc("GET /health", handleHealth)
@@ -854,6 +860,50 @@ func handleTestAIConfig(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": "Configuration saved!",
 	})
+}
+
+// ─── Prompt Config Handlers ───────────────────────────────────────────────────
+
+func handleGetPrompts(w http.ResponseWriter, r *http.Request) {
+	prompts, err := promptRepo.GetAll()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, prompts)
+}
+
+func handleUpdatePrompt(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID("/api/prompts", r)
+	if !ok {
+		http.Error(w, "invalid prompt id", http.StatusBadRequest)
+		return
+	}
+	var req struct {
+		Name      string `json:"name"`
+		Prompt   string `json:"prompt"`
+		System   string `json:"system"`
+		MaxTokens int    `json:"max_tokens"`
+		IsDefault bool   `json:"is_default"`
+	}
+	if !readJSON(w, r, &req) {
+		return
+	}
+	prompt, err := promptRepo.GetByID(id)
+	if err != nil {
+		http.Error(w, "prompt not found", http.StatusNotFound)
+		return
+	}
+	prompt.Name = req.Name
+	prompt.Prompt = req.Prompt
+	prompt.System = req.System
+	prompt.MaxTokens = req.MaxTokens
+	prompt.IsDefault = req.IsDefault
+	if err := promptRepo.Update(prompt); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, prompt)
 }
 
 // ─── Health Check ─────────────────────────────────────────────────────────────

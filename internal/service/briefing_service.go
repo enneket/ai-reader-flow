@@ -23,6 +23,7 @@ type BriefingService struct {
 	briefingRepo   *sqlite.BriefingRepository
 	articleRepo    *sqlite.ArticleRepository
 	feedRepo       *sqlite.FeedRepository
+	promptRepo     *sqlite.PromptRepository
 	LastRefreshAt  time.Time // 最后刷新时间
 	LastBriefingAt time.Time // 最后生成简报时间
 	aiConfig       *config.AIProviderConfig
@@ -33,6 +34,7 @@ func NewBriefingService(aiConfig *config.AIProviderConfig) *BriefingService {
 		briefingRepo: sqlite.NewBriefingRepository(),
 		articleRepo:  sqlite.NewArticleRepository(),
 		feedRepo:     sqlite.NewFeedRepository(),
+		promptRepo:   sqlite.NewPromptRepository(),
 		aiConfig:     aiConfig,
 	}
 }
@@ -314,6 +316,22 @@ func (s *BriefingService) buildArticlesInput(articles []models.Article) string {
 }
 
 func (s *BriefingService) buildPrompt(articlesInput string, totalArticles, batchIndex, totalBatches int) string {
+	// Try to get configurable prompt first
+	if s.promptRepo != nil {
+		promptConfig, err := s.promptRepo.GetDefault("briefing")
+		if err == nil && promptConfig != nil && promptConfig.Prompt != "" {
+			// Replace placeholders in the template
+			prompt := promptConfig.Prompt
+			prompt = strings.ReplaceAll(prompt, "{articles}", articlesInput)
+			prompt = strings.ReplaceAll(prompt, "{totalArticles}", fmt.Sprintf("%d", totalArticles))
+			prompt = strings.ReplaceAll(prompt, "{batchIndex}", fmt.Sprintf("%d", batchIndex+1))
+			prompt = strings.ReplaceAll(prompt, "{totalBatches}", fmt.Sprintf("%d", totalBatches))
+			prompt = strings.ReplaceAll(prompt, "{topicLimit}", fmt.Sprintf("%d", 5))
+			return promptConfig.System + "\n" + prompt
+		}
+	}
+
+	// Fallback to default prompt
 	isSingleBatch := totalBatches == 1
 	topicLimit := 5
 	if !isSingleBatch {
