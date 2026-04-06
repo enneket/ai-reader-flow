@@ -18,6 +18,9 @@ export const en = {
     viewDead: "View",
     deadFeedTitle: "Feed Unavailable",
     deadFeedMessage: "\"{{name}}\" is unavailable.",
+    markAllRead: "Mark all as read",
+    markFeedRead: "Mark as read",
+    markFailed: "Failed to mark as read",
   },
   articles: {
     title: "Articles",
