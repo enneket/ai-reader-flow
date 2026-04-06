@@ -77,8 +77,16 @@ func GetProvider() AIServiceProvider {
 }
 
 func (p *OpenAIProvider) GenerateSummary(content string) (string, error) {
-	systemPrompt := "You are a helpful assistant that summarizes articles. Provide a concise summary in 2-3 sentences."
-	userPrompt := fmt.Sprintf("Summarize the following article:\n\n%s", content)
+	systemPrompt := `你是一名资深内容分析师，擅长用最极简的语言精准捕捉文章灵魂。输出必须为中文、客观、单段长句（可用逗号、句号，禁止分段/换行），禁止任何列表符号（- * 1.等），禁止出现"这篇文章讲了/摘要如下"等前置废话。`
+	userPrompt := fmt.Sprintf(`为提供的文本创作一份"快读摘要"，旨在让读者在30秒内掌握核心情报。
+
+要求：
+1) 极简主义：剔除背景铺垫、案例细节、营销话术及修饰性词汇，直奔主题。
+2) 内容密度：必须包含核心主体、关键动作/事件、最终影响/结论。
+3) 篇幅：严格控制在50-150字之间。
+
+待摘要内容：
+%s`, content)
 
 	reqBody := map[string]interface{}{
 		"model": p.Model,
@@ -213,8 +221,16 @@ func (p *OpenAIProvider) GenerateBriefing(prompt string) (string, error) {
 }
 
 func (p *ClaudeProvider) GenerateSummary(content string) (string, error) {
-	systemPrompt := "You are a helpful assistant that summarizes articles. Provide a concise summary in 2-3 sentences."
-	userPrompt := fmt.Sprintf("Summarize the following article:\n\n%s", content)
+	systemPrompt := `你是一名资深内容分析师，擅长用最极简的语言精准捕捉文章灵魂。输出必须为中文、客观、单段长句（可用逗号、句号，禁止分段/换行），禁止任何列表符号（- * 1.等），禁止出现"这篇文章讲了/摘要如下"等前置废话。`
+	userPrompt := fmt.Sprintf(`为提供的文本创作一份"快读摘要"，旨在让读者在30秒内掌握核心情报。
+
+要求：
+1) 极简主义：剔除背景铺垫、案例细节、营销话术及修饰性词汇，直奔主题。
+2) 内容密度：必须包含核心主体、关键动作/事件、最终影响/结论。
+3) 篇幅：严格控制在50-150字之间。
+
+待摘要内容：
+%s`, content)
 
 	reqBody := map[string]interface{}{
 		"model": p.Model,
@@ -332,8 +348,16 @@ func (p *ClaudeProvider) GenerateBriefing(prompt string) (string, error) {
 }
 
 func (p *OllamaProvider) GenerateSummary(content string) (string, error) {
-	systemPrompt := "You are a helpful assistant that summarizes articles. Provide a concise summary in 2-3 sentences."
-	userPrompt := fmt.Sprintf("Summarize the following article:\n\n%s", content)
+	systemPrompt := `你是一名资深内容分析师，擅长用最极简的语言精准捕捉文章灵魂。输出必须为中文、客观、单段长句（可用逗号、句号，禁止分段/换行），禁止任何列表符号（- * 1.等），禁止出现"这篇文章讲了/摘要如下"等前置废话。`
+	userPrompt := fmt.Sprintf(`为提供的文本创作一份"快读摘要"，旨在让读者在30秒内掌握核心情报。
+
+要求：
+1) 极简主义：剔除背景铺垫、案例细节、营销话术及修饰性词汇，直奔主题。
+2) 内容密度：必须包含核心主体、关键动作/事件、最终影响/结论。
+3) 篇幅：严格控制在50-150字之间。
+
+待摘要内容：
+%s`, content)
 
 	reqBody := map[string]interface{}{
 		"model": p.Model,
