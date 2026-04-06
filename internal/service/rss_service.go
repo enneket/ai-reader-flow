@@ -1,6 +1,7 @@
 package service
 
 import (
+	"ai-rss-reader/internal/ai"
 	"ai-rss-reader/internal/fetch"
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/repository/sqlite"
@@ -272,7 +273,64 @@ func (s *RSSService) RefreshArticle(id int64) (*models.Article, error) {
 	if err := s.articleRepo.Update(article); err != nil {
 		return article, err
 	}
+	// Translate if English (after fetching full content)
+	if article.Link != "" {
+		if err := s.TranslateArticle(article); err != nil {
+			log.Printf("warning: translation failed for article %d: %v", article.ID, err)
+			// Don't fail the refresh if translation fails
+		}
+	}
 	return article, nil
+}
+
+// TranslateArticle translates article content to Chinese if it's English.
+// Returns nil if translation succeeded or was skipped, error otherwise.
+func (s *RSSService) TranslateArticle(article *models.Article) error {
+	// Skip if already translated
+	if article.IsTranslated && article.TranslatedContent != "" {
+		return nil
+	}
+
+	// Detect language
+	if !isEnglish(article.Content) {
+		return nil // Not English, skip translation
+	}
+
+	// Get translation prompt from DB
+	promptRepo := sqlite.NewPromptRepository()
+	promptConfig, err := promptRepo.GetByType("translation")
+	if err != nil || promptConfig == nil || promptConfig.Prompt == "" {
+		// Fallback: use default prompt
+		provider := ai.GetProvider()
+		translated, err := provider.GenerateSummaryWithPrompt(
+			article.Content,
+			"你是一位精通中英文互译的专业翻译官。必须仅输出中文译文，禁止任何额外话语。",
+			"将以下英文文章翻译成中文。严格保留原始Markdown格式，专业术语使用业界通用中文表达，语言风格地道通顺。\n\n"+article.Content,
+		)
+		if err != nil {
+			log.Printf("translation failed for article %d: %v", article.ID, err)
+			return err
+		}
+		article.TranslatedContent = translated
+		article.IsTranslated = true
+	} else {
+		// Use configured prompt
+		provider := ai.GetProvider()
+		translated, err := provider.GenerateSummaryWithPrompt(article.Content, promptConfig.System, promptConfig.Prompt)
+		if err != nil {
+			log.Printf("translation failed for article %d: %v", article.ID, err)
+			return err
+		}
+		article.TranslatedContent = translated
+		article.IsTranslated = true
+	}
+
+	// Update article in DB
+	if err := s.articleRepo.Update(article); err != nil {
+		log.Printf("failed to save translation for article %d: %v", article.ID, err)
+		return err
+	}
+	return nil
 }
 
 // truncate returns the first n chars of s, stripping HTML tags.
@@ -304,4 +362,19 @@ func stripHTML(s string) string {
 		idx++
 	}
 	return string(out)
+}
+
+// isEnglish returns true if the content appears to be English based on ASCII ratio.
+// Content with >50% ASCII characters is considered English.
+func isEnglish(content string) bool {
+	if len(content) < 100 {
+		return false
+	}
+	asciiCount := 0
+	for _, r := range content {
+		if r < 128 {
+			asciiCount++
+		}
+	}
+	return float64(asciiCount)/float64(len(content)) > 0.5
 }
