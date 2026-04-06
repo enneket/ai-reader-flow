@@ -188,6 +188,32 @@ func (r *ArticleRepository) SetStatus(id int64, status string) error {
 	return nil
 }
 
+// SetAllArticlesStatus bulk-updates articles with fromStatus to toStatus.
+func (r *ArticleRepository) SetAllArticlesStatus(fromStatus, toStatus string) error {
+	if fromStatus == "unread" && toStatus != "unread" {
+		DB.Exec(`
+			UPDATE feeds SET unread_count = MAX(0, unread_count - (
+				SELECT COUNT(*) FROM articles WHERE feed_id = feeds.id AND status = 'unread'
+			))
+		`)
+	}
+	_, err := DB.Exec(`UPDATE articles SET status = ? WHERE status = ?`, toStatus, fromStatus)
+	return err
+}
+
+// SetFeedArticlesStatus marks all unread articles in a feed as the given status.
+func (r *ArticleRepository) SetFeedArticlesStatus(feedId int64, toStatus string) error {
+	if toStatus != "unread" {
+		DB.Exec(`
+			UPDATE feeds SET unread_count = MAX(0, unread_count - (
+				SELECT COUNT(*) FROM articles WHERE feed_id = ? AND status = 'unread'
+			)) WHERE id = ?
+		`, feedId, feedId)
+	}
+	_, err := DB.Exec(`UPDATE articles SET status = ? WHERE feed_id = ? AND status = 'unread'`, toStatus, feedId)
+	return err
+}
+
 func (r *ArticleRepository) GetByStatus(status string) ([]models.Article, error) {
 	return r.GetAll(status, 0, 0)
 }
