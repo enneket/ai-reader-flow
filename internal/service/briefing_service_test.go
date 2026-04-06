@@ -69,9 +69,7 @@ func TestBuildPrompt(t *testing.T) {
 	articlesInput := "文章 ID: 1\n标题: Test\n内容:\nSummary\n---"
 	prompt := svc.buildPrompt(articlesInput, 1, 0, 1)
 
-	if !strings.Contains(prompt, "System:") {
-		t.Error("prompt should contain System instruction")
-	}
+	// Fallback prompt has no "System:" prefix (System: is provider-level, not in prompt text)
 	if !strings.Contains(prompt, "User:") {
 		t.Error("prompt should contain User section")
 	}
