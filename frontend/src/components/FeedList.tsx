@@ -437,29 +437,31 @@ export function FeedList() {
         <div className="feeds-list-col">
           <div className="feeds-list-header">
             <span style={{fontSize: '0.9rem', fontWeight: 600}}>{t('feeds.title')}</span>
-            <button
-              onClick={async () => {
-                try {
-                  await api.markAllRead()
-                  await loadFeeds()
-                  if (selectedFeed) await loadArticles(selectedFeed.id)
-                } catch (err: any) {
-                  setError(err.message || '标记失败')
-                }
-              }}
-              className="btn btn-ghost btn-sm"
-              title="全部标为已读"
-            >
-              <CheckCheck size={14} />
-            </button>
-            <button
-              onClick={handleRefreshAll}
-              disabled={refreshing}
-              className="btn btn-ghost btn-sm"
-              title={t('feeds.refreshAll')}
-            >
-              <RefreshCw size={14} className={refreshing ? 'spinning' : ''} />
-            </button>
+            <div style={{display: 'flex', gap: 4}}>
+              <button
+                onClick={async () => {
+                  try {
+                    await api.markAllRead()
+                    await loadFeeds()
+                    if (selectedFeed) await loadArticles(selectedFeed.id)
+                  } catch (err: any) {
+                    setError(err.message || '标记失败')
+                  }
+                }}
+                className="btn btn-ghost btn-sm"
+                title="全部标为已读"
+              >
+                <CheckCheck size={14} />
+              </button>
+              <button
+                onClick={handleRefreshAll}
+                disabled={refreshing}
+                className="btn btn-ghost btn-sm"
+                title={t('feeds.refreshAll')}
+              >
+                <RefreshCw size={14} className={refreshing ? 'spinning' : ''} />
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleAddFeed} className="feeds-add-form">
