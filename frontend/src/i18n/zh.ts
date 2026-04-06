@@ -18,6 +18,9 @@ export const zh = {
     viewDead: "查看",
     deadFeedTitle: "订阅源已失效",
     deadFeedMessage: "「{{name}}」无法访问。",
+    markAllRead: "全部标为已读",
+    markFeedRead: "标为已读",
+    markFailed: "标记失败",
   },
   articles: {
     title: "文章",

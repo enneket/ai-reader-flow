@@ -88,6 +88,12 @@ export const api = {
   snoozeArticle: (id: number) =>
     request<void>(`/articles/${id}/snooze`, { method: 'POST' }),
 
+  markFeedRead: (feedId: number) =>
+    request<void>(`/feeds/${feedId}/mark-read`, { method: 'POST' }),
+
+  markAllRead: () =>
+    request<void>('/articles/mark-all-read', { method: 'POST' }),
+
   generateSummary: (id: number) =>
     request<{ summary: string }>(`/articles/${id}/summary`, { method: 'POST' }),
 

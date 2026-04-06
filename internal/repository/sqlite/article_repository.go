@@ -203,9 +203,8 @@ func (r *ArticleRepository) SetAllArticlesStatus(fromStatus string, toStatus str
 	return err
 }
 
-// SetFeedArticlesStatus updates the status of all articles for a specific feed.
+// SetFeedArticlesStatus marks all unread articles in a feed as the given status.
 func (r *ArticleRepository) SetFeedArticlesStatus(feedId int64, toStatus string) error {
-	// Decrement unread_count for this feed
 	if toStatus != "unread" {
 		DB.Exec(`
 			UPDATE feeds SET unread_count = MAX(0, unread_count - (
