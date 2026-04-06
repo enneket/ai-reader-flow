@@ -1,5 +1,6 @@
 import {useState} from 'react'
 import {RefreshCw, Settings, Search, X} from 'lucide-react'
+import {useTranslation} from 'react-i18next'
 import {api, Article} from '../api'
 
 interface MastheadProps {
@@ -11,6 +12,7 @@ interface MastheadProps {
 }
 
 export function Masthead({isRefreshing, onRefresh, onSettings, onSearchResults, onClearSearch}: MastheadProps) {
+  const {t} = useTranslation()
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -71,7 +73,7 @@ export function Masthead({isRefreshing, onRefresh, onSettings, onSearchResults, 
           className={`masthead-btn ${isRefreshing ? 'updating' : ''}`}
           onClick={onRefresh}
           disabled={isRefreshing || searching}
-          title="Refresh all feeds"
+          title={t('feeds.refreshAll')}
         >
           <RefreshCw size={18} className={isRefreshing ? 'spinning' : ''} />
         </button>

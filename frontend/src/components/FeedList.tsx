@@ -456,7 +456,7 @@ export function FeedList() {
               onClick={handleRefreshAll}
               disabled={refreshing}
               className="btn btn-ghost btn-sm"
-              title="Refresh all"
+              title={t('feeds.refreshAll')}
             >
               <RefreshCw size={14} className={refreshing ? 'spinning' : ''} />
             </button>
