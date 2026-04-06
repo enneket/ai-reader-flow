@@ -328,7 +328,9 @@ func (s *BriefingService) buildPrompt(articlesInput string, totalArticles, batch
 			prompt = strings.ReplaceAll(prompt, "{batchIndex}", fmt.Sprintf("%d", batchIndex+1))
 			prompt = strings.ReplaceAll(prompt, "{totalBatches}", fmt.Sprintf("%d", totalBatches))
 			prompt = strings.ReplaceAll(prompt, "{topicLimit}", fmt.Sprintf("%d", 5))
-			return promptConfig.System + "\n" + prompt + "\n\n输出格式（严格按 JSON，不要有其他内容）：\n{\n  \"topics\": [\n    {\n      \"name\": \"主题名称\",\n      \"summary\": \"一段话\",\n      \"articles\": [\n        {\"id\": 1, \"insight\": \"一句话描述\"}\n      ]\n    }\n  ]\n}"
+			// Default length guidance if {length} not in template
+			prompt = strings.ReplaceAll(prompt, "{length}", "500-800 字")
+			return promptConfig.System + "\n" + prompt
 		}
 	}
 
@@ -344,50 +346,46 @@ func (s *BriefingService) buildPrompt(articlesInput string, totalArticles, batch
 		multiBatchNote = fmt.Sprintf("\n提示：这是第 %d/%d 批文章，请关注本批内容，合并时，会将各批结果去重合并。", batchIndex+1, totalBatches)
 	}
 
-	return fmt.Sprintf(`System: 你是一个科技新闻爱好者，给朋友分享今天看到的有趣内容。
+	return fmt.Sprintf(`根据以下文章，生成一份结构清晰、重点突出的简报。
 
-给定一组文章，你需要：
-1. 把文章按主题归类（内容相近的放一起）
-2. 给每个主题起个简短好记的名字
-3. 写几句"和朋友聊天"风格的介绍：像在社交媒体上分享那样自然，不用端着
+【核心提炼】
+- 精准抓取每篇文章的核心观点、关键数据、核心事件
+- 不遗漏重点，不添加无关内容
 
-输出格式（严格按 JSON，不要有其他内容）：
+【逻辑整合】
+- 将多篇文章的关联内容整合，避免重复
+- 按「总 - 分 - 总」结构呈现：总述核心共性 / 整体概况，分述每篇核心要点，总述总结与延伸
+
+【语言要求】
+- 简洁凝练、正式规范，适配简报体裁
+- 避免口语化，关键信息可适当加粗
+- 篇幅：500-800 字
+
+【补充要求】
+- 若文章有冲突观点，需客观呈现
+- 若有重点数据、时间、人物等关键信息，需准确标注
+- 结尾提炼共性结论或核心启示
+
+输出格式（严格 JSON，不要有其他内容）：
 {
   "topics": [
     {
       "name": "主题名称",
-      "summary": "一段自然的话，像在跟朋友介绍这个主题在聊什么、为什么有意思（长度随意，有话则长无话则短）",
+      "summary": "总述：这几篇文章的共性是什么、整体在讨论什么议题",
       "articles": [
-        {"id": 101, "insight": "一句话描述这篇文章有意思的地方，像在跟朋友说"},
-        {"id": 102, "insight": "一句话描述这篇文章有意思的地方，像在跟朋友说"}
-      ]
+        {"id": 101, "insight": "分述：这篇的核心观点/关键数据/核心事件"},
+        {"id": 102, "insight": "分述：这篇的核心观点/关键数据/核心事件"}
+      ],
+      "conclusion": "总述：总结该主题的共性结论或核心启示"
     }
   ]
 }
-
-示例对话风格：
-
-示例1：
-用户分享：有篇文章说有个游戏工具可以让你边玩边学 GPU 架构，之前只有干巴巴的文档。
-朋友回应：哇，这个听起来有意思！之前想了解 GPU 架构都得看英文文档，现在能边玩边学，门槛低多了。
-
-示例2：
-用户分享：今天看到几个有意思的工具——有个游戏化学 GPU 学习的，有共享 GPU 节点的 sllm。总体感觉是：门槛在降低，边界在扩大。
-朋友回应：确实，现在各种工具越来越接地气了，不像以前那样高高在上。
-
-禁止使用的表达（这些是糟糕的模板，要避免）：
-- "核心发现是..."
-- "相比传统..."
-- "对...有参考价值"
-- "该主题聚焦..."
-- "值得关&#40;注&#41;..."
 
 规则：
 - 每个简报最多 %d 个主题
 - 每个主题最多 5 篇核心文章
 - 只包含真正有价值的文章，无关内容请忽略
 - 主题按文章数量排序（多的在前）
-- summary 要有信息量，能让人快速 get 到这个领域在发生什么
 - 如果文章太少或无价值，返回空的 topics 数组%s
 
 User: 以下是今天的文章（共 %d 篇，第 %d/%d 批）：
