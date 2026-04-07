@@ -473,12 +473,13 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Mark refresh complete immediately — feed fetch is done, filtering runs in background
+		// Mark refresh complete — update LastRefreshAt so next briefing only gets new articles
 		events.GlobalRefreshStatus.Mutex.Lock()
 		events.GlobalRefreshStatus.InProgress = false
 		// Success/Failed already set by callbacks
 		events.GlobalRefreshStatus.Mutex.Unlock()
 
+		briefingService.LastRefreshAt = time.Now()
 	}()
 }
 

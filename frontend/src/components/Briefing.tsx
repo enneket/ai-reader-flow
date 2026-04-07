@@ -27,6 +27,8 @@ export function Briefing() {
   const [progress, setProgress] = useState<ProgressState>({type: 'idle', message: ''})
   const [modal, setModal] = useState<{type: 'warning'|'error'; title: string; content: string} | null>(null)
   const briefingPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Use ref for true guard (avoids async setState race with double-click)
+  const generatingRef = useRef(false)
 
   injectAppModalStyles()
 
@@ -98,6 +100,7 @@ export function Briefing() {
         const latest = data[0]
         if (latest.status === 'completed') {
           setProgress({type: 'idle', message: ''})
+          generatingRef.current = false
           setGenerating(false)
           if (briefingPollTimer.current) {
             clearTimeout(briefingPollTimer.current)
@@ -108,6 +111,7 @@ export function Briefing() {
         }
         if (latest.status === 'failed') {
           setProgress({type: 'idle', message: ''})
+          generatingRef.current = false
           setGenerating(false)
           if (briefingPollTimer.current) {
             clearTimeout(briefingPollTimer.current)
@@ -123,6 +127,7 @@ export function Briefing() {
           clearTimeout(briefingPollTimer.current)
           briefingPollTimer.current = null
         }
+        generatingRef.current = false
         setGenerating(false)
         setProgress({type: 'idle', message: ''})
       }
@@ -157,6 +162,13 @@ export function Briefing() {
   }
 
   const handleGenerate = async () => {
+    // Guard against double-click using ref (sync, no async setState race)
+    if (generatingRef.current) return
+
+    // Immediately disable the button before the async call
+    generatingRef.current = true
+    setGenerating(true)
+
     try {
       const result = await api.generateBriefing()
       if (!result.success) {
@@ -165,11 +177,15 @@ export function Briefing() {
         } else {
           setModal({type: 'error', title: '错误', content: result.error || '生成失败'})
         }
+        // Reset generating since the operation didn't actually start
+        generatingRef.current = false
+        setGenerating(false)
         return
       }
       // Polling will handle setting generating=false on completion/error
-      setGenerating(true)
     } catch (err: any) {
+      generatingRef.current = false
+      setGenerating(false)
       if (err.message.includes('409')) {
         setModal({type: 'warning', title: '操作冲突', content: '正在刷新或生成中，请稍候'})
       } else {
