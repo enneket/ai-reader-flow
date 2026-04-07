@@ -735,53 +735,67 @@ func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer events.GlobalOperationState.Unlock()
 
-		// Broadcast start
-		events.GlobalBroadcaster.Broadcast(events.EventBriefingStart, struct{}{})
-
 		// 1. Refresh all feeds with progress
 		feeds, _ := rssService.GetFeeds()
 		total := len(feeds)
-		events.GlobalBroadcaster.Broadcast(events.EventRefreshStart, map[string]int{"total": total})
+
+		events.GlobalRefreshStatus.Mutex.Lock()
+		events.GlobalRefreshStatus.InProgress = true
+		events.GlobalRefreshStatus.Current = 0
+		events.GlobalRefreshStatus.Total = total
+		events.GlobalRefreshStatus.FeedTitle = ""
+		events.GlobalRefreshStatus.Success = 0
+		events.GlobalRefreshStatus.Failed = 0
+		events.GlobalRefreshStatus.Error = ""
+		events.GlobalRefreshStatus.Results = make(map[int64]events.FeedRefreshResult)
+		events.GlobalRefreshStatus.Mutex.Unlock()
 
 		refreshErr := rssService.RefreshAllFeedsWithProgress(func(idx, total int, feedTitle string, feedId int64, newCount int, errMsg string) {
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshProgress, events.RefreshProgress{
-				Current:   idx,
-				Total:     total,
-				FeedTitle: feedTitle,
-				FeedId:    feedId,
-				NewCount:  newCount,
-				Error:     errMsg,
-			})
+			events.GlobalRefreshStatus.Mutex.Lock()
+			events.GlobalRefreshStatus.FeedTitle = feedTitle
+
+			result := events.FeedRefreshResult{
+				FeedID:   feedId,
+				Title:    feedTitle,
+				Success:  errMsg == "",
+				NewCount: newCount,
+				Error:    errMsg,
+			}
+
+			if errMsg != "" {
+				events.GlobalRefreshStatus.Failed++
+				events.GlobalRefreshStatus.Results[feedId] = result
+			} else {
+				events.GlobalRefreshStatus.Success++
+				events.GlobalRefreshStatus.Results[feedId] = result
+			}
+			events.GlobalRefreshStatus.Current = events.GlobalRefreshStatus.Success + events.GlobalRefreshStatus.Failed
+			events.GlobalRefreshStatus.Mutex.Unlock()
 		})
 
 		if refreshErr != nil {
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshError, map[string]string{"message": refreshErr.Error()})
-			events.GlobalBroadcaster.Broadcast(events.EventBriefingError, map[string]string{"message": refreshErr.Error()})
+			events.GlobalRefreshStatus.Mutex.Lock()
+			events.GlobalRefreshStatus.InProgress = false
+			events.GlobalRefreshStatus.Error = refreshErr.Error()
+			events.GlobalRefreshStatus.Mutex.Unlock()
 			return
 		}
 
-		events.GlobalBroadcaster.Broadcast(events.EventRefreshComplete, events.RefreshComplete{Success: total, Failed: 0})
+		events.GlobalRefreshStatus.Mutex.Lock()
+		events.GlobalRefreshStatus.InProgress = false
+		events.GlobalRefreshStatus.Mutex.Unlock()
 
 		// 2. Generate briefing with progress
-		briefing, err := briefingService.GenerateBriefingWithProgress(func(stage, detail string) {
-			events.GlobalBroadcaster.Broadcast(events.EventBriefingProgress, events.BriefingProgress{
-				Stage:  stage,
-				Detail: detail,
-			})
+		_, err := briefingService.GenerateBriefingWithProgress(func(stage, detail string) {
+			// Progress tracked via polling /api/progress — no action needed here
 		})
 
 		if err != nil {
-			events.GlobalBroadcaster.Broadcast(events.EventBriefingError, map[string]string{"message": err.Error()})
 			return
 		}
 
 		// 3. Only update LastRefreshAt after successful briefing
 		briefingService.LastRefreshAt = time.Now()
-
-		// Broadcast complete
-		events.GlobalBroadcaster.Broadcast(events.EventBriefingComplete, events.BriefingComplete{
-			BriefingID: briefing.ID,
-		})
 	}()
 }
 
