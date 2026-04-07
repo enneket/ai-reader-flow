@@ -155,8 +155,8 @@ func main() {
 	// Export
 	mux.HandleFunc("GET /api/export", handleExport)
 
-	// SSE events stream
-	mux.HandleFunc("GET /api/events", handleSSEvents)
+	// Progress polling (replaces SSE)
+	mux.HandleFunc("GET /api/progress", handleProgress)
 
 	// CORS middleware
 	handler := corsMiddleware(mux)
@@ -426,9 +426,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 		feeds, _ := rssService.GetFeeds()
 		total := len(feeds)
 
-		// Broadcast start event
-		events.GlobalBroadcaster.Broadcast(events.EventRefreshStart, map[string]int{"total": total})
-
 		// Update status: start
 		events.GlobalRefreshStatus.Mutex.Lock()
 		events.GlobalRefreshStatus.InProgress = true
@@ -443,16 +440,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 
 		// Refresh with progress callback
 		err := rssService.RefreshAllFeedsWithProgress(func(idx, total int, feedTitle string, feedId int64, newCount int, errMsg string) {
-			// Broadcast progress event
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshProgress, events.RefreshProgress{
-				Current:   idx,
-				Total:    total,
-				FeedTitle: feedTitle,
-				FeedId:   feedId,
-				NewCount: newCount,
-				Error:    errMsg,
-			})
-
 			events.GlobalRefreshStatus.Mutex.Lock()
 			events.GlobalRefreshStatus.FeedTitle = feedTitle
 
@@ -483,7 +470,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 			events.GlobalRefreshStatus.InProgress = false
 			events.GlobalRefreshStatus.Error = err.Error()
 			events.GlobalRefreshStatus.Mutex.Unlock()
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshError, map[string]string{"message": err.Error()})
 			return
 		}
 
@@ -492,10 +478,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 		events.GlobalRefreshStatus.InProgress = false
 		// Success/Failed already set by callbacks
 		events.GlobalRefreshStatus.Mutex.Unlock()
-		events.GlobalBroadcaster.Broadcast(events.EventRefreshComplete, events.RefreshComplete{
-			Success: events.GlobalRefreshStatus.Success,
-			Failed: events.GlobalRefreshStatus.Failed,
-		})
 
 	}()
 }
@@ -753,53 +735,67 @@ func handleGenerateBriefing(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer events.GlobalOperationState.Unlock()
 
-		// Broadcast start
-		events.GlobalBroadcaster.Broadcast(events.EventBriefingStart, struct{}{})
-
 		// 1. Refresh all feeds with progress
 		feeds, _ := rssService.GetFeeds()
 		total := len(feeds)
-		events.GlobalBroadcaster.Broadcast(events.EventRefreshStart, map[string]int{"total": total})
+
+		events.GlobalRefreshStatus.Mutex.Lock()
+		events.GlobalRefreshStatus.InProgress = true
+		events.GlobalRefreshStatus.Current = 0
+		events.GlobalRefreshStatus.Total = total
+		events.GlobalRefreshStatus.FeedTitle = ""
+		events.GlobalRefreshStatus.Success = 0
+		events.GlobalRefreshStatus.Failed = 0
+		events.GlobalRefreshStatus.Error = ""
+		events.GlobalRefreshStatus.Results = make(map[int64]events.FeedRefreshResult)
+		events.GlobalRefreshStatus.Mutex.Unlock()
 
 		refreshErr := rssService.RefreshAllFeedsWithProgress(func(idx, total int, feedTitle string, feedId int64, newCount int, errMsg string) {
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshProgress, events.RefreshProgress{
-				Current:   idx,
-				Total:     total,
-				FeedTitle: feedTitle,
-				FeedId:    feedId,
-				NewCount:  newCount,
-				Error:     errMsg,
-			})
+			events.GlobalRefreshStatus.Mutex.Lock()
+			events.GlobalRefreshStatus.FeedTitle = feedTitle
+
+			result := events.FeedRefreshResult{
+				FeedID:   feedId,
+				Title:    feedTitle,
+				Success:  errMsg == "",
+				NewCount: newCount,
+				Error:    errMsg,
+			}
+
+			if errMsg != "" {
+				events.GlobalRefreshStatus.Failed++
+				events.GlobalRefreshStatus.Results[feedId] = result
+			} else {
+				events.GlobalRefreshStatus.Success++
+				events.GlobalRefreshStatus.Results[feedId] = result
+			}
+			events.GlobalRefreshStatus.Current = events.GlobalRefreshStatus.Success + events.GlobalRefreshStatus.Failed
+			events.GlobalRefreshStatus.Mutex.Unlock()
 		})
 
 		if refreshErr != nil {
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshError, map[string]string{"message": refreshErr.Error()})
-			events.GlobalBroadcaster.Broadcast(events.EventBriefingError, map[string]string{"message": refreshErr.Error()})
+			events.GlobalRefreshStatus.Mutex.Lock()
+			events.GlobalRefreshStatus.InProgress = false
+			events.GlobalRefreshStatus.Error = refreshErr.Error()
+			events.GlobalRefreshStatus.Mutex.Unlock()
 			return
 		}
 
-		events.GlobalBroadcaster.Broadcast(events.EventRefreshComplete, events.RefreshComplete{Success: total, Failed: 0})
+		events.GlobalRefreshStatus.Mutex.Lock()
+		events.GlobalRefreshStatus.InProgress = false
+		events.GlobalRefreshStatus.Mutex.Unlock()
 
 		// 2. Generate briefing with progress
-		briefing, err := briefingService.GenerateBriefingWithProgress(func(stage, detail string) {
-			events.GlobalBroadcaster.Broadcast(events.EventBriefingProgress, events.BriefingProgress{
-				Stage:  stage,
-				Detail: detail,
-			})
+		_, err := briefingService.GenerateBriefingWithProgress(func(stage, detail string) {
+			// Progress tracked via polling /api/progress — no action needed here
 		})
 
 		if err != nil {
-			events.GlobalBroadcaster.Broadcast(events.EventBriefingError, map[string]string{"message": err.Error()})
 			return
 		}
 
 		// 3. Only update LastRefreshAt after successful briefing
 		briefingService.LastRefreshAt = time.Now()
-
-		// Broadcast complete
-		events.GlobalBroadcaster.Broadcast(events.EventBriefingComplete, events.BriefingComplete{
-			BriefingID: briefing.ID,
-		})
 	}()
 }
 
@@ -1238,45 +1234,31 @@ func stripHTML(html string) string {
 	return strings.Join(clean, "\n")
 }
 
-// ─── SSE Events ───────────────────────────────────────────────────────────────
+// ─── Progress Polling ──────────────────────────────────────────────────────────
 
-func handleSSEvents(w http.ResponseWriter, r *http.Request) {
+func handleProgress(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Set SSE headers
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no")
-	w.WriteHeader(http.StatusOK)
+	op := events.GlobalOperationState.Current()
+	resp := events.ProgressResponse{Operation: op}
 
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "SSE not supported", http.StatusInternalServerError)
-		return
-	}
-
-	ch := events.GlobalBroadcaster.Add()
-	defer events.GlobalBroadcaster.Remove(ch)
-
-	// Send initial ping
-	fmt.Fprintf(w, "event: ping\r\ndata: {}\r\n\r\n")
-	flusher.Flush()
-
-	// Keep connection alive, drain messages
-	for {
-		select {
-		case data, ok := <-ch:
-			if !ok {
-				return
-			}
-			fmt.Fprint(w, data)
-			flusher.Flush()
-		case <-r.Context().Done():
-			return
+	if op == "refreshing" || op == "generating" {
+		events.GlobalRefreshStatus.Mutex.Lock()
+		resp.Refresh = &events.RefreshStatusDTO{
+			InProgress: events.GlobalRefreshStatus.InProgress,
+			Current:    events.GlobalRefreshStatus.Current,
+			Total:      events.GlobalRefreshStatus.Total,
+			FeedTitle:  events.GlobalRefreshStatus.FeedTitle,
+			Success:    events.GlobalRefreshStatus.Success,
+			Failed:     events.GlobalRefreshStatus.Failed,
+			Error:      events.GlobalRefreshStatus.Error,
 		}
+		events.GlobalRefreshStatus.Mutex.Unlock()
 	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
+

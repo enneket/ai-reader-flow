@@ -10,3 +10,4 @@ frontend/dist
 /server
 data/
 *.log
+.worktrees/

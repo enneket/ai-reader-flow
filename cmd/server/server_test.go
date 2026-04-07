@@ -349,17 +349,6 @@ func TestHandleImportOPMLNoFeeds(t *testing.T) {
 	}
 }
 
-func TestHandleSSEventsMethodNotAllowed(t *testing.T) {
-	req := httptest.NewRequest("POST", "/api/events", nil)
-	rr := httptest.NewRecorder()
-
-	handleSSEvents(rr, req)
-
-	if rr.Code != http.StatusMethodNotAllowed {
-		t.Errorf("events POST status = %d, want %d", rr.Code, http.StatusMethodNotAllowed)
-	}
-}
-
 func TestHandleGetAIConfigNoConfig(t *testing.T) {
 	// Save original
 	orig := config.AppConfig_

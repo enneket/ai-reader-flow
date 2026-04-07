@@ -175,6 +175,10 @@ export const api = {
   deleteBriefing: (id: number) =>
     request<void>(`/briefings/${id}`, { method: 'DELETE' }),
 
+  // ─── Progress ───────────────────────────────────────────────────────────
+
+  getProgress: () => request<ProgressResponse>('/progress'),
+
   // ─── Prompts ────────────────────────────────────────────────────────────
 
   getPrompts: () => request<PromptConfig[]>('/prompts'),
@@ -265,6 +269,19 @@ export interface FeedRefreshResult {
   success: boolean
   newCount: number
   error: string
+}
+
+export interface ProgressResponse {
+  operation: 'idle' | 'refreshing' | 'generating'
+  refresh?: {
+    inProgress: boolean
+    current: number
+    total: number
+    feedTitle: string
+    success: number
+    failed: number
+    error: string
+  } | null
 }
 
 export interface RefreshStatusResponse {
