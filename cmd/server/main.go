@@ -155,8 +155,8 @@ func main() {
 	// Export
 	mux.HandleFunc("GET /api/export", handleExport)
 
-	// SSE events stream
-	mux.HandleFunc("GET /api/events", handleSSEvents)
+	// Progress polling (replaces SSE)
+	mux.HandleFunc("GET /api/progress", handleProgress)
 
 	// CORS middleware
 	handler := corsMiddleware(mux)
@@ -1236,6 +1236,34 @@ func stripHTML(html string) string {
 		}
 	}
 	return strings.Join(clean, "\n")
+}
+
+// ─── Progress Polling ──────────────────────────────────────────────────────────
+
+func handleProgress(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	op := events.GlobalOperationState.Current()
+	resp := events.ProgressResponse{Operation: op}
+
+	if op == "refreshing" || op == "generating" {
+		events.GlobalRefreshStatus.Mutex.Lock()
+		resp.Refresh = &events.RefreshStatusDTO{
+			InProgress: events.GlobalRefreshStatus.InProgress,
+			Current:    events.GlobalRefreshStatus.Current,
+			Total:      events.GlobalRefreshStatus.Total,
+			FeedTitle:  events.GlobalRefreshStatus.FeedTitle,
+			Success:    events.GlobalRefreshStatus.Success,
+			Failed:     events.GlobalRefreshStatus.Failed,
+			Error:      events.GlobalRefreshStatus.Error,
+		}
+		events.GlobalRefreshStatus.Mutex.Unlock()
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // ─── SSE Events ───────────────────────────────────────────────────────────────

@@ -79,6 +79,13 @@ func (s *OperationState) Unlock() {
 	s.mutex.Unlock()
 }
 
+// Current returns the current operation name ("idle", "refreshing", "generating")
+func (s *OperationState) Current() string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.current
+}
+
 // Global operation state instance
 var GlobalOperationState = &OperationState{}
 
@@ -109,6 +116,23 @@ var GlobalRefreshStatus = &RefreshStatus{}
 type Event struct {
 	Type    string      `json:"type"`
 	Payload interface{} `json:"payload,omitempty"`
+}
+
+// ProgressResponse is the JSON payload returned by GET /api/progress
+type ProgressResponse struct {
+	Operation string           `json:"operation"` // "idle" | "refreshing" | "generating"
+	Refresh   *RefreshStatusDTO `json:"refresh,omitempty"`
+}
+
+// RefreshStatusDTO mirrors GlobalRefreshStatus for JSON serialization
+type RefreshStatusDTO struct {
+	InProgress bool   `json:"inProgress"`
+	Current    int    `json:"current"`
+	Total      int    `json:"total"`
+	FeedTitle  string `json:"feedTitle"`
+	Success    int    `json:"success"`
+	Failed     int    `json:"failed"`
+	Error      string `json:"error"`
 }
 
 type Broadcaster struct {
