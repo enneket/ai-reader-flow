@@ -1,10 +1,10 @@
 services:
-  api:
+  app:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: Dockerfile
     ports:
-      - "18562:5562"
+      - "8080:80"
     volumes:
       - ./data:/data
     environment:
@@ -12,16 +12,6 @@ services:
       - PORT=5562
     extra_hosts:
       - "news.ycombinator.com:140.82.114.34"
-    restart: unless-stopped
-
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile.web
-    ports:
-      - "5561:80"
-    depends_on:
-      - api
     restart: unless-stopped
 
 volumes:
