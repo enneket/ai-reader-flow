@@ -426,9 +426,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 		feeds, _ := rssService.GetFeeds()
 		total := len(feeds)
 
-		// Broadcast start event
-		events.GlobalBroadcaster.Broadcast(events.EventRefreshStart, map[string]int{"total": total})
-
 		// Update status: start
 		events.GlobalRefreshStatus.Mutex.Lock()
 		events.GlobalRefreshStatus.InProgress = true
@@ -443,16 +440,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 
 		// Refresh with progress callback
 		err := rssService.RefreshAllFeedsWithProgress(func(idx, total int, feedTitle string, feedId int64, newCount int, errMsg string) {
-			// Broadcast progress event
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshProgress, events.RefreshProgress{
-				Current:   idx,
-				Total:    total,
-				FeedTitle: feedTitle,
-				FeedId:   feedId,
-				NewCount: newCount,
-				Error:    errMsg,
-			})
-
 			events.GlobalRefreshStatus.Mutex.Lock()
 			events.GlobalRefreshStatus.FeedTitle = feedTitle
 
@@ -483,7 +470,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 			events.GlobalRefreshStatus.InProgress = false
 			events.GlobalRefreshStatus.Error = err.Error()
 			events.GlobalRefreshStatus.Mutex.Unlock()
-			events.GlobalBroadcaster.Broadcast(events.EventRefreshError, map[string]string{"message": err.Error()})
 			return
 		}
 
@@ -492,10 +478,6 @@ func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
 		events.GlobalRefreshStatus.InProgress = false
 		// Success/Failed already set by callbacks
 		events.GlobalRefreshStatus.Mutex.Unlock()
-		events.GlobalBroadcaster.Broadcast(events.EventRefreshComplete, events.RefreshComplete{
-			Success: events.GlobalRefreshStatus.Success,
-			Failed: events.GlobalRefreshStatus.Failed,
-		})
 
 	}()
 }
