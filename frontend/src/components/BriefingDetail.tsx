@@ -24,30 +24,13 @@ export function BriefingDetail() {
     loadBriefing()
   }, [id])
 
-  // SSE listener for briefing status updates + polling fallback
+  // Poll every 3s while briefing is generating
   useEffect(() => {
-    // Poll every 3s while briefing is generating
+    if (briefing?.status !== 'generating') return
     const pollInterval = setInterval(() => {
-      if (briefing?.status === 'generating') {
-        loadBriefing()
-      }
+      loadBriefing()
     }, 3000)
-
-    // SSE for real-time completion/error events
-    const es = new EventSource('/api/events')
-
-    es.addEventListener('briefing:complete', () => {
-      loadBriefing()
-    })
-
-    es.addEventListener('briefing:error', () => {
-      loadBriefing()
-    })
-
-    return () => {
-      clearInterval(pollInterval)
-      es.close()
-    }
+    return () => clearInterval(pollInterval)
   }, [briefing?.status])
 
   const loadBriefing = async () => {
