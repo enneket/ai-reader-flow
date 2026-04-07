@@ -83,6 +83,9 @@ func (s *OperationState) Unlock() {
 func (s *OperationState) Current() string {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if s.current == "" {
+		return "idle"
+	}
 	return s.current
 }
 
