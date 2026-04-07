@@ -80,10 +80,10 @@ export function FeedList() {
 
     const poll = async () => {
       try {
-        const res = await fetch('/api/refresh/status')
+        const res = await fetch('/api/progress')
         const data = await res.json()
 
-        if (!data.inProgress) {
+        if (data.operation === 'idle') {
           setRefreshingMessage('刷新完成')
           setRefreshingPercent(100)
           if (refreshPollTimer.current) {
@@ -98,10 +98,10 @@ export function FeedList() {
           return
         }
 
-        const completed = data.current || 0
-        const total = data.total || 0
+        const completed = data.refresh?.current || 0
+        const total = data.refresh?.total || 0
         const percent = total > 0 ? Math.round((completed / total) * 100) : 0
-        setRefreshingMessage(`正在刷新 ${data.feedTitle || ''} (${completed}/${total})`)
+        setRefreshingMessage(`正在刷新 ${data.refresh?.feedTitle || ''} (${completed}/${total})`)
         setRefreshingPercent(percent)
 
         // Schedule next poll immediately

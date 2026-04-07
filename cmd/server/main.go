@@ -100,7 +100,6 @@ func main() {
 	mux.HandleFunc("GET /api/feeds/dead", handleGetDeadFeeds)
 	mux.HandleFunc("DELETE /api/feeds/dead/{id}", handleDeleteDeadFeed)
 	mux.HandleFunc("POST /api/feeds/{id}/refresh", handleRefreshFeed)
-	mux.HandleFunc("GET /api/refresh/status", handleGetRefreshStatus)
 	mux.HandleFunc("POST /api/refresh", handleRefreshAllFeeds)
 
 	// Articles
@@ -376,29 +375,6 @@ func handleRefreshFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func handleGetRefreshStatus(w http.ResponseWriter, r *http.Request) {
-	events.GlobalRefreshStatus.Mutex.Lock()
-	defer events.GlobalRefreshStatus.Mutex.Unlock()
-
-	if !events.GlobalRefreshStatus.InProgress {
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"inProgress": false,
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"inProgress": true,
-		"current":    events.GlobalRefreshStatus.Current,
-		"total":      events.GlobalRefreshStatus.Total,
-		"feedTitle":  events.GlobalRefreshStatus.FeedTitle,
-		"success":    events.GlobalRefreshStatus.Success,
-		"failed":     events.GlobalRefreshStatus.Failed,
-		"error":      events.GlobalRefreshStatus.Error,
-		"results":    events.GlobalRefreshStatus.Results,
-	})
 }
 
 func handleRefreshAllFeeds(w http.ResponseWriter, r *http.Request) {
