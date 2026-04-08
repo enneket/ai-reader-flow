@@ -1,5 +1,7 @@
 # Stage 1: Build React
 FROM node:20-alpine AS frontend_builder
+ENV HTTP_PROXY=http://192.168.0.112:7897
+ENV HTTPS_PROXY=http://192.168.0.112:7897
 WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm install
@@ -8,20 +10,25 @@ RUN npm run build
 
 # Stage 2: Build Go
 FROM golang:bookworm AS go_builder
+ENV HTTP_PROXY=http://192.168.0.112:7897
+ENV HTTPS_PROXY=http://192.168.0.112:7897
+RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o server ./cmd/server
+RUN go build -o server ./cmd/server
 
 # Final stage
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
     supervisor \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /etc/nginx/sites-enabled/default
 
 # Setup supervisord
+RUN mkdir -p /var/log/supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Copy Go binary

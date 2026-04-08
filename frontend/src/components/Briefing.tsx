@@ -8,13 +8,6 @@ import {AppModal, injectAppModalStyles} from './AppModal'
 
 const PAGE_SIZE = 20
 
-type ProgressState = {
-  type: 'idle' | 'refreshing' | 'briefing'
-  message: string
-  current?: number
-  total?: number
-}
-
 export function Briefing() {
   const {t} = useTranslation()
   const location = useLocation()
@@ -24,9 +17,7 @@ export function Briefing() {
   const [generating, setGenerating] = useState(false)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
-  const [progress, setProgress] = useState<ProgressState>({type: 'idle', message: ''})
   const [modal, setModal] = useState<{type: 'warning'|'error'; title: string; content: string} | null>(null)
-  const briefingPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Use ref for true guard (avoids async setState race with double-click)
   const generatingRef = useRef(false)
 
@@ -48,35 +39,18 @@ export function Briefing() {
     loadBriefings(0)
   }, [])
 
-  // Progress polling (replaces SSE) — polls /api/progress every 1s while operation is in progress
+  // Progress polling — polls /api/progress every 1s while operation is in progress.
+  // Poll /api/progress while generating, reload briefings on completion.
   useEffect(() => {
-    if (progress.type === 'idle') return
+    if (!generating) return
 
     const poll = async () => {
       try {
         const data = await api.getProgress()
         if (data.operation === 'idle') {
-          setProgress({type: 'idle', message: ''})
-          if (progress.type === 'refreshing') {
-            loadBriefings(0)
-          }
-          return
-        }
-        if (data.operation === 'refreshing' && data.refresh) {
-          setProgress({
-            type: 'refreshing',
-            message: `正在刷新 ${data.refresh.current}/${data.refresh.total} 个订阅源: ${data.refresh.feedTitle || ''}`,
-            current: data.refresh.current,
-            total: data.refresh.total,
-          })
-        }
-        if (data.operation === 'generating' && data.refresh) {
-          setProgress({
-            type: 'refreshing',
-            message: `正在刷新 ${data.refresh.current}/${data.refresh.total} 个订阅源...`,
-            current: data.refresh.current,
-            total: data.refresh.total,
-          })
+          generatingRef.current = false
+          setGenerating(false)
+          loadBriefings(0)
         }
       } catch {
         // Non-critical — keep polling
@@ -84,63 +58,8 @@ export function Briefing() {
     }
 
     poll()
-    const timer = setInterval(poll, 1000)
+    const timer = setInterval(poll, 3000)
     return () => clearInterval(timer)
-  }, [progress.type])
-
-  // Polling for briefing completion — checks /api/briefings every 1s
-  useEffect(() => {
-    if (!generating) return
-
-    const poll = async () => {
-      try {
-        const data = await api.getBriefings(1, 0)
-        if (!data || data.length === 0) return
-
-        const latest = data[0]
-        if (latest.status === 'completed') {
-          setProgress({type: 'idle', message: ''})
-          generatingRef.current = false
-          setGenerating(false)
-          if (briefingPollTimer.current) {
-            clearTimeout(briefingPollTimer.current)
-            briefingPollTimer.current = null
-          }
-          loadBriefings(0)
-          return
-        }
-        if (latest.status === 'failed') {
-          setProgress({type: 'idle', message: ''})
-          generatingRef.current = false
-          setGenerating(false)
-          if (briefingPollTimer.current) {
-            clearTimeout(briefingPollTimer.current)
-            briefingPollTimer.current = null
-          }
-          setModal({type: 'error', title: '生成失败', content: latest.error || '生成简报失败'})
-          return
-        }
-        // Keep polling until completion or error
-        briefingPollTimer.current = setTimeout(poll, 1000)
-      } catch {
-        if (briefingPollTimer.current) {
-          clearTimeout(briefingPollTimer.current)
-          briefingPollTimer.current = null
-        }
-        generatingRef.current = false
-        setGenerating(false)
-        setProgress({type: 'idle', message: ''})
-      }
-    }
-
-    poll()
-
-    return () => {
-      if (briefingPollTimer.current) {
-        clearTimeout(briefingPollTimer.current)
-        briefingPollTimer.current = null
-      }
-    }
   }, [generating])
 
   const loadBriefings = async (pageNum: number) => {
@@ -182,7 +101,7 @@ export function Briefing() {
         setGenerating(false)
         return
       }
-      // Polling will handle setting generating=false on completion/error
+      // Polling effect handles completion detection via /api/progress
     } catch (err: any) {
       generatingRef.current = false
       setGenerating(false)
@@ -299,38 +218,6 @@ export function Briefing() {
                 {generating ? t('common.loading') : t('briefing.generateBriefing')}
               </button>
             </div>
-
-            {progress.type !== 'idle' && (
-              <div style={{
-                padding: 'var(--space-3)',
-                background: 'var(--bg-secondary)',
-                borderRadius: 'var(--radius)',
-                marginBottom: 'var(--space-3)',
-                fontSize: '0.9rem',
-              }}>
-                <div style={{marginBottom: 'var(--space-2)', color: 'var(--text-secondary)'}}>
-                  {progress.type === 'refreshing' ? '🔄 刷新订阅源' : '📝 生成简报'}
-                </div>
-                <div style={{marginBottom: progress.total ? 'var(--space-2)' : 0}}>
-                  {progress.message}
-                </div>
-                {progress.total && progress.current && (
-                  <div style={{
-                    height: '4px',
-                    background: 'var(--bg-primary)',
-                    borderRadius: '2px',
-                    overflow: 'hidden',
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${(progress.current / progress.total) * 100}%`,
-                      background: 'var(--accent)',
-                      transition: 'width 0.3s ease',
-                    }} />
-                  </div>
-                )}
-              </div>
-            )}
 
             {loading && briefings.length === 0 && (
               <div className="loading">加载中...</div>

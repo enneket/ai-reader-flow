@@ -90,11 +90,12 @@ export function FeedList() {
             clearTimeout(refreshPollTimer.current)
             refreshPollTimer.current = null
           }
-          setTimeout(() => {
+          // Reload feeds to get updated last_refresh_success status
+          loadFeeds().then(() => {
             setRefreshing(false)
             setRefreshingPercent(0)
             setRefreshingMessage('')
-          }, 100)
+          })
           return
         }
 

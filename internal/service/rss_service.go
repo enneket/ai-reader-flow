@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -25,9 +27,14 @@ type RSSService struct {
 }
 
 func NewRSSService() *RSSService {
-	// Create HTTP client that skips TLS verification
+	// Create HTTP client with explicit proxy and TLS skip verification
 	httpTransport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	if proxyURL := os.Getenv("HTTP_PROXY"); proxyURL != "" {
+		if u, err := url.Parse(proxyURL); err == nil {
+			httpTransport.Proxy = http.ProxyURL(u)
+		}
 	}
 	httpClient := &http.Client{Transport: httpTransport, Timeout: 30 * time.Second}
 	parser := gofeed.NewParser()
