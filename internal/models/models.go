@@ -72,57 +72,57 @@ type AppState struct {
 type Briefing struct {
 	ID          int64            `json:"id"`
 	Status      string           `json:"status"` // pending, generating, completed, failed
+	Title       string           `json:"title,omitempty"`
+	Lead        string           `json:"lead,omitempty"`
+	Closing     string           `json:"closing,omitempty"`
 	Error       string           `json:"error,omitempty"`
 	CreatedAt   time.Time        `json:"created_at"`
 	CompletedAt *time.Time       `json:"completed_at,omitempty"`
 	Items       []BriefingItem   `json:"items,omitempty"`
 }
 
-// BriefingItem is a topic within a briefing
+// BriefingItem is a section within a briefing (formerly "topic")
 type BriefingItem struct {
-	ID         int64              `json:"id"`
+	ID         int64             `json:"id"`
 	BriefingID int64             `json:"briefing_id"`
-	Topic      string             `json:"topic"`
-	Summary    string             `json:"summary"`
-	SortOrder  int                `json:"sort_order"`
-	Articles   []BriefingArticle  `json:"articles"`
-	Consensus  string             `json:"consensus,omitempty"`  // 求同
-	Disputes   string             `json:"disputes,omitempty"`   // 存异
+	Topic      string            `json:"topic"`  // section name, e.g. "AI领域" / "新能源与汽车"
+	Summary    string            `json:"summary"` // section summary (1-2句)
+	SortOrder  int               `json:"sort_order"`
+	Articles   []BriefingArticle `json:"articles"`
 }
 
 // BriefingArticle is a reference to an article within a briefing item
 type BriefingArticle struct {
-	ID            int64  `json:"id"`
-	BriefingItemID int64 `json:"briefing_item_id"`
-	ArticleID     int64  `json:"article_id"`
-	Title         string `json:"title"`
-	Insight       string `json:"insight,omitempty"`
-	Stance        string `json:"stance,omitempty"`        // 立场: 支持/反对/中立/信息补充
-	KeyArgument   string `json:"key_argument,omitempty"` // 核心论点
-	SourceURL     string `json:"source_url,omitempty"`   // 文章链接
+	ID             int64  `json:"id"`
+	BriefingItemID int64  `json:"briefing_item_id"`
+	ArticleID      int64  `json:"article_id"`
+	Title          string `json:"title"`
+	Insight        string `json:"insight,omitempty"`
+	KeyArgument    string `json:"key_argument,omitempty"` // 核心论点
+	SourceURL      string `json:"source_url,omitempty"`   // 文章链接
 }
 
-// BriefingTopicArticle is the AI output format for an article within a topic
+// BriefingTopicArticle is the AI output format for an article within a section
 type BriefingTopicArticle struct {
 	ID          int64  `json:"id"`
 	Insight     string `json:"insight"`
-	Stance      string `json:"stance"`       // 立场: 支持/反对/中立/信息补充
 	KeyArgument string `json:"key_argument"` // 核心论点
 	SourceURL   string `json:"source_url"`   // 文章链接
 }
 
-// BriefingTopic is the AI output format for a topic
+// BriefingTopic is the AI output format for a section
 type BriefingTopic struct {
-	Name      string                  `json:"name"`
-	Summary   string                  `json:"summary"`
-	Articles  []BriefingTopicArticle `json:"articles"`
-	Consensus string                  `json:"consensus"`  // 求同
-	Disputes  string                  `json:"disputes"`   // 存异
+	Name     string                  `json:"name"`  // section name, e.g. "AI领域"
+	Summary  string                  `json:"summary"` // section summary (1-2句)
+	Articles []BriefingTopicArticle `json:"articles"`
 }
 
 // BriefingResult is the AI output format
 type BriefingResult struct {
-	Topics []BriefingTopic `json:"topics"`
+	Title   string           `json:"title"`    // e.g. "AI领域新闻整合简报"
+	Lead    string           `json:"lead"`     // e.g. "整合周期+领域+核心总览"
+	Closing string           `json:"closing"`  // optional closing summary
+	Sections []BriefingTopic `json:"sections"` // renamed from Topics
 }
 
 // PromptConfig holds prompt template configuration

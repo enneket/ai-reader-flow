@@ -1617,6 +1617,26 @@ body {
   margin: 0 0 var(--space-2) 0;
 }
 
+.briefing-lead {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  white-space: pre-line;
+  margin: 0 0 var(--space-4) 0;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.briefing-closing {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
 .briefing-articles {
   list-style: none;
   padding: 0;

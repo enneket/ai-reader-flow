@@ -77,43 +77,40 @@ func TestBuildArticlesInputIncludesLink(t *testing.T) {
 func TestBuildPrompt(t *testing.T) {
 	svc := &BriefingService{}
 
-	articlesInput := "文章 ID: 1\n标题: Test\n链接: https://example.com\n内容:\nSummary\n---"
-	prompt := svc.buildPrompt(articlesInput, 1, 0, 1)
+	articlesInput := "文章 ID: 1\n标题: Test\n链接: https://example.com\n日期: 2026-04-09\n内容:\nSummary\n---"
+	prompt := svc.buildPrompt(articlesInput, "2026年4月9日", 1, 0, 1)
 
-	// Check new prompt keywords (fallback prompt body)
-	if !strings.Contains(prompt, "观点提炼") {
-		t.Error("prompt should contain 观点提炼")
+	// Check new prompt keywords (新闻整合简报 format)
+	if !strings.Contains(prompt, "新闻整合简报") {
+		t.Error("prompt should contain 新闻整合简报")
 	}
-	if !strings.Contains(prompt, "以下是今天的文章") {
-		t.Error("prompt should contain Chinese header")
+	if !strings.Contains(prompt, "核心事件") {
+		t.Error("prompt should contain 核心事件")
 	}
 	if !strings.Contains(prompt, articlesInput) {
 		t.Error("prompt should contain articles input")
 	}
-	if !strings.Contains(prompt, `"topics"`) {
-		t.Error("prompt should specify JSON topics format")
+	if !strings.Contains(prompt, `"sections"`) {
+		t.Error("prompt should specify JSON sections format")
 	}
-	if !strings.Contains(prompt, "最多 5 个主题") {
-		t.Error("prompt should limit to 5 topics")
-	}
-	if !strings.Contains(prompt, `"stance"`) {
-		t.Error("prompt should require stance field in output")
-	}
-	if !strings.Contains(prompt, "求同存异") {
-		t.Error("prompt should contain 求同存异 instruction")
+	if !strings.Contains(prompt, "最多 5 个分节") {
+		t.Error("prompt should limit to 5 sections")
 	}
 	if !strings.Contains(prompt, "source_url") {
 		t.Error("prompt should reference source_url field")
 	}
 
 	// JSON parse sanity check — validates the embedded JSON format parses correctly
-	jsonStart := strings.Index(prompt, `{"topics"`)
+	jsonStart := strings.Index(prompt, `{"title"`)
 	jsonEnd := strings.LastIndex(prompt, `}`) + 1
 	if jsonStart != -1 && jsonEnd > jsonStart {
 		jsonStr := prompt[jsonStart:jsonEnd]
 		var result models.BriefingResult
 		if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
 			t.Errorf("prompt JSON does not parse: %v", err)
+		}
+		if result.Title == "" {
+			t.Error("parsed result should have a title")
 		}
 	}
 }
@@ -218,45 +215,53 @@ func TestBriefingModel(t *testing.T) {
 func TestBriefingResultJSON(t *testing.T) {
 	t.Run("valid briefing result", func(t *testing.T) {
 		jsonStr := `{
-			"topics": [
+			"title": "AI领域新闻整合简报",
+			"lead": "整合周期内AI领域核心动态",
+			"sections": [
 				{
 					"name": "AI",
 					"summary": "AI进展",
 					"articles": [
-						{"id": 1, "insight": "进展1", "stance": "支持", "key_argument": "论据", "source_url": "https://x.com"}
-					],
-					"consensus": "共识",
-					"disputes": "分歧"
+						{"id": 1, "insight": "进展1", "key_argument": "论据", "source_url": "https://x.com"}
+					]
 				},
 				{
 					"name": "创业",
 					"summary": "创业融资",
 					"articles": [
-						{"id": 2, "insight": "融资", "stance": "中立", "key_argument": "数据", "source_url": ""}
-					],
-					"consensus": "",
-					"disputes": ""
+						{"id": 2, "insight": "融资", "key_argument": "数据", "source_url": ""}
+					]
 				}
-			]
+			],
+			"closing": "后续关注重点"
 		}`
 
 		var result models.BriefingResult
 		if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
 			t.Errorf("failed to parse BriefingResult JSON: %v", err)
 		}
-		if len(result.Topics) != 2 {
-			t.Errorf("Topics len = %d, want 2", len(result.Topics))
+		if len(result.Sections) != 2 {
+			t.Errorf("Sections len = %d, want 2", len(result.Sections))
+		}
+		if result.Title != "AI领域新闻整合简报" {
+			t.Errorf("Title = %q, want %q", result.Title, "AI领域新闻整合简报")
+		}
+		if result.Lead != "整合周期内AI领域核心动态" {
+			t.Errorf("Lead = %q, want %q", result.Lead, "整合周期内AI领域核心动态")
+		}
+		if result.Closing != "后续关注重点" {
+			t.Errorf("Closing = %q, want %q", result.Closing, "后续关注重点")
 		}
 	})
 
-	t.Run("empty topics", func(t *testing.T) {
-		jsonStr := `{"topics": []}`
+	t.Run("empty sections", func(t *testing.T) {
+		jsonStr := `{"sections": []}`
 		var result models.BriefingResult
 		if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
-			t.Errorf("failed to parse empty topics: %v", err)
+			t.Errorf("failed to parse empty sections: %v", err)
 		}
-		if len(result.Topics) != 0 {
-			t.Errorf("Topics len = %d, want 0", len(result.Topics))
+		if len(result.Sections) != 0 {
+			t.Errorf("Sections len = %d, want 0", len(result.Sections))
 		}
 	})
 }
@@ -281,7 +286,7 @@ func TestNormalizeTopicName(t *testing.T) {
 
 func TestMergeBriefingResults(t *testing.T) {
 	batch1 := models.BriefingResult{
-		Topics: []models.BriefingTopic{
+		Sections: []models.BriefingTopic{
 			{
 				Name:    "AI 大模型",
 				Summary: "summary1",
@@ -293,7 +298,7 @@ func TestMergeBriefingResults(t *testing.T) {
 		},
 	}
 	batch2 := models.BriefingResult{
-		Topics: []models.BriefingTopic{
+		Sections: []models.BriefingTopic{
 			{
 				Name:    "AI大模型", // same as batch1 topic (no space)
 				Summary: "summary2",
@@ -315,15 +320,15 @@ func TestMergeBriefingResults(t *testing.T) {
 	result := mergeBriefingResults([]models.BriefingResult{batch1, batch2})
 
 	// Should have 2 topics: "AI大模型" (merged, 3 articles) and "机器人" (1 article)
-	if len(result.Topics) != 2 {
-		t.Errorf("expected 2 topics, got %d", len(result.Topics))
+	if len(result.Sections) != 2 {
+		t.Errorf("expected 2 topics, got %d", len(result.Sections))
 	}
 
 	// Find AI topic
 	var aiTopic *models.BriefingTopic
-	for i := range result.Topics {
-		if normalizeTopicName(result.Topics[i].Name) == normalizeTopicName("AI大模型") {
-			aiTopic = &result.Topics[i]
+	for i := range result.Sections {
+		if normalizeTopicName(result.Sections[i].Name) == normalizeTopicName("AI大模型") {
+			aiTopic = &result.Sections[i]
 			break
 		}
 	}
@@ -337,9 +342,9 @@ func TestMergeBriefingResults(t *testing.T) {
 
 	// Find 机器人 topic
 	var robotTopic *models.BriefingTopic
-	for i := range result.Topics {
-		if normalizeTopicName(result.Topics[i].Name) == normalizeTopicName("机器人") {
-			robotTopic = &result.Topics[i]
+	for i := range result.Sections {
+		if normalizeTopicName(result.Sections[i].Name) == normalizeTopicName("机器人") {
+			robotTopic = &result.Sections[i]
 			break
 		}
 	}
@@ -351,21 +356,21 @@ func TestMergeBriefingResults(t *testing.T) {
 	}
 
 	// Topics should be sorted by article count descending (AI first with 3)
-	if len(result.Topics) >= 2 && len(result.Topics[0].Articles) < len(result.Topics[1].Articles) {
+	if len(result.Sections) >= 2 && len(result.Sections[0].Articles) < len(result.Sections[1].Articles) {
 		t.Error("topics should be sorted by article count descending")
 	}
 }
 
 func TestMergeBriefingResultsEmpty(t *testing.T) {
 	result := mergeBriefingResults([]models.BriefingResult{})
-	if len(result.Topics) != 0 {
-		t.Errorf("expected 0 topics, got %d", len(result.Topics))
+	if len(result.Sections) != 0 {
+		t.Errorf("expected 0 topics, got %d", len(result.Sections))
 	}
 }
 
 func TestMergeBriefingResultsSingleBatch(t *testing.T) {
 	batch := models.BriefingResult{
-		Topics: []models.BriefingTopic{
+		Sections: []models.BriefingTopic{
 			{
 				Name:    "Test",
 				Summary: "summary",
@@ -376,7 +381,7 @@ func TestMergeBriefingResultsSingleBatch(t *testing.T) {
 		},
 	}
 	result := mergeBriefingResults([]models.BriefingResult{batch})
-	if len(result.Topics) != 1 {
-		t.Errorf("expected 1 topic, got %d", len(result.Topics))
+	if len(result.Sections) != 1 {
+		t.Errorf("expected 1 topic, got %d", len(result.Sections))
 	}
 }

@@ -171,48 +171,50 @@ func createTables() error {
 	_ = migrateAddColumn("briefing_articles", "stance", "TEXT DEFAULT ''")
 	_ = migrateAddColumn("briefing_articles", "key_argument", "TEXT DEFAULT ''")
 	_ = migrateAddColumn("briefing_articles", "source_url", "TEXT DEFAULT ''")
+	// Migration: add title/lead/closing to briefings (新闻整合简报 format)
+	_ = migrateAddColumn("briefings", "title", "TEXT DEFAULT ''")
+	_ = migrateAddColumn("briefings", "lead", "TEXT DEFAULT ''")
+	_ = migrateAddColumn("briefings", "closing", "TEXT DEFAULT ''")
 
-	// Migration: update existing briefing prompt to simplified viewpoint format
+	// Migration: update existing briefing prompt to 新闻整合简报 format
 	// This ensures existing DBs (which already have the old prompt) get the new version
-	newBriefingPrompt := `根据以下文章，生成一份"观点提炼"简报。不是摘要文章讲什么，而是提炼每篇文章的主张/观点。
+	newBriefingPrompt := `根据以下文章，生成一份新闻整合简报。
 
 【核心任务】
-1. 阅读每篇文章，提炼其核心观点和主张
-2. 将文章按主题分组（最多 5 个主题，每个主题至少2篇文章）
-
-【观点提炼要求】
-- 观点 = 文章的立场/主张，不是摘要
-- 每条观点必须说清楚：这篇文章认为什么/主张什么
-- 标注来源文章ID和链接
+1. 阅读每篇文章，提炼核心事件（时间+主体+事件+结果）
+2. 将文章按领域/主题分为若干分节（最多 {topicLimit} 个分节）
+3. 每条只保留核心事实，不添加主观评论
 
 【输出格式】（严格 JSON，不要有其他内容）
 {
-  "topics": [
+  "title": "XX领域新闻整合简报",
+  "lead": "整合周期+新闻领域+核心总览（1-2句）",
+  "sections": [
     {
-      "name": "主题名称",
-      "summary": "一句话概括这个主题在讨论什么（20字以内）",
+      "name": "分节名称，如"AI领域"",
+      "summary": "本节要目（1-2句），如"涵盖模型进展与行业争议"",
       "articles": [
         {
           "id": 101,
-          "insight": "一句话核心观点（独立可读）",
-          "key_argument": "核心论点（1-2句）",
+          "insight": "一句话核心事件（时间+主体+核心事件+关键结果）",
+          "key_argument": "关键结果或影响（1-2句）",
           "source_url": "https://..."
         }
       ]
     }
-  ]
+  ],
+  "closing": "整体趋势概括或后续关注重点（可选，若有）"
 }
 
-规则：
-- 每个简报最多 5 个主题
-- 每个主题至少 2 篇核心文章
-- 只包含真正有价值的文章，无关内容请忽略
-- 主题按文章数量排序（多的在前）
-- 如果文章太少或无价值，返回空的 topics 数组
+【规则】
+- 每节约 2-5 条新闻，新闻太少则合并到其他节
+- 分节按新闻条数排序（多的在前）
+- 只包含真正有价值的新闻，无关内容请忽略
+- 标题不要带时间，AI 根据文章日期推断时间范围（{dateRange}）
 
-以下是今天的文章（共 {totalArticles} 篇，第 {batchIndex}/{totalBatches} 批）：
+以下是文章（共 {totalArticles} 篇，第 {batchIndex}/{totalBatches} 批）：
 {articles}`
-	newBriefingSystem := `你是科技新闻分析师，负责提炼文章的核心观点。输出必须是中文 JSON，严格按格式来，不要有任何额外解释。`
+	newBriefingSystem := `你是科技新闻分析师，负责提炼文章的核心事件。输出必须是中文 JSON，严格按格式来，不要有任何额外解释。`
 	DB.Exec(`UPDATE prompt_configs SET prompt = ?, system = ? WHERE type = 'briefing'`,
 		newBriefingPrompt, newBriefingSystem)
 

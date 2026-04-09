@@ -226,7 +226,7 @@ export function BriefingDetail() {
                 <Link to="/briefing" className="btn btn-ghost" style={{padding: '8px'}}>
                   <ArrowLeft size={18} />
                 </Link>
-                <h1>{briefing?.created_at ? formatBriefingTitle(briefing.created_at) : t('briefing.title')}</h1>
+                <h1>{briefing?.title || (briefing?.created_at ? formatBriefingTitle(briefing.created_at) : t('briefing.title'))}</h1>
               </div>
             </div>
 
@@ -240,6 +240,10 @@ export function BriefingDetail() {
               </div>
 
               {briefing.status === 'completed' && briefing.items && (
+                <>
+                  {briefing.lead && (
+                    <p className="briefing-lead">{briefing.lead}</p>
+                  )}
                 <div className="briefing-items">
                   {briefing.items.map((item) => (
                     <div key={item.id} className="briefing-item">
@@ -267,6 +271,12 @@ export function BriefingDetail() {
                     </div>
                   ))}
                 </div>
+                  {briefing.closing && (
+                    <div className="briefing-closing">
+                      <p>{briefing.closing}</p>
+                    </div>
+                  )}
+                </>
               )}
 
               {briefing.status === 'failed' && briefing.error && (

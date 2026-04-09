@@ -100,20 +100,32 @@ func normalizeTopicName(name string) string {
 }
 
 // mergeBriefingResults merges multiple BriefingResult batches into one.
-// Topics with the same normalized name are merged (articles deduplicated by ID).
-// Topics are sorted by article count (descending).
+// Sections with the same normalized name are merged (articles deduplicated by ID).
+// Sections are sorted by article count (descending).
+// Title/Lead/Closing are taken from the first non-empty batch.
 func mergeBriefingResults(batches []models.BriefingResult) models.BriefingResult {
-	topicMap := make(map[string]*models.BriefingTopic)
+	sectionMap := make(map[string]*models.BriefingTopic)
+	var result models.BriefingResult
 
 	for _, batch := range batches {
-		for i := range batch.Topics {
-			topic := &batch.Topics[i]
-			key := normalizeTopicName(topic.Name)
-			existing, ok := topicMap[key]
+		// Capture title/lead/closing from first non-empty
+		if result.Title == "" && batch.Title != "" {
+			result.Title = batch.Title
+		}
+		if result.Lead == "" && batch.Lead != "" {
+			result.Lead = batch.Lead
+		}
+		if result.Closing == "" && batch.Closing != "" {
+			result.Closing = batch.Closing
+		}
+
+		for i := range batch.Sections {
+			section := &batch.Sections[i]
+			key := normalizeTopicName(section.Name)
+			existing, ok := sectionMap[key]
 			if !ok {
-				// Clone the topic to avoid aliasing
-				cloned := *topic
-				topicMap[key] = &cloned
+				cloned := *section
+				sectionMap[key] = &cloned
 				continue
 			}
 			// Merge: deduplicate articles by ID
@@ -121,7 +133,7 @@ func mergeBriefingResults(batches []models.BriefingResult) models.BriefingResult
 			for _, a := range existing.Articles {
 				seen[a.ID] = true
 			}
-			for _, a := range topic.Articles {
+			for _, a := range section.Articles {
 				if !seen[a.ID] {
 					existing.Articles = append(existing.Articles, a)
 					seen[a.ID] = true
@@ -130,16 +142,17 @@ func mergeBriefingResults(batches []models.BriefingResult) models.BriefingResult
 		}
 	}
 
-	topics := make([]models.BriefingTopic, 0, len(topicMap))
-	for _, t := range topicMap {
-		topics = append(topics, *t)
+	sections := make([]models.BriefingTopic, 0, len(sectionMap))
+	for _, t := range sectionMap {
+		sections = append(sections, *t)
 	}
 
-	sort.Slice(topics, func(i, j int) bool {
-		return len(topics[i].Articles) > len(topics[j].Articles)
+	sort.Slice(sections, func(i, j int) bool {
+		return len(sections[i].Articles) > len(sections[j].Articles)
 	})
 
-	return models.BriefingResult{Topics: topics}
+	result.Sections = sections
+	return result
 }
 
 // GenerateBriefing creates a new briefing from recent articles
@@ -185,6 +198,28 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 	batches := s.splitIntoBatches(articles)
 	totalBatches := len(batches)
 
+	// 3b. Compute date range from article published dates
+	dateRange := "近期"
+	if len(articles) > 0 {
+		earliest := articles[0].Published
+		latest := articles[0].Published
+		for _, a := range articles {
+			if !a.Published.IsZero() {
+				if a.Published.Before(earliest) {
+					earliest = a.Published
+				}
+				if a.Published.After(latest) {
+					latest = a.Published
+				}
+			}
+		}
+		if !earliest.IsZero() && earliest != latest {
+			dateRange = earliest.Format("2006年1月2日") + "至" + latest.Format("2006年1月2日")
+		} else if !earliest.IsZero() {
+			dateRange = earliest.Format("2006年1月2日")
+		}
+	}
+
 	// 4. Call AI per batch, collect results
 	if onProgress != nil {
 		onProgress("analyzing", "正在分析文章主题...")
@@ -197,7 +232,7 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 			onProgress("analyzing", fmt.Sprintf("正在分析第 %d/%d 批...", i+1, totalBatches))
 		}
 		articlesInput := s.buildArticlesInput(batch)
-		prompt := s.buildPrompt(articlesInput, len(articles), i, totalBatches)
+		prompt := s.buildPrompt(articlesInput, dateRange, len(articles), i, totalBatches)
 
 		result, err := provider.GenerateBriefing(prompt)
 		if err != nil {
@@ -219,23 +254,26 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 	// 5. Merge results from all batches
 	mergedResult := mergeBriefingResults(allResults)
 
-	if len(mergedResult.Topics) == 0 {
+	if len(mergedResult.Sections) == 0 {
 		s.briefingRepo.UpdateStatus(briefing.ID, "failed", "无有效简报内容")
 		return nil, fmt.Errorf("无有效简报内容")
 	}
 
-	// 6. Store briefing items
+	// 5b. Store briefing-level metadata
+	if mergedResult.Title != "" {
+		s.briefingRepo.UpdateBriefingMeta(briefing.ID, mergedResult.Title, mergedResult.Lead, mergedResult.Closing)
+	}
+
+	// 6. Store briefing sections (formerly "topics")
 	if onProgress != nil {
 		onProgress("generating", "正在生成简报...")
 	}
-	for i, topic := range mergedResult.Topics {
+	for i, section := range mergedResult.Sections {
 		item := &models.BriefingItem{
 			BriefingID: briefing.ID,
-			Topic:      topic.Name,
-			Summary:    topic.Summary,
+			Topic:      section.Name,
+			Summary:    section.Summary,
 			SortOrder:  i,
-			Consensus:  topic.Consensus,
-			Disputes:   topic.Disputes,
 		}
 		if err := s.briefingRepo.CreateItem(item); err != nil {
 			log.Printf("Warning: failed to create briefing item: %v", err)
@@ -243,7 +281,7 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 		}
 
 		// Store article references
-		for _, ta := range topic.Articles {
+		for _, ta := range section.Articles {
 			title := ""
 			for _, a := range articles {
 				if a.ID == ta.ID {
@@ -256,7 +294,6 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 				ArticleID:      ta.ID,
 				Title:          title,
 				Insight:        ta.Insight,
-				Stance:        ta.Stance,
 				KeyArgument:   ta.KeyArgument,
 				SourceURL:      ta.SourceURL,
 			}
@@ -307,11 +344,14 @@ func (s *BriefingService) buildArticlesInput(articles []models.Article) string {
 		sb.WriteString(fmt.Sprintf("文章 ID: %d\n", a.ID))
 		sb.WriteString(fmt.Sprintf("标题: %s\n", a.Title))
 		sb.WriteString(fmt.Sprintf("链接: %s\n", a.Link))
+		if !a.Published.IsZero() {
+			sb.WriteString(fmt.Sprintf("日期: %s\n", a.Published.Format("2006-01-02")))
+		}
 		content := a.Content
 		if content == "" {
 			content = a.Summary
 		}
-		// Feed up to 2000 chars so AI has enough context to write real analysis
+		// Feed up to 2000 chars so AI has enough context
 		if len(content) > 2000 {
 			content = content[:2000] + "..."
 		}
@@ -321,7 +361,7 @@ func (s *BriefingService) buildArticlesInput(articles []models.Article) string {
 	return sb.String()
 }
 
-func (s *BriefingService) buildPrompt(articlesInput string, totalArticles, batchIndex, totalBatches int) string {
+func (s *BriefingService) buildPrompt(articlesInput string, dateRange string, totalArticles, batchIndex, totalBatches int) string {
 	// Try to get configurable prompt first
 	if s.promptRepo != nil {
 		promptConfig, err := s.promptRepo.GetDefault("briefing")
@@ -334,62 +374,68 @@ func (s *BriefingService) buildPrompt(articlesInput string, totalArticles, batch
 			prompt = strings.ReplaceAll(prompt, "{batchIndex}", fmt.Sprintf("%d", batchIndex+1))
 			prompt = strings.ReplaceAll(prompt, "{totalBatches}", fmt.Sprintf("%d", totalBatches))
 			prompt = strings.ReplaceAll(prompt, "{topicLimit}", fmt.Sprintf("%d", 5))
+			prompt = strings.ReplaceAll(prompt, "{dateRange}", dateRange)
 			// Default length guidance if {length} not in template
 			prompt = strings.ReplaceAll(prompt, "{length}", "500-800 字")
 			return promptConfig.System + "\n" + prompt
 		}
 	}
 
-	// Fallback to default prompt
+	// Fallback to default prompt — 新闻整合简报格式
 	isSingleBatch := totalBatches == 1
-	topicLimit := 5
+	sectionLimit := 5
 	if !isSingleBatch {
-		topicLimit = 3 // 多批次时每批减少 topic 数
+		sectionLimit = 3
 	}
 
 	multiBatchNote := ""
 	if !isSingleBatch {
-		multiBatchNote = fmt.Sprintf("\n提示：这是第 %d/%d 批文章，请关注本批内容，合并时，会将各批结果去重合并。", batchIndex+1, totalBatches)
+		multiBatchNote = fmt.Sprintf("\n提示：这是第 %d/%d 批，请只关注本批内容，生成标题/导语/结尾（仅第一批需要），后续批只补充分节。", batchIndex+1, totalBatches)
 	}
 
-	return fmt.Sprintf(`根据以下文章，生成一份"观点提炼"简报。不是摘要文章讲什么，而是提炼每篇文章的主张/观点。
-
-【核心任务】
-1. 阅读每篇文章，提炼其核心观点和主张
-2. 将文章按主题分组（最多 %d 个主题，每个主题至少2篇文章）
-
-【观点提炼要求】
-- 观点 = 文章的立场/主张，不是摘要
-- 每条观点必须说清楚：这篇文章认为什么/主张什么
-- 标注来源文章ID和链接
-
-【输出格式】（严格 JSON，不要有其他内容）
+	// 第一批需要标题+导语+结尾；后续批次只补充分节
+	isFirstBatch := batchIndex == 0
+	headerPart := ""
+	if isFirstBatch {
+		headerPart = `【输出格式】（严格 JSON，不要有其他内容）
 {
-  "topics": [
+  "title": "XX领域新闻整合简报",
+  "lead": "整合周期+新闻领域+核心总览（1-2句）",
+  "sections": [
     {
-      "name": "主题名称",
-      "summary": "一句话概括这个主题在讨论什么（20字以内）",
+      "name": "分节名称，如"AI领域"",
+      "summary": "本节要目（1-2句），如"涵盖模型进展与行业争议"",
       "articles": [
         {
           "id": 101,
-          "insight": "一句话核心观点（独立可读）",
-          "key_argument": "核心论点（1-2句）",
+          "insight": "一句话核心事件（时间+主体+核心事件+关键结果）",
+          "key_argument": "关键结果或影响（1-2句）",
           "source_url": "https://..."
         }
       ]
     }
-  ]
+  ],
+  "closing": "整体趋势概括或后续关注重点（可选，若有）"
 }
 
-规则：
-- 每个简报最多 %d 个主题
-- 每个主题至少 2 篇核心文章
-- 只包含真正有价值的文章，无关内容请忽略
-- 主题按文章数量排序（多的在前）
-- 如果文章太少或无价值，返回空的 topics 数组%s
+`
+	}
 
-以下是今天的文章（共 %d 篇，第 %d/%d 批）：
-%s`, topicLimit, topicLimit, multiBatchNote, totalArticles, batchIndex+1, totalBatches, articlesInput)
+	return fmt.Sprintf(`根据以下文章，生成一份新闻整合简报。
+
+【核心任务】
+1. 阅读每篇文章，提炼核心事件（时间+主体+事件+结果）
+2. 将文章按领域/主题分为若干分节（最多 %d 个分节）
+3. 每条只保留核心事实，不添加主观评论
+
+【输出格式】
+%s【规则】
+- 每节约 2-5 条新闻，新闻太少则合并到其他节
+- 分节按新闻条数排序（多的在前）
+- 只包含真正有价值的新闻，无关内容请忽略%s
+
+以下是文章（共 %d 篇，第 %d/%d 批）：
+%s`, sectionLimit, headerPart, multiBatchNote, totalArticles, batchIndex+1, totalBatches, articlesInput)
 }
 
 // GetBriefingWithItems returns a briefing with all its items and articles
