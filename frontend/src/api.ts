@@ -243,6 +243,9 @@ export interface BriefingArticle {
   article_id: number
   title: string
   insight?: string
+  stance?: string      // 立场: 支持/反对/中立/信息补充
+  key_argument?: string // 核心论点
+  source_url?: string  // 文章链接
 }
 
 export interface BriefingItem {
@@ -252,6 +255,8 @@ export interface BriefingItem {
   summary: string
   sort_order: number
   articles: BriefingArticle[]
+  consensus?: string  // 求同
+  disputes?: string   // 存异
 }
 
 export interface Briefing {

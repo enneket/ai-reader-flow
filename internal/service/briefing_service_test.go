@@ -27,21 +27,21 @@ func TestBuildArticlesInput(t *testing.T) {
 			articles: []models.Article{
 				{ID: 1, Title: "Test Article", Summary: "This is a test summary."},
 			},
-			want: "文章 ID: 1\n标题: Test Article\n内容:\nThis is a test summary.\n---\n",
+			want: "文章 ID: 1\n标题: Test Article\n链接: \n内容:\nThis is a test summary.\n---\n",
 		},
 		{
 			name: "single article without summary uses content",
 			articles: []models.Article{
 				{ID: 2, Title: "No Summary", Content: "This is the content."},
 			},
-			want: "文章 ID: 2\n标题: No Summary\n内容:\nThis is the content.\n---\n",
+			want: "文章 ID: 2\n标题: No Summary\n链接: \n内容:\nThis is the content.\n---\n",
 		},
 		{
 			name: "content truncated at 2000 chars",
 			articles: []models.Article{
 				{ID: 3, Title: "Long Content", Content: strings.Repeat("a", 2500)},
 			},
-			want: "文章 ID: 3\n标题: Long Content\n内容:\n" + strings.Repeat("a", 2000) + "...\n---\n",
+			want: "文章 ID: 3\n标题: Long Content\n链接: \n内容:\n" + strings.Repeat("a", 2000) + "...\n---\n",
 		},
 		{
 			name: "multiple articles",
@@ -49,7 +49,7 @@ func TestBuildArticlesInput(t *testing.T) {
 				{ID: 10, Title: "First", Summary: "First summary"},
 				{ID: 20, Title: "Second", Summary: "Second summary"},
 			},
-			want: "文章 ID: 10\n标题: First\n内容:\nFirst summary\n---\n文章 ID: 20\n标题: Second\n内容:\nSecond summary\n---\n",
+			want: "文章 ID: 10\n标题: First\n链接: \n内容:\nFirst summary\n---\n文章 ID: 20\n标题: Second\n链接: \n内容:\nSecond summary\n---\n",
 		},
 	}
 
@@ -63,15 +63,26 @@ func TestBuildArticlesInput(t *testing.T) {
 	}
 }
 
+func TestBuildArticlesInputIncludesLink(t *testing.T) {
+	svc := &BriefingService{}
+	articles := []models.Article{
+		{ID: 1, Title: "Test", Summary: "Sum", Link: "https://example.com"},
+	}
+	got := svc.buildArticlesInput(articles)
+	if !strings.Contains(got, "https://example.com") {
+		t.Error("article link should be included in input")
+	}
+}
+
 func TestBuildPrompt(t *testing.T) {
 	svc := &BriefingService{}
 
-	articlesInput := "文章 ID: 1\n标题: Test\n内容:\nSummary\n---"
+	articlesInput := "文章 ID: 1\n标题: Test\n链接: https://example.com\n内容:\nSummary\n---"
 	prompt := svc.buildPrompt(articlesInput, 1, 0, 1)
 
-	// Fallback prompt has no "System:" prefix (System: is provider-level, not in prompt text)
-	if !strings.Contains(prompt, "User:") {
-		t.Error("prompt should contain User section")
+	// Check new prompt keywords (fallback prompt body)
+	if !strings.Contains(prompt, "观点提炼") {
+		t.Error("prompt should contain 观点提炼")
 	}
 	if !strings.Contains(prompt, "以下是今天的文章") {
 		t.Error("prompt should contain Chinese header")
@@ -84,6 +95,26 @@ func TestBuildPrompt(t *testing.T) {
 	}
 	if !strings.Contains(prompt, "最多 5 个主题") {
 		t.Error("prompt should limit to 5 topics")
+	}
+	if !strings.Contains(prompt, `"stance"`) {
+		t.Error("prompt should require stance field in output")
+	}
+	if !strings.Contains(prompt, "求同存异") {
+		t.Error("prompt should contain 求同存异 instruction")
+	}
+	if !strings.Contains(prompt, "source_url") {
+		t.Error("prompt should reference source_url field")
+	}
+
+	// JSON parse sanity check — validates the embedded JSON format parses correctly
+	jsonStart := strings.Index(prompt, `{"topics"`)
+	jsonEnd := strings.LastIndex(prompt, `}`) + 1
+	if jsonStart != -1 && jsonEnd > jsonStart {
+		jsonStr := prompt[jsonStart:jsonEnd]
+		var result models.BriefingResult
+		if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+			t.Errorf("prompt JSON does not parse: %v", err)
+		}
 	}
 }
 
@@ -190,13 +221,21 @@ func TestBriefingResultJSON(t *testing.T) {
 			"topics": [
 				{
 					"name": "AI",
-					"article_ids": [1, 2, 3],
-					"summary": "• 进展1\n• 进展2"
+					"summary": "AI进展",
+					"articles": [
+						{"id": 1, "insight": "进展1", "stance": "支持", "key_argument": "论据", "source_url": "https://x.com"}
+					],
+					"consensus": "共识",
+					"disputes": "分歧"
 				},
 				{
 					"name": "创业",
-					"article_ids": [4, 5],
-					"summary": "• 融资\n• 趋势"
+					"summary": "创业融资",
+					"articles": [
+						{"id": 2, "insight": "融资", "stance": "中立", "key_argument": "数据", "source_url": ""}
+					],
+					"consensus": "",
+					"disputes": ""
 				}
 			]
 		}`

@@ -94,8 +94,8 @@ func (r *BriefingRepository) Delete(id int64) error {
 
 func (r *BriefingRepository) CreateItem(item *models.BriefingItem) error {
 	result, err := DB.Exec(
-		`INSERT INTO briefing_items (briefing_id, topic, summary, sort_order) VALUES (?, ?, ?, ?)`,
-		item.BriefingID, item.Topic, item.Summary, item.SortOrder,
+		`INSERT INTO briefing_items (briefing_id, topic, summary, sort_order, consensus, disputes) VALUES (?, ?, ?, ?, ?, ?)`,
+		item.BriefingID, item.Topic, item.Summary, item.SortOrder, item.Consensus, item.Disputes,
 	)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (r *BriefingRepository) CreateItem(item *models.BriefingItem) error {
 
 func (r *BriefingRepository) GetItemsByBriefingID(briefingID int64) ([]models.BriefingItem, error) {
 	rows, err := DB.Query(
-		`SELECT id, briefing_id, topic, summary, sort_order FROM briefing_items WHERE briefing_id = ? ORDER BY sort_order`,
+		`SELECT id, briefing_id, topic, summary, sort_order, COALESCE(consensus, ''), COALESCE(disputes, '') FROM briefing_items WHERE briefing_id = ? ORDER BY sort_order`,
 		briefingID,
 	)
 	if err != nil {
@@ -121,7 +121,7 @@ func (r *BriefingRepository) GetItemsByBriefingID(briefingID int64) ([]models.Br
 	var items []models.BriefingItem
 	for rows.Next() {
 		var item models.BriefingItem
-		err := rows.Scan(&item.ID, &item.BriefingID, &item.Topic, &item.Summary, &item.SortOrder)
+		err := rows.Scan(&item.ID, &item.BriefingID, &item.Topic, &item.Summary, &item.SortOrder, &item.Consensus, &item.Disputes)
 		if err != nil {
 			continue
 		}
@@ -132,8 +132,8 @@ func (r *BriefingRepository) GetItemsByBriefingID(briefingID int64) ([]models.Br
 
 func (r *BriefingRepository) CreateArticle(article *models.BriefingArticle) error {
 	result, err := DB.Exec(
-		`INSERT INTO briefing_articles (briefing_item_id, article_id, title, insight) VALUES (?, ?, ?, ?)`,
-		article.BriefingItemID, article.ArticleID, article.Title, article.Insight,
+		`INSERT INTO briefing_articles (briefing_item_id, article_id, title, insight, stance, key_argument, source_url) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		article.BriefingItemID, article.ArticleID, article.Title, article.Insight, article.Stance, article.KeyArgument, article.SourceURL,
 	)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (r *BriefingRepository) CreateArticle(article *models.BriefingArticle) erro
 
 func (r *BriefingRepository) GetArticlesByItemID(itemID int64) ([]models.BriefingArticle, error) {
 	rows, err := DB.Query(
-		`SELECT id, briefing_item_id, article_id, title, COALESCE(insight, '') FROM briefing_articles WHERE briefing_item_id = ?`,
+		`SELECT id, briefing_item_id, article_id, title, COALESCE(insight, ''), COALESCE(stance, ''), COALESCE(key_argument, ''), COALESCE(source_url, '') FROM briefing_articles WHERE briefing_item_id = ?`,
 		itemID,
 	)
 	if err != nil {
@@ -159,7 +159,7 @@ func (r *BriefingRepository) GetArticlesByItemID(itemID int64) ([]models.Briefin
 	var articles []models.BriefingArticle
 	for rows.Next() {
 		var a models.BriefingArticle
-		err := rows.Scan(&a.ID, &a.BriefingItemID, &a.ArticleID, &a.Title, &a.Insight)
+		err := rows.Scan(&a.ID, &a.BriefingItemID, &a.ArticleID, &a.Title, &a.Insight, &a.Stance, &a.KeyArgument, &a.SourceURL)
 		if err != nil {
 			continue
 		}

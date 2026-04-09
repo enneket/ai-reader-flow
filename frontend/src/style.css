@@ -1753,3 +1753,26 @@ body {
 .lang-toggle-btn:hover {
   opacity: 0.8;
 }
+
+/* Stance badges */
+.stance-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+.stance-支持 { background: #d1fae5; color: #065f46; }
+.stance-反对 { background: #fee2e2; color: #991b1b; }
+.stance-中立 { background: #f3f4f6; color: #374151; }
+.stance-信息补充 { background: #e0f2fe; color: #0369a1; }
+
+/* Consensus / Disputes */
+.topic-consensus { margin-top: 8px; padding: 8px; background: #f0fdf4; border-radius: 6px; font-size: 13px; }
+.topic-disputes { margin-top: 6px; padding: 8px; background: #fef2f2; border-radius: 6px; font-size: 13px; }
+
+.article-key-argument { font-size: 12px; color: var(--text-secondary); margin: 4px 0 4px 0; }
+.article-source { font-size: 12px; color: var(--text-secondary); text-decoration: none; margin-left: 8px; }
+.article-source:hover { text-decoration: underline; }

@@ -80,12 +80,14 @@ type Briefing struct {
 
 // BriefingItem is a topic within a briefing
 type BriefingItem struct {
-	ID         int64            `json:"id"`
-	BriefingID int64           `json:"briefing_id"`
-	Topic     string          `json:"topic"`
-	Summary   string          `json:"summary"`
-	SortOrder int             `json:"sort_order"`
-	Articles  []BriefingArticle `json:"articles"`
+	ID         int64              `json:"id"`
+	BriefingID int64             `json:"briefing_id"`
+	Topic      string             `json:"topic"`
+	Summary    string             `json:"summary"`
+	SortOrder  int                `json:"sort_order"`
+	Articles   []BriefingArticle  `json:"articles"`
+	Consensus  string             `json:"consensus,omitempty"`  // 求同
+	Disputes   string             `json:"disputes,omitempty"`   // 存异
 }
 
 // BriefingArticle is a reference to an article within a briefing item
@@ -95,20 +97,27 @@ type BriefingArticle struct {
 	ArticleID     int64  `json:"article_id"`
 	Title         string `json:"title"`
 	Insight       string `json:"insight,omitempty"`
+	Stance        string `json:"stance,omitempty"`        // 立场: 支持/反对/中立/信息补充
+	KeyArgument   string `json:"key_argument,omitempty"` // 核心论点
+	SourceURL     string `json:"source_url,omitempty"`   // 文章链接
 }
 
 // BriefingTopicArticle is the AI output format for an article within a topic
 type BriefingTopicArticle struct {
-	ID      int64  `json:"id"`
-	Insight string `json:"insight"`
+	ID          int64  `json:"id"`
+	Insight     string `json:"insight"`
+	Stance      string `json:"stance"`       // 立场: 支持/反对/中立/信息补充
+	KeyArgument string `json:"key_argument"` // 核心论点
+	SourceURL   string `json:"source_url"`   // 文章链接
 }
 
 // BriefingTopic is the AI output format for a topic
 type BriefingTopic struct {
-	Name       string                `json:"name"`
-	Summary    string                `json:"summary"`
-	Articles   []BriefingTopicArticle `json:"articles"`
-	Conclusion string                `json:"conclusion"`
+	Name      string                  `json:"name"`
+	Summary   string                  `json:"summary"`
+	Articles  []BriefingTopicArticle `json:"articles"`
+	Consensus string                  `json:"consensus"`  // 求同
+	Disputes  string                  `json:"disputes"`   // 存异
 }
 
 // BriefingResult is the AI output format
