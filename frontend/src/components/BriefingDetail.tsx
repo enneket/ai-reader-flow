@@ -248,11 +248,6 @@ export function BriefingDetail() {
                       <ul className="briefing-articles">
                         {item.articles.map((article) => (
                           <li key={article.id}>
-                            {article.stance && (
-                              <span className={`stance-badge stance-${article.stance}`}>
-                                {article.stance}
-                              </span>
-                            )}
                             {article.insight ? (
                               <span className="article-insight">{article.insight}</span>
                             ) : (
@@ -269,16 +264,6 @@ export function BriefingDetail() {
                           </li>
                         ))}
                       </ul>
-                      {item.consensus && (
-                        <div className="topic-consensus">
-                          <strong>共识：</strong>{item.consensus}
-                        </div>
-                      )}
-                      {item.disputes && (
-                        <div className="topic-disputes">
-                          <strong>分歧：</strong>{item.disputes}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
