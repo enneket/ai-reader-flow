@@ -76,6 +76,8 @@ func (s *RSSService) fetchArticles(feed *models.Feed) (int, error) {
 		return 0, err
 	}
 
+	log.Printf("[fetchArticles] feed=%s parsed %d items", feed.Title, len(articles.Items))
+
 	newCount := 0
 	for _, item := range articles.Items {
 		published := time.Now()
@@ -106,14 +108,22 @@ func (s *RSSService) fetchArticles(feed *models.Feed) (int, error) {
 			CreatedAt:  time.Now(),
 		}
 
+		log.Printf("[fetchArticles] item link=%s title=%s", item.Link, item.Title)
+
 		// Check if article already exists
-		exists, _ := s.articleRepo.LinkExists(article.Link)
+		exists, err := s.articleRepo.LinkExists(article.Link)
+		if err != nil {
+			log.Printf("[fetchArticles] LinkExists error for %s: %v", article.Link, err)
+		}
 		if !exists {
 			if err := s.articleRepo.Create(article); err != nil {
 				log.Printf("warning: failed to save article %s: %v", article.Title, err)
 			} else {
 				newCount++
+				log.Printf("[fetchArticles] inserted new article: %s", article.Title)
 			}
+		} else {
+			log.Printf("[fetchArticles] article already exists: %s", item.Link)
 		}
 	}
 
@@ -252,6 +262,10 @@ func (s *RSSService) MarkFeedAsRead(feedId int64) error {
 
 func (s *RSSService) MarkAllAsRead() error {
 	return s.articleRepo.SetAllArticlesStatus("unread", "accepted")
+}
+
+func (s *RSSService) UpdateArticleFeed(articleID, feedID int64) error {
+	return s.articleRepo.UpdateFeedID(articleID, feedID)
 }
 
 func (s *RSSService) GetArticles(feedID int64, filterMode string, limit, offset int) ([]models.Article, error) {

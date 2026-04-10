@@ -106,6 +106,7 @@ func main() {
 	mux.HandleFunc("GET /api/articles", handleGetArticles)
 	mux.HandleFunc("GET /api/articles/search", handleSearchArticles)
 	mux.HandleFunc("GET /api/articles/{id}", handleGetArticle)
+	mux.HandleFunc("PUT /api/articles/{id}/feed", handleUpdateArticleFeed)
 	mux.HandleFunc("POST /api/articles/{id}/refresh", handleRefreshArticle)
 	mux.HandleFunc("POST /api/articles/{id}/accept", handleAcceptArticle)
 	mux.HandleFunc("POST /api/articles/{id}/reject", handleRejectArticle)
@@ -506,6 +507,26 @@ func handleGetArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, article)
+}
+
+func handleUpdateArticleFeed(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseArticleID("/api/articles", r)
+	if !ok {
+		http.Error(w, "invalid article id", http.StatusBadRequest)
+		return
+	}
+	var req struct {
+		FeedID int64 `json:"feed_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if err := rssService.UpdateArticleFeed(id, req.FeedID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleRefreshArticle(w http.ResponseWriter, r *http.Request) {

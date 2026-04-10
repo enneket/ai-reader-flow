@@ -188,6 +188,11 @@ func (r *ArticleRepository) SetStatus(id int64, status string) error {
 	return nil
 }
 
+func (r *ArticleRepository) UpdateFeedID(articleID, feedID int64) error {
+	_, err := DB.Exec(`UPDATE articles SET feed_id = ? WHERE id = ?`, feedID, articleID)
+	return err
+}
+
 // SetAllArticlesStatus updates the status of all articles matching a condition.
 // If setting to "unread", clears filter. If setting FROM "unread", decrements feed unread_count.
 func (r *ArticleRepository) SetAllArticlesStatus(fromStatus string, toStatus string) error {
