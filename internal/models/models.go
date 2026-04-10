@@ -119,10 +119,8 @@ type BriefingTopic struct {
 
 // BriefingResult is the AI output format
 type BriefingResult struct {
-	Title   string           `json:"title"`    // e.g. "AI领域新闻整合简报"
-	Lead    string           `json:"lead"`     // e.g. "整合周期+领域+核心总览"
-	Closing string           `json:"closing"`  // optional closing summary
-	Sections []BriefingTopic `json:"sections"` // renamed from Topics
+	Title    string           `json:"title"`    // kept for parsing but not stored
+	Sections []BriefingTopic  `json:"sections"` // renamed from Topics
 }
 
 // PromptConfig holds prompt template configuration

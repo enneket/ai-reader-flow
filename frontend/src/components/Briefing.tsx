@@ -242,7 +242,7 @@ export function Briefing() {
                     onClick={() => handleBriefingClick(briefing)}
                     style={{cursor: 'pointer'}}
                   >
-                    <h3 className="briefing-card-title">{briefing.title || formatBriefingTitle(briefing.created_at)}</h3>
+                    <h3 className="briefing-card-title">{formatBriefingTitle(briefing.created_at)}</h3>
                     <div className="briefing-card-header">
                       <span className="briefing-date">{formatDate(briefing.created_at)}</span>
                       <span className="briefing-time">{formatTime(briefing.created_at)}</span>

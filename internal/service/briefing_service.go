@@ -108,15 +108,9 @@ func mergeBriefingResults(batches []models.BriefingResult) models.BriefingResult
 	var result models.BriefingResult
 
 	for _, batch := range batches {
-		// Capture title/lead/closing from first non-empty
+		// Capture title from first non-empty
 		if result.Title == "" && batch.Title != "" {
 			result.Title = batch.Title
-		}
-		if result.Lead == "" && batch.Lead != "" {
-			result.Lead = batch.Lead
-		}
-		if result.Closing == "" && batch.Closing != "" {
-			result.Closing = batch.Closing
 		}
 
 		for i := range batch.Sections {
@@ -259,11 +253,6 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 		return nil, fmt.Errorf("无有效简报内容")
 	}
 
-	// 5b. Store briefing-level metadata
-	if mergedResult.Title != "" {
-		s.briefingRepo.UpdateBriefingMeta(briefing.ID, mergedResult.Title, mergedResult.Lead, mergedResult.Closing)
-	}
-
 	// 6. Store briefing sections (formerly "topics")
 	if onProgress != nil {
 		onProgress("generating", "正在生成简报...")
@@ -390,17 +379,12 @@ func (s *BriefingService) buildPrompt(articlesInput string, dateRange string, to
 
 	multiBatchNote := ""
 	if !isSingleBatch {
-		multiBatchNote = fmt.Sprintf("\n提示：这是第 %d/%d 批，请只关注本批内容，生成标题/导语/结尾（仅第一批需要），后续批只补充分节。", batchIndex+1, totalBatches)
+		multiBatchNote = fmt.Sprintf("\n提示：这是第 %d/%d 批，请只关注本批内容。", batchIndex+1, totalBatches)
 	}
 
-	// 第一批需要标题+导语+结尾；后续批次只补充分节
-	isFirstBatch := batchIndex == 0
-	headerPart := ""
-	if isFirstBatch {
-		headerPart = `【输出格式】（严格 JSON，不要有其他内容）
+	// JSON format for all batches — sections only
+	headerPart := `【输出格式】（严格 JSON，不要有其他内容）
 {
-  "title": "XX领域新闻整合简报",
-  "lead": "整合周期+新闻领域+核心总览（1-2句）",
   "sections": [
     {
       "name": "分节名称，如"AI领域"",
@@ -414,13 +398,10 @@ func (s *BriefingService) buildPrompt(articlesInput string, dateRange string, to
         }
       ]
     }
-  ],
-  "closing": "整体趋势概括或后续关注重点（可选，若有）"
+  ]
 }
 
 `
-	}
-
 	return fmt.Sprintf(`根据以下文章，生成一份新闻整合简报。
 
 【核心任务】

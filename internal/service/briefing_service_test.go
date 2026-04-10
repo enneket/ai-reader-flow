@@ -216,7 +216,6 @@ func TestBriefingResultJSON(t *testing.T) {
 	t.Run("valid briefing result", func(t *testing.T) {
 		jsonStr := `{
 			"title": "AI领域新闻整合简报",
-			"lead": "整合周期内AI领域核心动态",
 			"sections": [
 				{
 					"name": "AI",
@@ -232,8 +231,7 @@ func TestBriefingResultJSON(t *testing.T) {
 						{"id": 2, "insight": "融资", "key_argument": "数据", "source_url": ""}
 					]
 				}
-			],
-			"closing": "后续关注重点"
+			]
 		}`
 
 		var result models.BriefingResult
@@ -245,12 +243,6 @@ func TestBriefingResultJSON(t *testing.T) {
 		}
 		if result.Title != "AI领域新闻整合简报" {
 			t.Errorf("Title = %q, want %q", result.Title, "AI领域新闻整合简报")
-		}
-		if result.Lead != "整合周期内AI领域核心动态" {
-			t.Errorf("Lead = %q, want %q", result.Lead, "整合周期内AI领域核心动态")
-		}
-		if result.Closing != "后续关注重点" {
-			t.Errorf("Closing = %q, want %q", result.Closing, "后续关注重点")
 		}
 	})
 

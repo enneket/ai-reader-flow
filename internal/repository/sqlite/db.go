@@ -187,8 +187,6 @@ func createTables() error {
 
 【输出格式】（严格 JSON，不要有其他内容）
 {
-  "title": "XX领域新闻整合简报",
-  "lead": "整合周期+新闻领域+核心总览（1-2句）",
   "sections": [
     {
       "name": "分节名称，如"AI领域"",
@@ -202,15 +200,13 @@ func createTables() error {
         }
       ]
     }
-  ],
-  "closing": "整体趋势概括或后续关注重点（可选，若有）"
+  ]
 }
 
 【规则】
 - 每节约 2-5 条新闻，新闻太少则合并到其他节
 - 分节按新闻条数排序（多的在前）
 - 只包含真正有价值的新闻，无关内容请忽略
-- 标题不要带时间，AI 根据文章日期推断时间范围（{dateRange}）
 
 以下是文章（共 {totalArticles} 篇，第 {batchIndex}/{totalBatches} 批）：
 {articles}`
