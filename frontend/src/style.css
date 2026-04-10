@@ -1373,6 +1373,8 @@ body {
 /* Dead feed indicator */
 .feed-item.is-dead {
   border-left: 3px solid var(--danger);
+  height: 80%;
+  margin: 0 auto;
 }
 
 .feed-item:hover {
