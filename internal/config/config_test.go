@@ -40,7 +40,7 @@ port = 9090
 
 [cron]
 enabled = false
-interval_mins = 60
+times = ["09:00"]
 `
 	configPath := filepath.Join(dataDir, "config.toml")
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -73,8 +73,8 @@ interval_mins = 60
 	if cfg.Cron.Enabled {
 		t.Errorf("Cron.Enabled = %v, want false", cfg.Cron.Enabled)
 	}
-	if cfg.Cron.IntervalMins != 60 {
-		t.Errorf("Cron.IntervalMins = %d, want %d", cfg.Cron.IntervalMins, 60)
+	if len(cfg.Cron.Times) != 1 || cfg.Cron.Times[0] != "09:00" {
+		t.Errorf("Cron.Times = %v, want %v", cfg.Cron.Times, []string{"09:00"})
 	}
 
 	// Cleanup
@@ -117,8 +117,8 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if !cfg.Cron.Enabled {
 		t.Errorf("Cron.Enabled = %v, want true", cfg.Cron.Enabled)
 	}
-	if cfg.Cron.IntervalMins != 30 {
-		t.Errorf("Cron.IntervalMins = %d, want %d", cfg.Cron.IntervalMins, 30)
+	if len(cfg.Cron.Times) != 1 || cfg.Cron.Times[0] != "08:00" {
+		t.Errorf("Cron.Times = %v, want %v", cfg.Cron.Times, []string{"08:00"})
 	}
 }
 
@@ -148,8 +148,8 @@ func TestSaveConfig(t *testing.T) {
 			Port:    3000,
 		},
 		Cron: CronConfig{
-			Enabled:      false,
-			IntervalMins: 120,
+			Enabled: false,
+			Times:   []string{"09:00"},
 		},
 	}
 
@@ -205,8 +205,8 @@ func TestSaveConfigThenLoad(t *testing.T) {
 			Port:    8888,
 		},
 		Cron: CronConfig{
-			Enabled:      true,
-			IntervalMins: 45,
+			Enabled: true,
+			Times:   []string{"09:00"},
 		},
 	}
 

@@ -191,24 +191,33 @@ func main() {
 	// Start background briefing cron if configured
 	if cfg.Cron.Enabled {
 		c := cron.New()
-		// Run at specific time each day: "Minute Hour * * *"
-		schedule := fmt.Sprintf("%d %d * * *", cfg.Cron.Minute, cfg.Cron.Hour)
-		c.AddFunc(schedule, func() {
-			log.Printf("[cron] Daily briefing at %02d:%02d - refreshing feeds first", cfg.Cron.Hour, cfg.Cron.Minute)
-			if err := rssService.RefreshAllFeeds(); err != nil {
-				log.Printf("[cron] RefreshAllFeeds error: %v", err)
+		for _, t := range cfg.Cron.Times {
+			timeParts := strings.Split(t, ":")
+			if len(timeParts) != 2 {
+				log.Printf("[cron] Invalid time format %q, skipping", t)
+				continue
 			}
-			log.Printf("[cron] Generating daily briefing")
-			// Use the same mutex lock as the HTTP handler to prevent concurrent triggers
-			if !events.GlobalOperationState.TryLock("generating") {
-				log.Printf("[cron] Skipping briefing: another operation is in progress")
-				return
-			}
-			defer events.GlobalOperationState.Unlock()
-			_, _ = briefingService.GenerateBriefingWithProgress(nil)
-		})
+			minute, _ := strconv.Atoi(timeParts[0])
+			hour, _ := strconv.Atoi(timeParts[1])
+			// Run at specific time each day: "Minute Hour * * *"
+			schedule := fmt.Sprintf("%d %d * * *", minute, hour)
+			c.AddFunc(schedule, func() {
+				log.Printf("[cron] Daily briefing - refreshing feeds first")
+				if err := rssService.RefreshAllFeeds(); err != nil {
+					log.Printf("[cron] RefreshAllFeeds error: %v", err)
+				}
+				log.Printf("[cron] Generating daily briefing")
+				// Use the same mutex lock as the HTTP handler to prevent concurrent triggers
+				if !events.GlobalOperationState.TryLock("generating") {
+					log.Printf("[cron] Skipping briefing: another operation is in progress")
+					return
+				}
+				defer events.GlobalOperationState.Unlock()
+				_, _ = briefingService.GenerateBriefingWithProgress(nil)
+			})
+			log.Printf("[cron] Briefing scheduled at %s daily", t)
+		}
 		c.Start()
-		log.Printf("[cron] Briefing scheduled at %02d:%02d daily", cfg.Cron.Hour, cfg.Cron.Minute)
 	}
 
 	log.Printf("Server starting on :%s", port)
