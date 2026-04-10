@@ -20,7 +20,7 @@ export function Settings() {
   })
   const [loading, setLoading] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
-  const [error, setError] = useState('')
+  const [modal, setModal] = useState<{type: 'warning'|'error'; title: string; content: string} | null>(null)
   const [success, setSuccess] = useState('')
 
   // Prompts state
@@ -78,13 +78,6 @@ export function Settings() {
     }
   }
 
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(''), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [error])
-
   const loadAIConfig = async () => {
     try {
       const config = await api.getAIConfig()
@@ -95,14 +88,14 @@ export function Settings() {
       setModel(config.model)
       setMaxTokens(config.max_tokens)
     } catch (err: any) {
-      setError(err.message || 'Failed to load AI config')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to load AI config'})
     }
   }
 
   const handleSaveAIConfig = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setModal(null)
     setSuccess('')
     try {
       await api.saveAIConfig({
@@ -115,7 +108,7 @@ export function Settings() {
       setSuccess('AI configuration saved successfully!')
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
-      setError(err.message || 'Failed to save AI config')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to save AI config'})
     } finally {
       setLoading(false)
     }
@@ -124,7 +117,7 @@ export function Settings() {
   const handleTestConnection = async () => {
     // Save current config first
     setTestingConnection(true)
-    setError('')
+    setModal(null)
     setSuccess('')
     try {
       await api.saveAIConfig({
@@ -139,10 +132,10 @@ export function Settings() {
         setSuccess('Connection successful! AI is reachable.')
         setTimeout(() => setSuccess(''), 5000)
       } else {
-        setError(result.error || 'Connection failed')
+        setModal({type: 'error', title: '错误', content: result.error || 'Connection failed'})
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to test AI connection')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to test AI connection'})
     } finally {
       setTestingConnection(false)
     }
@@ -174,7 +167,7 @@ export function Settings() {
       setSuccess('Prompt saved successfully!')
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
-      setError(err.message || 'Failed to save prompt')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to save prompt'})
     } finally {
       setPromptSaveLoading(false)
     }
@@ -190,7 +183,7 @@ export function Settings() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (err: any) {
-      setError(err.message || 'Failed to export OPML')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to export OPML'})
     }
   }
 
@@ -199,7 +192,7 @@ export function Settings() {
     if (!file) return
     setImporting(true)
     setImportProgress({ current: 0, total: 0, feedName: '', success: 0, failed: 0 })
-    setError('')
+    setModal(null)
     setSuccess('')
     try {
       const result = await api.importOPML(file) as { jobId: string }
@@ -230,7 +223,7 @@ export function Settings() {
     } catch (err: any) {
       setImporting(false)
       setImportProgress(null)
-      setError(err.message || 'Failed to import OPML')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to import OPML'})
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
@@ -246,7 +239,7 @@ export function Settings() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (err: any) {
-      setError(err.message || 'Failed to export articles')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to export articles'})
     }
   }
 
@@ -265,7 +258,7 @@ export function Settings() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (err: any) {
-      setError(err.message || 'Failed to export articles')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to export articles'})
     }
   }
 
@@ -329,13 +322,6 @@ export function Settings() {
 
         <main className="app-main">
           <div className="page-content">
-        {error && (
-          <div className="alert alert-error">
-            <span>{error}</span>
-            <button className="alert-close" onClick={() => setError('')}>×</button>
-          </div>
-        )}
-
         {success && (
           <div className="alert alert-success">
             <span>{success}</span>
@@ -383,7 +369,7 @@ export function Settings() {
                   const newVal = e.target.checked
                   setShowOriginalLanguage(newVal)
                   api.setShowOriginalLanguage(newVal).catch(err => {
-                    setError(err.message || 'Failed to save')
+                    setModal({type: 'error', title: '错误', content: err.message || 'Failed to save'})
                     setShowOriginalLanguage(!newVal)
                   })
                 }}
@@ -620,6 +606,15 @@ export function Settings() {
             content={`成功: ${importResult.success}，失败: ${importResult.failed}`}
             autoClose={3000}
             onOk={() => setShowImportSuccess(false)}
+          />
+        )}
+
+        {modal && (
+          <AppModal
+            type={modal.type}
+            title={modal.title}
+            content={modal.content}
+            onOk={() => setModal(null)}
           />
         )}
       </main>

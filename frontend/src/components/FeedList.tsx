@@ -19,7 +19,7 @@ export function FeedList() {
   const [newFeedUrl, setNewFeedUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [articlesLoading, setArticlesLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [modal, setModal] = useState<{type: 'warning'|'error'; title: string; content: string} | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshingFeedIds, setRefreshingFeedIds] = useState<Set<number>>(new Set())
   const [refreshingMessage, setRefreshingMessage] = useState('')
@@ -57,20 +57,13 @@ export function FeedList() {
       const data = await api.getFeeds()
       setFeeds(data || [])
     } catch (err: any) {
-      setError(err.message || 'Failed to load feeds')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to load feeds'})
     }
   }
 
   useEffect(() => {
     loadFeeds()
   }, [])
-
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(''), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [error])
 
   // Polling for refresh progress (recursive setTimeout for immediate first fire)
   const refreshPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -139,7 +132,7 @@ export function FeedList() {
       const sorted = (data || []).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))
       setArticles(sorted)
     } catch (err: any) {
-      setError(err.message || 'Failed to load articles')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to load articles'})
     } finally {
       setArticlesLoading(false)
     }
@@ -156,7 +149,7 @@ export function FeedList() {
     if (!newFeedUrl.trim()) return
 
     setLoading(true)
-    setError('')
+    setModal(null)
     try {
       const newFeed = await api.addFeed(newFeedUrl)
       setNewFeedUrl('')
@@ -165,7 +158,7 @@ export function FeedList() {
         handleSelectFeed(newFeed)
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to add feed')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to add feed'})
     } finally {
       setLoading(false)
     }
@@ -183,7 +176,7 @@ export function FeedList() {
       }
       await loadFeeds()
     } catch (err: any) {
-      setError(err.message || 'Failed to delete feed')
+      setModal({type: 'error', title: '错误', content: err.message || 'Failed to delete feed'})
     }
   }
 
@@ -207,7 +200,7 @@ export function FeedList() {
                           err.message?.includes('rate limit') ||
                           err.message?.includes('Too Many Requests')
       if (isRateLimit) {
-        setError('请求过于频繁，请稍后重试')
+        setModal({type: 'error', title: '错误', content: '请求过于频繁，请稍后重试'})
       } else if (isDead) {
         setDeadFeedAlert({
           open: true,
@@ -217,7 +210,7 @@ export function FeedList() {
         })
         await loadFeeds()
       } else {
-        setError(err.message || '刷新失败')
+        setModal({type: 'error', title: '错误', content: err.message || '刷新失败'})
       }
     } finally {
       // Clear spinner only after data has actually loaded
@@ -230,7 +223,7 @@ export function FeedList() {
   }
 
   const handleRefreshAll = async () => {
-    setError('')
+    setModal(null)
     setRefreshing(true)
     setRefreshingMessage('开始刷新订阅源...')
     setRefreshingPercent(0)
@@ -242,7 +235,7 @@ export function FeedList() {
         setRefreshingMessage('')
         setRefreshingPercent(0)
       } else {
-        setError(err.message || 'Failed to refresh feeds')
+        setModal({type: 'error', title: '错误', content: err.message || 'Failed to refresh feeds'})
       }
     })
   }
@@ -349,7 +342,7 @@ export function FeedList() {
             setEditModalOpen(false)
             await loadFeeds()
           } catch (err: any) {
-            setError(err.message || '更新失败')
+            setModal({type: 'error', title: '错误', content: err.message || '更新失败'})
           }
         }}
         onCancel={() => setEditModalOpen(false)}
@@ -473,7 +466,7 @@ export function FeedList() {
                     await loadFeeds()
                     if (selectedFeed) await loadArticles(selectedFeed.id)
                   } catch (err: any) {
-                    setError(err.message || '标记失败')
+                    setModal({type: 'error', title: '错误', content: err.message || '标记失败'})
                   }
                 }}
                 className="btn btn-ghost btn-sm"
@@ -505,13 +498,6 @@ export function FeedList() {
               <Plus size={14} />
             </button>
           </form>
-
-          {error && (
-            <div className="alert alert-error" style={{margin: 'var(--space-2)'}}>
-              <span>{error}</span>
-            </div>
-          )}
-
 
           <div className="feeds-list">
             {filteredFeeds.length === 0 && feedSearchQuery ? (
@@ -587,7 +573,7 @@ export function FeedList() {
                   await loadFeeds()
                   await loadArticles(selectedFeed.id)
                 } catch (err: any) {
-                  setError(err.message || '标记失败')
+                  setModal({type: 'error', title: '错误', content: err.message || '标记失败'})
                 }
               }}
               className="btn btn-ghost btn-sm"
@@ -666,6 +652,15 @@ export function FeedList() {
           content={t('feeds.deadFeedMessage', { name: deadFeedAlert.feedName })}
           autoClose={5000}
           onOk={() => setDeadFeedAlert(null)}
+        />
+      )}
+
+      {modal && (
+        <AppModal
+          type={modal.type}
+          title={modal.title}
+          content={modal.content}
+          onOk={() => setModal(null)}
         />
       )}
     </div>
