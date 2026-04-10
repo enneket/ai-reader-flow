@@ -430,13 +430,6 @@ export function FeedList() {
       <div className="app-body">
         {/* Column 1: Sidebar Navigation */}
         <aside className="sidebar">
-          <div className="sidebar-header">
-            <div className="sidebar-logo">
-              <Rss size={24} />
-              <span>{t('nav.aiRss')}</span>
-            </div>
-          </div>
-
           <nav className="sidebar-nav">
             <Link
               to="/feeds"

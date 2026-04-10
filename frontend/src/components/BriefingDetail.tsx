@@ -94,12 +94,6 @@ export function BriefingDetail() {
         </header>
         <div className="app-body">
           <aside className="sidebar">
-            <div className="sidebar-header">
-              <div className="sidebar-logo">
-                <FileText size={24} />
-                <span>{t('nav.aiRss')}</span>
-              </div>
-            </div>
             <nav className="sidebar-nav">
               <Link to="/feeds" className="nav-item">
                 <LayoutGrid />
@@ -141,12 +135,6 @@ export function BriefingDetail() {
         </header>
         <div className="app-body">
           <aside className="sidebar">
-            <div className="sidebar-header">
-              <div className="sidebar-logo">
-                <FileText size={24} />
-                <span>{t('nav.aiRss')}</span>
-              </div>
-            </div>
             <nav className="sidebar-nav">
               <Link to="/feeds" className="nav-item">
                 <LayoutGrid />
