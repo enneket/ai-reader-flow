@@ -10,6 +10,7 @@ services:
     environment:
       - DB_PATH=/data/reader.db
       - PORT=5562
+      - TZ=Asia/Shanghai
     extra_hosts:
       - "news.ycombinator.com:140.82.114.34"
     restart: unless-stopped
