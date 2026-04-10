@@ -125,6 +125,7 @@ func main() {
 	mux.HandleFunc("GET /api/briefings/{id}", handleGetBriefing)
 	mux.HandleFunc("POST /api/briefings/generate", handleGenerateBriefing)
 	mux.HandleFunc("DELETE /api/briefings/{id}", handleDeleteBriefing)
+	mux.HandleFunc("DELETE /api/briefings", handleDeleteAllBriefings)
 	mux.HandleFunc("GET /api/briefings/{id}/status", handleGetBriefingStatus)
 
 	// AI Config
@@ -789,6 +790,11 @@ func handleDeleteBriefing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	briefingService.DeleteBriefing(id)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func handleDeleteAllBriefings(w http.ResponseWriter, r *http.Request) {
+	briefingService.DeleteAllBriefings()
 	w.WriteHeader(http.StatusNoContent)
 }
 

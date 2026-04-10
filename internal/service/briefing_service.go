@@ -452,3 +452,8 @@ func (s *BriefingService) GetAllBriefings(limit, offset int) ([]models.Briefing,
 func (s *BriefingService) DeleteBriefing(id int64) error {
 	return s.briefingRepo.Delete(id)
 }
+
+// DeleteAllBriefings deletes all briefings
+func (s *BriefingService) DeleteAllBriefings() error {
+	return s.briefingRepo.DeleteAll()
+}

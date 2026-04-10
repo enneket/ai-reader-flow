@@ -175,6 +175,9 @@ export const api = {
   deleteBriefing: (id: number) =>
     request<void>(`/briefings/${id}`, { method: 'DELETE' }),
 
+  deleteAllBriefings: () =>
+    request<void>(`/briefings`, { method: 'DELETE' }),
+
   // ─── Progress ───────────────────────────────────────────────────────────
 
   getProgress: () => request<ProgressResponse>('/progress'),

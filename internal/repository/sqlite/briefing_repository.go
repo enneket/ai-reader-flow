@@ -100,6 +100,15 @@ func (r *BriefingRepository) Delete(id int64) error {
 	return err
 }
 
+func (r *BriefingRepository) DeleteAll() error {
+	_, err := DB.Exec(`DELETE FROM briefing_items`)
+	if err != nil {
+		return err
+	}
+	_, err = DB.Exec(`DELETE FROM briefings`)
+	return err
+}
+
 func (r *BriefingRepository) CreateItem(item *models.BriefingItem) error {
 	result, err := DB.Exec(
 		`INSERT INTO briefing_items (briefing_id, topic, summary, sort_order) VALUES (?, ?, ?, ?)`,
