@@ -197,7 +197,13 @@ func main() {
 				log.Printf("[cron] RefreshAllFeeds error: %v", err)
 			}
 			log.Printf("[cron] Generating daily briefing")
-			briefingService.GenerateBriefing()
+			// Use the same mutex lock as the HTTP handler to prevent concurrent triggers
+			if !events.GlobalOperationState.TryLock("generating") {
+				log.Printf("[cron] Skipping briefing: another operation is in progress")
+				return
+			}
+			defer events.GlobalOperationState.Unlock()
+			_, _ = briefingService.GenerateBriefingWithProgress(nil)
 		})
 		c.Start()
 		log.Printf("[cron] Briefing scheduled at %02d:%02d daily", cfg.Cron.Hour, cfg.Cron.Minute)
