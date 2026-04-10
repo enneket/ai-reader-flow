@@ -94,7 +94,12 @@ func (r *FeedRepository) Update(feed *models.Feed) error {
 }
 
 func (r *FeedRepository) Delete(id int64) error {
-	_, err := DB.Exec(`DELETE FROM feeds WHERE id = ?`, id)
+	// Cascade delete: remove feed's articles first
+	_, err := DB.Exec(`DELETE FROM articles WHERE feed_id = ?`, id)
+	if err != nil {
+		return err
+	}
+	_, err = DB.Exec(`DELETE FROM feeds WHERE id = ?`, id)
 	return err
 }
 
