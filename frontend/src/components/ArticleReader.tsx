@@ -62,12 +62,20 @@ export function ArticleReader({
   }
 
   const hasSummary = article.summary && article.summary.length > 0
+
+  // Strip inline color/background-color from sanitized HTML so CSS takes precedence
+  const stripInlineColor = (html: string) =>
+    html
+      .replace(/style="[^"]*background-color:[^"]*"/gi, '')
+      .replace(/style="[^"]*color:[^"]*"/gi, '')
+
   const cleanSummary = hasSummary
-    ? DOMPurify.sanitize(article.summary)
+    ? stripInlineColor(DOMPurify.sanitize(article.summary))
     : ''
   const isTranslated = article.is_translated && !!article.translated_content
   const displayContent = (showOriginal || !isTranslated) ? article.content : article.translated_content
   const hasDisplayContent = !!displayContent && displayContent.length > 0
+  const cleanContent = hasDisplayContent ? stripInlineColor(DOMPurify.sanitize(displayContent)) : ''
 
   return (
     <div className="article-reader-col">
@@ -105,7 +113,7 @@ export function ArticleReader({
         {hasDisplayContent ? (
           <div
             className="article-reader-content"
-            dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(displayContent)}}
+            dangerouslySetInnerHTML={{__html: cleanContent}}
           />
         ) : (
           <div style={{color: 'var(--text-secondary)', fontSize: '14px'}}>
