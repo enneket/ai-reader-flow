@@ -1383,6 +1383,7 @@ body {
   width: 3px;
   height: 80%;
   background: var(--danger);
+  border-radius: 2px;
 }
 
 .feed-item:hover {
