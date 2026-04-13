@@ -129,6 +129,10 @@ func main() {
 	mux.HandleFunc("DELETE /api/briefings", handleDeleteAllBriefings)
 	mux.HandleFunc("GET /api/briefings/{id}/status", handleGetBriefingStatus)
 
+	// Cron times
+	mux.HandleFunc("GET /api/cron-times", handleGetCronTimes)
+	mux.HandleFunc("PUT /api/cron-times", handleSetCronTimes)
+
 	// AI Config
 	mux.HandleFunc("GET /api/ai-config", handleGetAIConfig)
 	mux.HandleFunc("PUT /api/ai-config", handleSaveAIConfig)
@@ -191,32 +195,34 @@ func main() {
 	// Start background briefing cron if configured
 	if cfg.Cron.Enabled {
 		c := cron.New()
-		for _, t := range cfg.Cron.Times {
-			timeParts := strings.Split(t, ":")
-			if len(timeParts) != 2 {
-				log.Printf("[cron] Invalid time format %q, skipping", t)
-				continue
+		// Use @hourly (every minute) and check time list dynamically (方案 A)
+		c.AddFunc("@hourly", func() {
+			now := time.Now()
+			t := now.Format("15:04") // "HH:MM" in local timezone
+			matched := false
+			for _, tm := range cfg.Cron.Times {
+				if tm == t {
+					matched = true
+					break
+				}
 			}
-			minute, _ := strconv.Atoi(timeParts[0])
-			hour, _ := strconv.Atoi(timeParts[1])
-			// Run at specific time each day: "Minute Hour * * *"
-			schedule := fmt.Sprintf("%d %d * * *", minute, hour)
-			c.AddFunc(schedule, func() {
-				log.Printf("[cron] Daily briefing - refreshing feeds first")
-				if err := rssService.RefreshAllFeeds(); err != nil {
-					log.Printf("[cron] RefreshAllFeeds error: %v", err)
-				}
-				log.Printf("[cron] Generating daily briefing")
-				// Use the same mutex lock as the HTTP handler to prevent concurrent triggers
-				if !events.GlobalOperationState.TryLock("generating") {
-					log.Printf("[cron] Skipping briefing: another operation is in progress")
-					return
-				}
-				defer events.GlobalOperationState.Unlock()
-				_, _ = briefingService.GenerateBriefingWithProgress(nil)
-			})
-			log.Printf("[cron] Briefing scheduled at %s daily", t)
-		}
+			if !matched {
+				return // Not a scheduled time, skip silently
+			}
+			log.Printf("[cron] Briefing trigger at %s - refreshing feeds first", t)
+			if err := rssService.RefreshAllFeeds(); err != nil {
+				log.Printf("[cron] RefreshAllFeeds error: %v", err)
+			}
+			log.Printf("[cron] Generating daily briefing")
+			// Use the same mutex lock as the HTTP handler to prevent concurrent triggers
+			if !events.GlobalOperationState.TryLock("generating") {
+				log.Printf("[cron] Skipping briefing: another operation is in progress")
+				return
+			}
+			defer events.GlobalOperationState.Unlock()
+			_, _ = briefingService.GenerateBriefingWithProgress(nil)
+		})
+		log.Printf("[cron] Started - checking times: %v", cfg.Cron.Times)
 		c.Start()
 	}
 
@@ -693,6 +699,31 @@ func handleDeleteNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ─── Cron Times Handlers ──────────────────────────────────────────────────────
+
+func handleGetCronTimes(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, config.AppConfig_.Cron.Times)
+}
+
+func handleSetCronTimes(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Times []string `json:"times"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	// Validate HH:MM format
+	for _, t := range req.Times {
+		if len(t) != 5 || t[2] != ':' {
+			http.Error(w, "invalid time format: "+t, http.StatusBadRequest)
+			return
+		}
+	}
+	config.AppConfig_.Cron.Times = req.Times
+	writeJSON(w, http.StatusOK, map[string]interface{}{"success": true})
 }
 
 // ─── Briefing Handlers ─────────────────────────────────────────────────────────
