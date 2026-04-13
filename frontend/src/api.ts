@@ -178,6 +178,16 @@ export const api = {
   deleteAllBriefings: () =>
     request<void>(`/briefings`, { method: 'DELETE' }),
 
+  // ─── Cron Times ─────────────────────────────────────────────────────────
+
+  getCronTimes: () => request<string[]>('/cron-times'),
+
+  setCronTimes: (times: string[]) =>
+    request<{success: boolean}>('/cron-times', {
+      method: 'PUT',
+      body: JSON.stringify({times}),
+    }),
+
   // ─── Progress ───────────────────────────────────────────────────────────
 
   getProgress: () => request<ProgressResponse>('/progress'),
