@@ -56,6 +56,11 @@ export function Settings() {
   })
   const [showOriginalLanguage, setShowOriginalLanguage] = useState(false)
 
+  // Cron times state
+  const [cronTimes, setCronTimes] = useState<string[]>([])
+  const [cronInput, setCronInput] = useState('')
+  const [cronSaving, setCronSaving] = useState(false)
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
@@ -67,6 +72,7 @@ export function Settings() {
     api.getShowOriginalLanguage().then(data => {
       setShowOriginalLanguage(data.show_original_language)
     }).catch(console.error)
+    api.getCronTimes().then(times => setCronTimes(times)).catch(console.error)
   }, [])
 
   const loadPrompts = async () => {
@@ -89,6 +95,35 @@ export function Settings() {
       setMaxTokens(config.max_tokens)
     } catch (err: any) {
       setModal({type: 'error', title: '错误', content: err.message || 'Failed to load AI config'})
+    }
+  }
+
+  const handleSaveCronTimes = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!cronInput.trim()) return
+    const newTime = cronInput.trim()
+    if (cronTimes.includes(newTime)) {
+      setModal({type: 'warning', title: '重复', content: '该时间已存在'})
+      return
+    }
+    setCronSaving(true)
+    try {
+      await api.setCronTimes([...cronTimes, newTime])
+      setCronTimes([...cronTimes, newTime])
+      setCronInput('')
+    } catch (err: any) {
+      setModal({type: 'error', title: '错误', content: err.message})
+    } finally {
+      setCronSaving(false)
+    }
+  }
+
+  const handleRemoveCronTime = async (time: string) => {
+    try {
+      await api.setCronTimes(cronTimes.filter(t => t !== time))
+      setCronTimes(cronTimes.filter(t => t !== time))
+    } catch (err: any) {
+      setModal({type: 'error', title: '错误', content: err.message})
     }
   }
 
@@ -447,6 +482,45 @@ export function Settings() {
             <button type="submit" disabled={loading} className="btn btn-secondary">
               <Save size={16} />
               {loading ? t('common.loading') : t('settings.saveAIConfig')}
+            </button>
+          </form>
+        </section>
+
+        <section className="settings-section">
+          <h3>简报定时</h3>
+          <p style={{fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-3)'}}>
+            配置简报生成时间（北京时间），可添加多个时间点。
+          </p>
+          <div className="cron-times-list">
+            {cronTimes.length === 0 ? (
+              <p style={{color: 'var(--text-secondary)', fontSize: '0.85rem'}}>暂无定时</p>
+            ) : (
+              cronTimes.sort().map(time => (
+                <div key={time} className="cron-time-item">
+                  <span>{time}</span>
+                  <button
+                    onClick={() => handleRemoveCronTime(time)}
+                    className="btn btn-ghost btn-sm"
+                    style={{padding: '4px', color: 'var(--danger)'}}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+          <form onSubmit={handleSaveCronTimes} style={{display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-2)'}}>
+            <input
+              type="text"
+              value={cronInput}
+              onChange={e => setCronInput(e.target.value)}
+              placeholder="HH:MM 如 09:00"
+              pattern="[0-2][0-9]:[0-5][0-9]"
+              className="form-input"
+              style={{width: '120px'}}
+            />
+            <button type="submit" disabled={cronSaving} className="btn btn-secondary btn-sm">
+              {cronSaving ? '...' : '添加'}
             </button>
           </form>
         </section>

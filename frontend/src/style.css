@@ -1157,6 +1157,20 @@ body {
   gap: var(--space-4);
 }
 
+.cron-times-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.cron-time-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
 .prompt-item {
   padding: var(--space-3);
   background: var(--bg);
