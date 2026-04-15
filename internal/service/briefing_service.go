@@ -333,9 +333,6 @@ func (s *BriefingService) buildArticlesInput(articles []models.Article) string {
 		sb.WriteString(fmt.Sprintf("文章 ID: %d\n", a.ID))
 		sb.WriteString(fmt.Sprintf("标题: %s\n", a.Title))
 		sb.WriteString(fmt.Sprintf("链接: %s\n", a.Link))
-		if !a.Published.IsZero() {
-			sb.WriteString(fmt.Sprintf("日期: %s\n", a.Published.Format("2006-01-02")))
-		}
 		content := a.Content
 		if content == "" {
 			content = a.Summary
