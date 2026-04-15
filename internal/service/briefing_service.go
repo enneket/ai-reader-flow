@@ -192,27 +192,8 @@ func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, de
 	batches := s.splitIntoBatches(articles)
 	totalBatches := len(batches)
 
-	// 3b. Compute date range from article published dates
-	dateRange := "近期"
-	if len(articles) > 0 {
-		earliest := articles[0].Published
-		latest := articles[0].Published
-		for _, a := range articles {
-			if !a.Published.IsZero() {
-				if a.Published.Before(earliest) {
-					earliest = a.Published
-				}
-				if a.Published.After(latest) {
-					latest = a.Published
-				}
-			}
-		}
-		if !earliest.IsZero() && earliest != latest {
-			dateRange = earliest.Format("2006年1月2日") + "至" + latest.Format("2006年1月2日")
-		} else if !earliest.IsZero() {
-			dateRange = earliest.Format("2006年1月2日")
-		}
-	}
+	// 3b. Date range — not displayed to user
+	dateRange := ""
 
 	// 4. Call AI per batch, collect results
 	if onProgress != nil {
@@ -410,7 +391,8 @@ func (s *BriefingService) buildPrompt(articlesInput string, dateRange string, to
 %s【规则】
 - 每节约 2-5 条新闻，新闻太少则合并到其他节
 - 分节按新闻条数排序（多的在前）
-- 只包含真正有价值的新闻，无关内容请忽略%s
+- 只包含真正有价值的新闻，无关内容请忽略
+- 不要在输出中包含任何日期（年、月、日），也不要用日期作为小标题%s
 
 以下是文章（共 %d 篇，第 %d/%d 批）：
 %s`, sectionLimit, headerPart, multiBatchNote, totalArticles, batchIndex+1, totalBatches, articlesInput)
