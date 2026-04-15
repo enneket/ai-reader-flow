@@ -221,7 +221,7 @@ export function Briefing() {
                 className="btn btn-primary"
               >
                 <RefreshCw size={16} className={generating ? 'spinning' : ''} />
-                {generating ? t('common.loading') : t('briefing.generateBriefing')}
+                {generating ? '简报生成中...' : t('briefing.generateBriefing')}
               </button>
             </div>
 
