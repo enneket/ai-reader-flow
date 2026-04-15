@@ -35,7 +35,20 @@ export function Briefing() {
     return location.pathname === path
   }
 
+  // On mount: check if a briefing generation is in progress
   useEffect(() => {
+    const checkProgress = async () => {
+      try {
+        const data = await api.getProgress()
+        if (data.operation === 'generating') {
+          generatingRef.current = true
+          setGenerating(true)
+        }
+      } catch {
+        // Non-critical — ignore
+      }
+    }
+    checkProgress()
     loadBriefings(0)
   }, [])
 
