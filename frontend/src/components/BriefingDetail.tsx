@@ -71,7 +71,7 @@ export function BriefingDetail() {
     const hours = String(date.getHours()).padStart(2, '0')
     const minutes = String(date.getMinutes()).padStart(2, '0')
     const seconds = String(date.getSeconds()).padStart(2, '0')
-    return `${year}年${month}月${day}日${hours}时${minutes}分${seconds}秒 简报`
+    return `${hours}时${minutes}分${seconds}秒 简报`
   }
 
   const isActive = (path: string) => {

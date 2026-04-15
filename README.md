@@ -111,7 +111,7 @@ The briefing feature generates an automated news briefing by:
 3. Generating concise summaries for each topic
 4. Presenting as a structured report with source links
 
-Briefings are titled by timestamp (e.g., `2026年04月10日09时00分42秒 简报`) and support real-time generation status polling.
+Briefings are titled by timestamp (e.g., `09时00分42秒 简报`) and support real-time generation status polling.
 
 ## License
 
