@@ -128,6 +128,12 @@ func createTables() error {
 		FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
 	);
 
+	CREATE TABLE IF NOT EXISTS cron_locks (
+		time_slot TEXT PRIMARY KEY,
+		locked_at TEXT NOT NULL,
+		expires_at TEXT NOT NULL
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_articles_feed_id ON articles(feed_id);
 	CREATE INDEX IF NOT EXISTS idx_articles_is_filtered ON articles(is_filtered);
 	CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);

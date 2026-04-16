@@ -196,7 +196,8 @@ func main() {
 	if cfg.Cron.Enabled {
 		c := cron.New()
 		// Use @hourly (every minute) and check time list dynamically (方案 A)
-		c.AddFunc("@hourly", func() {
+		// Use "0 * * * *" (top of every hour) instead of @hourly for clarity
+		c.AddFunc("0 * * * *", func() {
 			now := time.Now()
 			t := now.Format("15:04") // "HH:MM" in local timezone
 			matched := false
@@ -209,17 +210,26 @@ func main() {
 			if !matched {
 				return // Not a scheduled time, skip silently
 			}
-			log.Printf("[cron] Briefing trigger at %s - refreshing feeds first", t)
+			log.Printf("[cron] Briefing trigger at %s", t)
+
+			// Database-level lock: prevent duplicate cron triggers (even from same machine)
+			if !briefingService.TryAcquireCronLock(t) {
+				log.Printf("[cron] Skipping: cron lock not acquired for %s", t)
+				return
+			}
+			defer briefingService.ReleaseCronLock(t)
+
+			// Double-check: is there already a briefing generation running?
+			if !events.GlobalOperationState.TryLock("generating") {
+				log.Printf("[cron] Skipping: mutex locked by another operation")
+				return
+			}
+			defer events.GlobalOperationState.Unlock()
+
 			if err := rssService.RefreshAllFeeds(); err != nil {
 				log.Printf("[cron] RefreshAllFeeds error: %v", err)
 			}
 			log.Printf("[cron] Generating daily briefing")
-			// Use the same mutex lock as the HTTP handler to prevent concurrent triggers
-			if !events.GlobalOperationState.TryLock("generating") {
-				log.Printf("[cron] Skipping briefing: another operation is in progress")
-				return
-			}
-			defer events.GlobalOperationState.Unlock()
 			_, _ = briefingService.GenerateBriefingWithProgress(nil)
 		})
 		log.Printf("[cron] Started - checking times: %v", cfg.Cron.Times)

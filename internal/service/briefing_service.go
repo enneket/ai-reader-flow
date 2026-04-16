@@ -436,3 +436,13 @@ func (s *BriefingService) DeleteBriefing(id int64) error {
 func (s *BriefingService) DeleteAllBriefings() error {
 	return s.briefingRepo.DeleteAll()
 }
+
+// TryAcquireCronLock atomically acquires a cron lock for the given time slot.
+func (s *BriefingService) TryAcquireCronLock(timeSlot string) bool {
+	return s.briefingRepo.TryAcquireCronLock(timeSlot)
+}
+
+// ReleaseCronLock releases the cron lock for the given time slot.
+func (s *BriefingService) ReleaseCronLock(timeSlot string) {
+	s.briefingRepo.ReleaseCronLock(timeSlot)
+}

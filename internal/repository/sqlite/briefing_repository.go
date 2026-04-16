@@ -3,6 +3,7 @@ package sqlite
 import (
 	"ai-rss-reader/internal/models"
 	"database/sql"
+	"log"
 	"time"
 )
 
@@ -200,4 +201,51 @@ func (r *BriefingRepository) GetLatestBriefingTime() (*time.Time, error) {
 	}
 	t, _ := time.Parse(time.RFC3339, createdAt)
 	return &t, nil
+}
+
+// TryAcquireCronLock atomically acquires a cron lock for the given time slot (e.g. "09:00").
+// Returns true if acquired, false if another cron instance already holds the lock.
+func (r *BriefingRepository) TryAcquireCronLock(timeSlot string) bool {
+	now := time.Now()
+	expiresAt := now.Add(65 * time.Minute).Format(time.RFC3339)
+	nowStr := now.Format(time.RFC3339)
+	// INSERT OR IGNORE: if the lock already exists and hasn't expired, the insert is ignored (no row affected)
+	result, err := DB.Exec(
+		`INSERT OR IGNORE INTO cron_locks (time_slot, locked_at, expires_at) VALUES (?, ?, ?)`,
+		timeSlot, nowStr, expiresAt,
+	)
+	if err != nil {
+		log.Printf("[cron] lock insert error: %v", err)
+		return false
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 1 {
+		return true // lock acquired
+	}
+	// Lock already exists — check if expired
+	row := DB.QueryRow(`SELECT expires_at FROM cron_locks WHERE time_slot = ?`, timeSlot)
+	var expiresAtStr string
+	if err := row.Scan(&expiresAtStr); err != nil {
+		return false
+	}
+	expiresAtParsed, _ := time.Parse(time.RFC3339, expiresAtStr)
+	if now.After(expiresAtParsed) {
+		// Expired — delete and retry
+		DB.Exec(`DELETE FROM cron_locks WHERE time_slot = ?`, timeSlot)
+		result2, err2 := DB.Exec(
+			`INSERT OR IGNORE INTO cron_locks (time_slot, locked_at, expires_at) VALUES (?, ?, ?)`,
+			timeSlot, nowStr, expiresAt,
+		)
+		if err2 != nil {
+			return false
+		}
+		affected2, _ := result2.RowsAffected()
+		return affected2 == 1
+	}
+	return false // lock held by another instance
+}
+
+// ReleaseCronLock releases the cron lock for the given time slot.
+func (r *BriefingRepository) ReleaseCronLock(timeSlot string) {
+	DB.Exec(`DELETE FROM cron_locks WHERE time_slot = ?`, timeSlot)
 }
