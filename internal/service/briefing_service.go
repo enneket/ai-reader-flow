@@ -3,7 +3,6 @@ package service
 import (
 	"ai-rss-reader/internal/ai"
 	"ai-rss-reader/internal/config"
-	"ai-rss-reader/internal/events"
 	"ai-rss-reader/internal/models"
 	"ai-rss-reader/internal/repository/sqlite"
 	"encoding/json"
@@ -158,14 +157,6 @@ func (s *BriefingService) GenerateBriefing() (*models.Briefing, error) {
 // GenerateBriefingWithProgress creates a briefing with optional progress callback.
 // If onProgress is nil, behaves exactly like GenerateBriefing.
 func (s *BriefingService) GenerateBriefingWithProgress(onProgress func(stage, detail string)) (*models.Briefing, error) {
-	// 0. Safety check: if another operation is already marked as in-progress, skip.
-	// Note: we use Current() instead of TryLock here because the caller
-	// (cron or HTTP handler) may have already acquired the lock.
-	if events.GlobalOperationState.Current() != "idle" {
-		log.Printf("[briefing] skipped: operation %q already in progress", events.GlobalOperationState.Current())
-		return nil, fmt.Errorf("正在执行其他操作，请稍候")
-	}
-
 	// 0. Check if already generated this round
 	if onProgress != nil {
 		onProgress("checking", "检查生成状态...")
